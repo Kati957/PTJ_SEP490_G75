@@ -59,24 +59,6 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
-          "dependencies": {
-            "Microsoft.Extensions.Configuration.Json": {
-              "target": "Package",
-              "version": "[8.0.1, )"
-            },
-            "Microsoft.Extensions.Http": {
-              "target": "Package",
-              "version": "[8.0.1, )"
-            },
-            "Swashbuckle.AspNetCore": {
-              "target": "Package",
-              "version": "[6.6.2, )"
-            },
-            "System.Net.Http.Json": {
-              "target": "Package",
-              "version": "[8.0.1, )"
-            }
-          },
           "imports": [
             "net461",
             "net462",
@@ -299,20 +281,6 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
-          "dependencies": {
-            "Microsoft.Extensions.Configuration.Json": {
-              "target": "Package",
-              "version": "[8.0.1, )"
-            },
-            "Microsoft.Extensions.Http": {
-              "target": "Package",
-              "version": "[8.0.1, )"
-            },
-            "System.Net.Http.Json": {
-              "target": "Package",
-              "version": "[8.0.1, )"
-            }
-          },
           "imports": [
             "net461",
             "net462",

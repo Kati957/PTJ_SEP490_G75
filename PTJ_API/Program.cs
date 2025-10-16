@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
-using PTJ_Service.AIService;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<JobMatchingAiDbContext>(opt =>
@@ -10,21 +9,11 @@ builder.Services.AddDbContext<JobMatchingAiDbContext>(opt =>
 // Add services to the container.
 
 builder.Services.AddControllers();
-builder.Services.AddHttpClient<OpenAIService>();
-builder.Services.AddHttpClient<PineconeService>();
-builder.Services.AddScoped<AiMatchService>();
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
