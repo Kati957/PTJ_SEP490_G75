@@ -6,4 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\PTJ_Data\PTJ_Data.csproj" />
+    <ProjectReference Include="..\PTJ_Models\PTJ_Models.csproj" />
+    <ProjectReference Include="..\PTJ_Service\PTJ_Service.csproj" />
+  </ItemGroup>
+
 </Project>
