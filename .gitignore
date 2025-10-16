@@ -1,0 +1,97 @@
+# ===============================
+# Visual Studio & .NET ignore list
+# ===============================
+
+# Visual Studio user-specific files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.log
+
+# ASP.NET Core
+wwwroot/lib/
+node_modules/
+bower_components/
+bundleconfig.json
+
+# Entity Framework
+[Mm]igrations/
+*.mdf
+*.ldf
+*.db
+
+# Configuration & secrets
+*.env
+appsettings.Development.json
+appsettings.Local.json
+
+# Rider / JetBrains
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+.history/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# Test results
+[Tt]est[Rr]esult*/
+*.VisualState.xml
+*.vsp
+*.vspx
+*.coverage
+*.coveragexml
+
+# Temporary files
+~$*
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Publish output
+publish/
+*.Publish.xml
+
+# Docker
+docker-compose.override.yml
+*.dockerfile
+.docker/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+
+# Logs & Cache
+*.pidb
+*.seed
+*.psess
+*.vsp
+*.vspx
+*.sdf
+*.cache
+*.pdb
+
+# ===============================
+# End of .gitignore
+# ===============================
