@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
 using PTJ_Service.AIService;
+using PTJ_Service.EmployerPostService;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<JobMatchingAiDbContext>(opt =>
@@ -17,6 +18,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient<OpenAIService>();
 builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<AiMatchService>();
+builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 
 builder.Services.AddControllers();
 
