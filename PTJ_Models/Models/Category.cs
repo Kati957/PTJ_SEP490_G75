@@ -13,7 +13,7 @@ public partial class Category
 
     public string? Description { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 
     public virtual ICollection<EmployerPost> EmployerPosts { get; set; } = new List<EmployerPost>();
 

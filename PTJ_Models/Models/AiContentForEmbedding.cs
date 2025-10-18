@@ -17,5 +17,5 @@ public partial class AiContentForEmbedding
 
     public string Hash { get; set; } = null!;
 
-    public DateTime? LastPreparedAt { get; set; }
+    public DateTime LastPreparedAt { get; set; }
 }

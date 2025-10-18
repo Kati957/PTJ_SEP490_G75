@@ -11,17 +11,17 @@ public partial class Notification
 
     public string NotificationType { get; set; } = null!;
 
-    public int RelatedItemId { get; set; }
+    public int? RelatedItemId { get; set; }
 
     public string Title { get; set; } = null!;
 
     public string? Message { get; set; }
 
-    public bool? IsRead { get; set; }
+    public bool IsRead { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     public virtual ICollection<PostReportSolved> PostReportSolveds { get; set; } = new List<PostReportSolved>();
 

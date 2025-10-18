@@ -17,7 +17,7 @@ public partial class UserActivityLog
 
     public string? DeviceInfo { get; set; }
 
-    public DateTime? Timestamp { get; set; }
+    public DateTime Timestamp { get; set; }
 
     public virtual User User { get; set; } = null!;
 }
