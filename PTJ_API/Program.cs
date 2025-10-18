@@ -5,7 +5,7 @@ using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<JobMatchingAiDbContext>(opt =>
+builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
@@ -17,7 +17,7 @@ builder.Services.AddSwaggerGen();
 // ⚙️ Thêm các service AI
 builder.Services.AddHttpClient<OpenAIService>();
 builder.Services.AddHttpClient<PineconeService>();
-builder.Services.AddScoped<AiMatchService>();
+builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 
 builder.Services.AddControllers();
