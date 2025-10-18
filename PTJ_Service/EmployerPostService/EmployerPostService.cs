@@ -94,16 +94,79 @@ namespace PTJ_Service.EmployerPostService
         // Các CRUD cơ bản
         // =====================================
 
-        public async Task<IEnumerable<EmployerPostModel>> GetAllAsync()
+        public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
         {
             return await _db.EmployerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
                 .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new EmployerPostDtoOut
+                {
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
                 .ToListAsync();
         }
 
-        public async Task<EmployerPostModel?> GetByIdAsync(int id)
+        // 📋 Lấy theo UserId
+        public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
         {
-            return await _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == id);
+            return await _db.EmployerPosts
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .Where(p => p.UserId == userId)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new EmployerPostDtoOut
+                {
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
+                .ToListAsync();
+        }
+
+        // 🔍 Lấy theo ID
+        public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
+        {
+            return await _db.EmployerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
+                .Where(p => p.EmployerPostId == id)
+                .Select(p => new EmployerPostDtoOut
+                {
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
+                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> DeleteAsync(int id)

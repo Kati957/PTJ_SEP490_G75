@@ -37,6 +37,16 @@ namespace PTJ_API.Controllers
             return Ok(post);
         }
 
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetByUser(int userId)
+        {
+            var posts = await _service.GetByUserAsync(userId);
+            if (posts == null || !posts.Any())
+                return NotFound(new { message = "Không tìm thấy bài đăng nào cho người dùng này." });
+
+            return Ok(posts);
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
