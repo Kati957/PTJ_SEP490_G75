@@ -17,13 +17,15 @@ public partial class News
 
     public string? Category { get; set; }
 
-    public bool? IsFeatured { get; set; }
+    public bool IsFeatured { get; set; }
 
-    public int? Priority { get; set; }
+    public int Priority { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    public string Status { get; set; } = null!;
 
     public virtual User Admin { get; set; } = null!;
 }

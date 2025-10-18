@@ -29,7 +29,7 @@ public partial class JobSeekerProfile
 
     public decimal? AverageRating { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

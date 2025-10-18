@@ -19,29 +19,41 @@ public partial class User
 
     public string Role { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 
-    public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
+    public bool IsVerified { get; set; }
+
+    public DateTime? LastLogin { get; set; }
+
+    public virtual ICollection<EmployerCandidatesList> EmployerCandidatesLists { get; set; } = new List<EmployerCandidatesList>();
 
     public virtual ICollection<EmployerFollower> EmployerFollowerEmployers { get; set; } = new List<EmployerFollower>();
 
     public virtual ICollection<EmployerFollower> EmployerFollowerJobSeekers { get; set; } = new List<EmployerFollower>();
 
+    public virtual ICollection<EmployerInvitation> EmployerInvitationEmployers { get; set; } = new List<EmployerInvitation>();
+
+    public virtual ICollection<EmployerInvitation> EmployerInvitationJobSeekers { get; set; } = new List<EmployerInvitation>();
+
     public virtual ICollection<EmployerPost> EmployerPosts { get; set; } = new List<EmployerPost>();
 
     public virtual EmployerProfile? EmployerProfile { get; set; }
 
-    public virtual ICollection<FavoritePost> FavoritePosts { get; set; } = new List<FavoritePost>();
+    public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidateEmployers { get; set; } = new List<EmployerShortlistedCandidate>();
 
-    public virtual ICollection<JobSeekerApplicationList> JobSeekerApplicationLists { get; set; } = new List<JobSeekerApplicationList>();
+    public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidateJobSeekers { get; set; } = new List<EmployerShortlistedCandidate>();
+
+    public virtual ICollection<FavoritePost> FavoritePosts { get; set; } = new List<FavoritePost>();
 
     public virtual ICollection<JobSeekerPost> JobSeekerPosts { get; set; } = new List<JobSeekerPost>();
 
     public virtual JobSeekerProfile? JobSeekerProfile { get; set; }
+
+    public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
 
     public virtual ICollection<News> News { get; set; } = new List<News>();
 

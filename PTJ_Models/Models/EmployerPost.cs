@@ -25,17 +25,21 @@ public partial class EmployerPost
 
     public string? PhoneContact { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
-    public string? Status { get; set; }
-
-    public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
+    public string Status { get; set; } = null!;
 
     public virtual Category? Category { get; set; }
 
-    public virtual ICollection<JobSeekerApplicationList> JobSeekerApplicationLists { get; set; } = new List<JobSeekerApplicationList>();
+    public virtual ICollection<EmployerCandidatesList> EmployerCandidatesLists { get; set; } = new List<EmployerCandidatesList>();
+
+    public virtual ICollection<EmployerInvitation> EmployerInvitations { get; set; } = new List<EmployerInvitation>();
+
+    public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidates { get; set; } = new List<EmployerShortlistedCandidate>();
+
+    public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
 
     public virtual User User { get; set; } = null!;
 }

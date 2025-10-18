@@ -9,15 +9,15 @@ public partial class PostReport
 
     public int ReporterId { get; set; }
 
-    public string ReportType { get; set; } = null!;
+    public string? ReportType { get; set; }
 
     public int ReportedItemId { get; set; }
 
     public string? Reason { get; set; }
 
-    public string? Status { get; set; }
+    public string Status { get; set; } = null!;
 
-    public DateTime? CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual PostReportSolved? PostReportSolved { get; set; }
 

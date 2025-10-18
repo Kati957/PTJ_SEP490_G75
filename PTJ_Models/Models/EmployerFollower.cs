@@ -11,9 +11,9 @@ public partial class EmployerFollower
 
     public int EmployerId { get; set; }
 
-    public DateTime? FollowDate { get; set; }
+    public DateTime FollowDate { get; set; }
 
-    public bool? IsActive { get; set; }
+    public bool IsActive { get; set; }
 
     public virtual User Employer { get; set; } = null!;
 
