@@ -12,4 +12,9 @@
         public int? CategoryID { get; set; }
         public string? PhoneContact { get; set; }
     }
+    public class EmployerPostResultDto
+    {
+        public PTJ_Models.Models.EmployerPost Post { get; set; } = new();
+        public List<AIResultDto> SuggestedCandidates { get; set; } = new();
+    }
 }

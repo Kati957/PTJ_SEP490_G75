@@ -7,7 +7,8 @@ namespace PTJ_Service.EmployerPostService
 {
     public interface IEmployerPostService
     {
-        Task<EmployerPostModel> CreateEmployerPostAsync(EmployerPostDto dto);
+        Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto);
+
         Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync();
         Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId);
         Task<EmployerPostDtoOut?> GetByIdAsync(int id);

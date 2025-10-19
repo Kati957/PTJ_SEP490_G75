@@ -21,8 +21,8 @@ namespace PTJ_Service.EmployerPostService
             _ai = ai;
         }
 
-        // 🧠 Tạo bài đăng + gọi OpenAI và Pinecone
-        public async Task<EmployerPostModel> CreateEmployerPostAsync(EmployerPostDto dto)
+        // 🧠 Tạo bài đăng + gọi OpenAI và Pinecone + trả về gợi ý ứng viên tương đồng
+        public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto)
         {
             // 1️⃣ Lưu bài đăng vào DB
             var post = new EmployerPostModel
@@ -62,17 +62,17 @@ namespace PTJ_Service.EmployerPostService
                 vector: vector,
                 metadata: new
                 {
-                    title = dto.Title,
-                    location = dto.Location,
-                    salary = dto.Salary,
+                    title = dto.Title ?? "",
+                    location = dto.Location ?? "",
+                    salary = dto.Salary ?? 0,
                     postId = post.EmployerPostId
                 }
             );
 
-            // 5️⃣ So sánh với vector ứng viên (namespace khác)
+            // 5️⃣ So sánh với vector ứng viên (namespace: job_seeker_posts)
             var results = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 5);
 
-            // 6️⃣ Nếu không tìm thấy ứng viên phù hợp → lưu lại text để AI xử lý sau
+            // 6️⃣ Nếu không có kết quả, lưu lại text để xử lý sau
             if (!results.Any())
             {
                 _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
@@ -87,12 +87,50 @@ namespace PTJ_Service.EmployerPostService
                 await _db.SaveChangesAsync();
             }
 
-            return post;
+            // 7️⃣ Nếu có kết quả → map ra DTO gợi ý (và có thể lấy info từ DB)
+            var suggestedCandidates = new List<AIResultDto>();
+
+            foreach (var result in results)
+            {
+                // result.Id có dạng "JobSeekerPost:123"
+                int seekerPostId = 0;
+                if (result.Id.StartsWith("JobSeekerPost:"))
+                    int.TryParse(result.Id.Split(':')[1], out seekerPostId);
+
+                var seekerPost = await _db.JobSeekerPosts
+                    .Include(j => j.User)
+                    .FirstOrDefaultAsync(j => j.JobSeekerPostId == seekerPostId);
+
+                if (seekerPost != null)
+                {
+                    suggestedCandidates.Add(new AIResultDto
+                    {
+                        Id = result.Id,
+                        Score = Math.Round(result.Score * 100, 2), // phần trăm %
+                        ExtraInfo = new
+                        {
+                            seekerPost.JobSeekerPostId,
+                            seekerPost.Title,
+                            seekerPost.PreferredLocation,
+                            seekerPost.Gender,
+                            seekerPost.Age,
+                            seekerPost.PhoneContact,
+                            Username = seekerPost.User.Username
+                        }
+                    });
+                }
+            }
+
+            return new EmployerPostResultDto
+            {
+                Post = post,
+                SuggestedCandidates = suggestedCandidates
+            };
         }
 
-        // =====================================
-        // Các CRUD cơ bản
-        // =====================================
+        // ===============================
+        // CRUD cơ bản
+        // ===============================
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
         {
@@ -118,7 +156,6 @@ namespace PTJ_Service.EmployerPostService
                 .ToListAsync();
         }
 
-        // 📋 Lấy theo UserId
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
         {
             return await _db.EmployerPosts
@@ -144,7 +181,6 @@ namespace PTJ_Service.EmployerPostService
                 .ToListAsync();
         }
 
-        // 🔍 Lấy theo ID
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
         {
             return await _db.EmployerPosts

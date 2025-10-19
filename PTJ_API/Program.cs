@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
+using PTJ_Service.JobSeekerPostService;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
@@ -19,6 +20,8 @@ builder.Services.AddHttpClient<OpenAIService>();
 builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
+builder.Services.AddScoped<IJobSeekerPostService, JobSeekerPostService>();
+
 
 builder.Services.AddControllers();
 
