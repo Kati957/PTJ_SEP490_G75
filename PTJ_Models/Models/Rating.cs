@@ -11,17 +11,17 @@ public partial class Rating
 
     public int RateeId { get; set; }
 
-    public int? ApplicationId { get; set; }
+    public int? SubmissionId { get; set; }
 
-    public decimal RatingValue { get; set; }
+    public decimal? RatingValue { get; set; }
 
     public string? Comment { get; set; }
 
-    public DateTime? CreatedAt { get; set; }
-
-    public virtual Application? Application { get; set; }
+    public DateTime CreatedAt { get; set; }
 
     public virtual User Ratee { get; set; } = null!;
 
     public virtual User Rater { get; set; } = null!;
+
+    public virtual JobSeekerSubmission? Submission { get; set; }
 }

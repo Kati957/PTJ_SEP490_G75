@@ -13,13 +13,13 @@ public partial class PostReportSolved
 
     public int AffectedUserId { get; set; }
 
-    public string ActionTaken { get; set; } = null!;
+    public string? ActionTaken { get; set; }
 
     public string? Reason { get; set; }
 
     public int? NotificationId { get; set; }
 
-    public DateTime? SolvedAt { get; set; }
+    public DateTime SolvedAt { get; set; }
 
     public virtual User Admin { get; set; } = null!;
 

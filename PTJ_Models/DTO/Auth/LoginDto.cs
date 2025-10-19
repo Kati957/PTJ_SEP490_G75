@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace PTJ_Models.DTO.Auth;
 
-namespace PTJ_Models.DTO.Auth
+public class LoginDto
 {
-    internal class LoginDto
-    {
-    }
+    public string UsernameOrEmail { get; set; } = default!;
+    public string Password { get; set; } = default!;
+    public string? DeviceInfo { get; set; }
 }

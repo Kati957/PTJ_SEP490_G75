@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 
 namespace PTJ_Models.DTO.Auth
 {
-    internal class RegisterDto
+    public class RegisterEmployerDto
     {
-        public string Username { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty; // Tên công ty / hiển thị
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string? Website { get; set; }
     }
 }

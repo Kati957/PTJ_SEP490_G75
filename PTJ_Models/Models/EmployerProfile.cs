@@ -9,13 +9,11 @@ public partial class EmployerProfile
 
     public int UserId { get; set; }
 
-    public string? CompanyName { get; set; }
+    public string DisplayName { get; set; } = null!;
 
-    public string? CompanyDescription { get; set; }
+    public string? Description { get; set; }
 
-    public string? CompanyLogo { get; set; }
-
-    public string? Website { get; set; }
+    public string? AvatarUrl { get; set; }
 
     public string? ContactName { get; set; }
 
@@ -23,11 +21,13 @@ public partial class EmployerProfile
 
     public string? ContactEmail { get; set; }
 
-    public string? Address { get; set; }
+    public string? Location { get; set; }
+
+    public string? Website { get; set; }
 
     public decimal? AverageRating { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

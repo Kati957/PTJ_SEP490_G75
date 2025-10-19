@@ -1,12 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using PTJ_Models.DTO.Auth;
 
-namespace PTJ_Service.Interfaces
+namespace PTJ_Service.Interfaces;
+
+public interface IAuthService
 {
-    internal class IAuthService
-    {
-    }
+    Task<AuthResponseDto> RegisterJobSeekerAsync(RegisterJobSeekerDto dto);
+    Task VerifyEmailAsync(string token);
+    Task ResendVerificationAsync(string email);
+
+    Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ip);
+    Task<AuthResponseDto> RefreshAsync(string refreshToken, string? deviceInfo, string? ip);
+    Task LogoutAsync(string refreshToken);
+
+    Task<AuthResponseDto> UpgradeToEmployerAsync(int userId, RegisterEmployerDto dto, string? ip);
+
+    Task RequestPasswordResetAsync(string email);
+    Task ResetPasswordAsync(ResetPasswordDto dto);
+
+    Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, string? ip);
 }

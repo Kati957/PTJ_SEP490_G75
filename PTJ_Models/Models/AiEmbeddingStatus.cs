@@ -23,5 +23,5 @@ public partial class AiEmbeddingStatus
 
     public string? ErrorMsg { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
