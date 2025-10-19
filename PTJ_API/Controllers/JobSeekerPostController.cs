@@ -19,8 +19,13 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> Create([FromBody] JobSeekerPostDto dto)
         {
             var result = await _service.CreateJobSeekerPostAsync(dto);
-            return Ok(result);
+            return Ok(new
+            {
+                post = result.Post,
+                suggestions = result.SuggestedJobs
+            });
         }
+
 
 
         [HttpGet("all")]

@@ -4,8 +4,6 @@ using PTJ_Models.Models;
 using PTJ_Service.AIService;
 using System.Security.Cryptography;
 using System.Text;
-
-// alias tránh trùng namespace
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
 
 namespace PTJ_Service.EmployerPostService
@@ -21,10 +19,9 @@ namespace PTJ_Service.EmployerPostService
             _ai = ai;
         }
 
-        // 🧠 Tạo bài đăng + gọi OpenAI và Pinecone + trả về gợi ý ứng viên tương đồng
         public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto)
         {
-            // 1️⃣ Lưu bài đăng vào DB
+            // 1) Lưu post
             var post = new EmployerPostModel
             {
                 UserId = dto.UserID,
@@ -39,23 +36,32 @@ namespace PTJ_Service.EmployerPostService
                 CreatedAt = DateTime.Now,
                 Status = "Active"
             };
-
             _db.EmployerPosts.Add(post);
             await _db.SaveChangesAsync();
 
-            // 2️⃣ Chuẩn bị nội dung để embedding
-            string text = $"{dto.Title}. {dto.Description}. " +
-                          $"Yêu cầu: {dto.Requirements}. " +
-                          $"Địa điểm: {dto.Location}. Lương: {dto.Salary}";
-            if (text.Length > 6000)
-                text = text.Substring(0, 6000);
-
+            // 2) Chuẩn hoá text
+            string text = $"{dto.Title}. {dto.Description}. Yêu cầu: {dto.Requirements}. Địa điểm: {dto.Location}. Lương: {dto.Salary}";
+            if (text.Length > 6000) text = text[..6000];
             string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
-            // 3️⃣ Gọi OpenAI tạo vector
+            // 3) Tạo embedding
             var vector = await _ai.CreateEmbeddingAsync(text);
 
-            // 4️⃣ Gửi vector lên Pinecone
+            // 3.1) Ghi AI_EmbeddingStatus
+            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
+            {
+                EntityType = "EmployerPost",
+                EntityId = post.EmployerPostId,
+                ContentHash = hash,
+                Model = "text-embedding-3-large",
+                VectorDim = vector.Length,
+                PineconeId = $"EmployerPost:{post.EmployerPostId}",
+                Status = "OK",
+                UpdatedAt = DateTime.Now
+            });
+            await _db.SaveChangesAsync();
+
+            // 4) Upsert Pinecone
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
                 id: $"EmployerPost:{post.EmployerPostId}",
@@ -66,15 +72,65 @@ namespace PTJ_Service.EmployerPostService
                     location = dto.Location ?? "",
                     salary = dto.Salary ?? 0,
                     postId = post.EmployerPostId
-                }
-            );
+                });
 
-            // 5️⃣ So sánh với vector ứng viên (namespace: job_seeker_posts)
-            var results = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 5);
+            // 5) Query tương tự ở namespace job seeker
+            var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 5);
 
-            // 6️⃣ Nếu không có kết quả, lưu lại text để xử lý sau
-            if (!results.Any())
+            var suggestions = new List<AIResultDto>();
+
+            if (matches.Any())
             {
+                // Lấy thông tin seeker từ DB để render ra ngoài & lưu AI_MatchSuggestions
+                foreach (var m in matches)
+                {
+                    // Id dạng "JobSeekerPost:123"
+                    int seekerPostId = 0;
+                    if (m.Id.StartsWith("JobSeekerPost:"))
+                        int.TryParse(m.Id.Split(':')[1], out seekerPostId);
+
+                    var seeker = await _db.JobSeekerPosts
+                        .Include(x => x.User)
+                        .Where(x => x.JobSeekerPostId == seekerPostId)
+                        .Select(x => new
+                        {
+                            x.JobSeekerPostId,
+                            x.Title,
+                            x.PreferredLocation,
+                            x.PreferredWorkHours,
+                            SeekerName = x.User.Username
+                        })
+                        .FirstOrDefaultAsync();
+
+                    // Log AI_MatchSuggestions
+                    if (seekerPostId > 0)
+                    {
+                        _db.AiMatchSuggestions.Add(new AiMatchSuggestion
+                        {
+                            SourceType = "EmployerPost",
+                            SourceId = post.EmployerPostId,
+                            TargetType = "JobSeekerPost",
+                            TargetId = seekerPostId,
+                            RawScore = m.Score,
+                            MatchPercent = (int)Math.Round(m.Score * 100),
+                            Reason = "Gợi ý từ AI theo độ tương đồng embedding",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+
+                    suggestions.Add(new AIResultDto
+                    {
+                        Id = m.Id,
+                        Score = Math.Round(m.Score * 100, 2),
+                        ExtraInfo = seeker
+                    });
+                }
+
+                await _db.SaveChangesAsync();
+            }
+            else
+            {
+                // Không có match → lưu AI_ContentForEmbedding để xử lý sau
                 _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
                 {
                     EntityType = "EmployerPost",
@@ -87,51 +143,14 @@ namespace PTJ_Service.EmployerPostService
                 await _db.SaveChangesAsync();
             }
 
-            // 7️⃣ Nếu có kết quả → map ra DTO gợi ý (và có thể lấy info từ DB)
-            var suggestedCandidates = new List<AIResultDto>();
-
-            foreach (var result in results)
-            {
-                // result.Id có dạng "JobSeekerPost:123"
-                int seekerPostId = 0;
-                if (result.Id.StartsWith("JobSeekerPost:"))
-                    int.TryParse(result.Id.Split(':')[1], out seekerPostId);
-
-                var seekerPost = await _db.JobSeekerPosts
-                    .Include(j => j.User)
-                    .FirstOrDefaultAsync(j => j.JobSeekerPostId == seekerPostId);
-
-                if (seekerPost != null)
-                {
-                    suggestedCandidates.Add(new AIResultDto
-                    {
-                        Id = result.Id,
-                        Score = Math.Round(result.Score * 100, 2), // phần trăm %
-                        ExtraInfo = new
-                        {
-                            seekerPost.JobSeekerPostId,
-                            seekerPost.Title,
-                            seekerPost.PreferredLocation,
-                            seekerPost.Gender,
-                            seekerPost.Age,
-                            seekerPost.PhoneContact,
-                            Username = seekerPost.User.Username
-                        }
-                    });
-                }
-            }
-
             return new EmployerPostResultDto
             {
                 Post = post,
-                SuggestedCandidates = suggestedCandidates
+                SuggestedCandidates = suggestions
             };
         }
 
-        // ===============================
-        // CRUD cơ bản
-        // ===============================
-
+        // LIST, BY ID, BY USER (như bạn đã có) – trả EmployerPostDtoOut
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
         {
             return await _db.EmployerPosts

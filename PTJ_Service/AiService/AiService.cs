@@ -25,16 +25,9 @@ namespace PTJ_Service.AIService
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _openAiKey);
         }
 
-        // ===========================================
-        // 🧠 GỌI OPENAI TẠO EMBEDDING VECTOR
-        // ===========================================
         public async Task<float[]> CreateEmbeddingAsync(string text)
         {
-            var payload = new
-            {
-                model = "text-embedding-3-large",
-                input = text
-            };
+            var payload = new { model = "text-embedding-3-large", input = text };
 
             var response = await _http.PostAsync(
                 "https://api.openai.com/v1/embeddings",
@@ -52,14 +45,25 @@ namespace PTJ_Service.AIService
             return embedding;
         }
 
-        // ===========================================
-        // 📦 GỬI VECTOR LÊN PINECONE
-        // ===========================================
         public async Task UpsertVectorAsync(string ns, string id, float[] vector, object metadata)
         {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+            // Pinecone chỉ nhận string/number/bool/list<string> – chuẩn hoá metadata
+            var metaDict = metadata
+                .GetType()
+                .GetProperties()
+                .ToDictionary(
+                    p => p.Name,
+                    p =>
+                    {
+                        var v = p.GetValue(metadata, null);
+                        if (v == null) return ""; // tránh lỗi null
+                        return v;
+                    }
+                );
 
             var payload = new
             {
@@ -68,19 +72,21 @@ namespace PTJ_Service.AIService
                     new {
                         id,
                         values = vector,
-                        metadata
+                        metadata = metaDict
                     }
                 },
-                @namespace = ns
+                // Namespace phải ở root payload (không để null)
+                @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
             };
 
-            var response = await client.PostAsJsonAsync($"{_pineconeUrl}/vectors/upsert", payload);
-            response.EnsureSuccessStatusCode();
+            var res = await client.PostAsJsonAsync($"{_pineconeUrl}/vectors/upsert", payload);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new Exception($"Pinecone Upsert failed: {res.StatusCode} - {body}");
+            }
         }
 
-        // ===========================================
-        // 🔍 TRUY VẤN VECTOR TƯƠNG TỰ TRONG PINECONE
-        // ===========================================
         public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
         {
             using var client = new HttpClient();
@@ -91,23 +97,22 @@ namespace PTJ_Service.AIService
             {
                 vector,
                 topK,
-                @namespace = ns,
-                includeMetadata = true
+                includeMetadata = true,
+                @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
             };
 
-            var response = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
-            response.EnsureSuccessStatusCode();
+            var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
+            res.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await res.Content.ReadAsStringAsync();
             dynamic result = JsonConvert.DeserializeObject(json)!;
 
-            var matches = new List<(string Id, double Score)>();
-            foreach (var match in result.matches)
+            var list = new List<(string Id, double Score)>();
+            foreach (var m in result.matches)
             {
-                matches.Add(((string)match.id, (double)match.score));
+                list.Add(((string)m.id, (double)m.score));
             }
-
-            return matches;
+            return list;
         }
     }
 }

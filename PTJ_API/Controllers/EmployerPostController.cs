@@ -18,9 +18,14 @@ namespace PTJ_API.Controllers
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromBody] EmployerPostDto dto)
         {
-            var post = await _service.CreateEmployerPostAsync(dto);
-            return Ok(post);
+            var result = await _service.CreateEmployerPostAsync(dto);
+            return Ok(new
+            {
+                post = result.Post,
+                suggestions = result.SuggestedCandidates // Score tính theo %
+            });
         }
+
 
         [HttpGet("all")]
         public async Task<IActionResult> GetAll()

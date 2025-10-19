@@ -22,7 +22,7 @@ namespace PTJ_Models.DTO
 
     public class JobSeekerPostResultDto
     {
-        public JobSeekerPost JobPost { get; set; } = new JobSeekerPost();
+        public PTJ_Models.Models.JobSeekerPost Post { get; set; } = new();
         public List<AIResultDto> SuggestedJobs { get; set; } = new();
     }
 }

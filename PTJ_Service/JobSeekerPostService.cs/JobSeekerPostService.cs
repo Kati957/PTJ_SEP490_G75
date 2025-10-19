@@ -4,6 +4,7 @@ using PTJ_Models.Models;
 using PTJ_Service.AIService;
 using System.Security.Cryptography;
 using System.Text;
+using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
 
 namespace PTJ_Service.JobSeekerPostService
 {
@@ -18,11 +19,10 @@ namespace PTJ_Service.JobSeekerPostService
             _ai = ai;
         }
 
-        // 🧠 Tạo bài đăng JobSeeker + gọi OpenAI + Pinecone + trả về gợi ý việc làm
         public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostDto dto)
         {
-            // 1️⃣ Lưu bài đăng
-            var post = new JobSeekerPost
+            // 1) Lưu post
+            var post = new JobSeekerPostModel
             {
                 UserId = dto.UserID,
                 Title = dto.Title,
@@ -37,24 +37,32 @@ namespace PTJ_Service.JobSeekerPostService
                 UpdatedAt = DateTime.Now,
                 Status = "Active"
             };
-
             _db.JobSeekerPosts.Add(post);
             await _db.SaveChangesAsync();
 
-            // 2️⃣ Chuẩn bị nội dung embedding
-            string text = $"{dto.Title}. {dto.Description}. " +
-                          $"Kinh nghiệm / Mong muốn: {dto.PreferredWorkHours}. " +
-                          $"Khu vực: {dto.PreferredLocation}. Tuổi: {dto.Age}, Giới tính: {dto.Gender}";
-
-            if (text.Length > 6000)
-                text = text.Substring(0, 6000);
-
+            // 2) Chuẩn hoá text
+            string text = $"{dto.Title}. {dto.Description}. Giờ làm: {dto.PreferredWorkHours}. Khu vực: {dto.PreferredLocation}.";
+            if (text.Length > 6000) text = text[..6000];
             string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
-            // 3️⃣ Gọi OpenAI tạo vector
+            // 3) Tạo embedding
             var vector = await _ai.CreateEmbeddingAsync(text);
 
-            // 4️⃣ Gửi vector lên Pinecone
+            // 3.1) Ghi AI_EmbeddingStatus
+            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
+            {
+                EntityType = "JobSeekerPost",
+                EntityId = post.JobSeekerPostId,
+                ContentHash = hash,
+                Model = "text-embedding-3-large",
+                VectorDim = vector.Length,
+                PineconeId = $"JobSeekerPost:{post.JobSeekerPostId}",
+                Status = "OK",
+                UpdatedAt = DateTime.Now
+            });
+            await _db.SaveChangesAsync();
+
+            // 4) Upsert Pinecone
             await _ai.UpsertVectorAsync(
                 ns: "job_seeker_posts",
                 id: $"JobSeekerPost:{post.JobSeekerPostId}",
@@ -63,17 +71,61 @@ namespace PTJ_Service.JobSeekerPostService
                 {
                     title = dto.Title ?? "",
                     location = dto.PreferredLocation ?? "",
-                    age = dto.Age ?? 0,
-                    gender = dto.Gender ?? "",
                     postId = post.JobSeekerPostId
+                });
+
+            // 5) Query tương tự trong employer_posts
+            var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 5);
+            var suggestions = new List<AIResultDto>();
+
+            if (matches.Any())
+            {
+                foreach (var m in matches)
+                {
+                    int empPostId = 0;
+                    if (m.Id.StartsWith("EmployerPost:"))
+                        int.TryParse(m.Id.Split(':')[1], out empPostId);
+
+                    var job = await _db.EmployerPosts
+                        .Include(x => x.User)
+                        .Where(x => x.EmployerPostId == empPostId)
+                        .Select(x => new
+                        {
+                            x.EmployerPostId,
+                            x.Title,
+                            x.Location,
+                            x.WorkHours,
+                            EmployerName = x.User.Username
+                        })
+                        .FirstOrDefaultAsync();
+
+                    // Log AI_MatchSuggestions
+                    if (empPostId > 0)
+                    {
+                        _db.AiMatchSuggestions.Add(new AiMatchSuggestion
+                        {
+                            SourceType = "JobSeekerPost",
+                            SourceId = post.JobSeekerPostId,
+                            TargetType = "EmployerPost",
+                            TargetId = empPostId,
+                            RawScore = m.Score,
+                            MatchPercent = (int)Math.Round(m.Score * 100),
+                            Reason = "Gợi ý công việc từ AI theo embedding",
+                            CreatedAt = DateTime.Now
+                        });
+                    }
+
+                    suggestions.Add(new AIResultDto
+                    {
+                        Id = m.Id,
+                        Score = Math.Round(m.Score * 100, 2),
+                        ExtraInfo = job
+                    });
                 }
-            );
 
-            // 5️⃣ So sánh với các bài tuyển dụng trong employer_posts
-            var results = await _ai.QuerySimilarAsync("employer_posts", vector, 5);
-
-            // 6️⃣ Nếu không có kết quả, lưu lại để AI xử lý sau
-            if (!results.Any())
+                await _db.SaveChangesAsync();
+            }
+            else
             {
                 _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
                 {
@@ -87,37 +139,59 @@ namespace PTJ_Service.JobSeekerPostService
                 await _db.SaveChangesAsync();
             }
 
-            // 7️⃣ Trả về kết quả (bao gồm bài post + danh sách gợi ý việc làm)
             return new JobSeekerPostResultDto
             {
-                JobPost = post,
-                SuggestedJobs = results.Select(r => new AIResultDto
-                {
-                    Id = r.Id,
-                    Score = Math.Round(r.Score * 100, 2) // % độ tương đồng
-                }).ToList()
+                Post = post,
+                SuggestedJobs = suggestions
             };
         }
 
-        // =====================================
-        // CRUD cơ bản
-        // =====================================
-
-        public async Task<IEnumerable<JobSeekerPost>> GetAllAsync()
+        public async Task<IEnumerable<JobSeekerPostDtoOut>> GetAllAsync()
         {
             return await _db.JobSeekerPosts
-                .Include(p => p.Category)
                 .Include(p => p.User)
+                .Include(p => p.Category)
                 .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new JobSeekerPostDtoOut
+                {
+                    JobSeekerPostId = p.JobSeekerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Age = p.Age,
+                    Gender = p.Gender,
+                    PreferredWorkHours = p.PreferredWorkHours,
+                    PreferredLocation = p.PreferredLocation,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    SeekerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
                 .ToListAsync();
         }
 
-        public async Task<JobSeekerPost?> GetByIdAsync(int id)
+        public async Task<JobSeekerPostDtoOut?> GetByIdAsync(int id)
         {
             return await _db.JobSeekerPosts
-                .Include(p => p.Category)
                 .Include(p => p.User)
-                .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
+                .Include(p => p.Category)
+                .Where(p => p.JobSeekerPostId == id)
+                .Select(p => new JobSeekerPostDtoOut
+                {
+                    JobSeekerPostId = p.JobSeekerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Age = p.Age,
+                    Gender = p.Gender,
+                    PreferredWorkHours = p.PreferredWorkHours,
+                    PreferredLocation = p.PreferredLocation,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    SeekerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
+                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> DeleteAsync(int id)
