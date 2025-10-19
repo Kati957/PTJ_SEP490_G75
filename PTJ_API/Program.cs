@@ -1,32 +1,51 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
 using PTJ_Models.Models;
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
+using PTJ_Service.ProfileService; // ✅ thêm dòng này
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<JobMatchingAiDbContext>(opt =>
+
+// =============================================
+// 1️⃣ CONFIG DATABASE (EF CORE)
+// =============================================
+builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
-// Add services to the container.
-// ⚙️ Thêm Swagger
+
+// =============================================
+// 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
+// =============================================
+
+// ⚙️ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ⚙️ Thêm các service AI
+// ⚙️ AI Services
 builder.Services.AddHttpClient<OpenAIService>();
 builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<AiMatchService>();
-builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 
+// ⚙️ Business Services
+builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
+builder.Services.AddScoped<IProfileService, ProfileService>(); // ✅ thêm dòng này
+
+// ⚙️ Controller
 builder.Services.AddControllers();
 
+// =============================================
+// 3️⃣ BUILD APP
+// =============================================
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-
-// Configure the HTTP request pipeline.
+// =============================================
+// 4️⃣ MIDDLEWARE PIPELINE
+// =============================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -34,7 +53,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
 app.MapControllers();

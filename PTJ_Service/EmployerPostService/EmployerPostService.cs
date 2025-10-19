@@ -21,11 +21,11 @@ namespace PTJ_Service.EmployerPostService
 {
     public class EmployerPostService : IEmployerPostService
     {
-        private readonly JobMatchingAiDbContext _db;
+        private readonly JobMatchingDbContext _db;
         private readonly HttpClient _http;
         private readonly string _openAiKey;
 
-        public EmployerPostService(JobMatchingAiDbContext db, IConfiguration config)
+        public EmployerPostService(JobMatchingDbContext db, IConfiguration config)
         {
             _db = db;
             _http = new HttpClient();

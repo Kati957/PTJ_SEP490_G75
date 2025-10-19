@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "E:\\SEP490\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj": {}
+    "D:\\Study\\DO AN\\CODE_PTJ\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj": {}
   },
   "projects": {
-    "E:\\SEP490\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj": {
+    "D:\\Study\\DO AN\\CODE_PTJ\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\SEP490\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj",
+        "projectUniqueName": "D:\\Study\\DO AN\\CODE_PTJ\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj",
         "projectName": "PTJ_Models",
-        "projectPath": "E:\\SEP490\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj",
-        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "E:\\SEP490\\PTJ_SEP490_G75\\PTJ_Models\\obj\\",
+        "projectPath": "D:\\Study\\DO AN\\CODE_PTJ\\PTJ_SEP490_G75\\PTJ_Models\\PTJ_Models.csproj",
+        "packagesPath": "C:\\Users\\lenovo\\.nuget\\packages\\",
+        "outputPath": "D:\\Study\\DO AN\\CODE_PTJ\\PTJ_SEP490_G75\\PTJ_Models\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\lenovo\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -97,7 +97,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
