@@ -43,6 +43,13 @@ namespace PTJ_API.Controllers
             return Ok(post);
         }
 
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetByUser(int userId)
+        {
+            var posts = await _service.GetByUserAsync(userId);
+            return Ok(posts);
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

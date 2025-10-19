@@ -170,6 +170,31 @@ namespace PTJ_Service.JobSeekerPostService
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<JobSeekerPostDtoOut>> GetByUserAsync(int userId)
+        {
+            return await _db.JobSeekerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
+                .Where(p => p.UserId == userId)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new JobSeekerPostDtoOut
+                {
+                    JobSeekerPostId = p.JobSeekerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Age = p.Age,
+                    Gender = p.Gender,
+                    PreferredWorkHours = p.PreferredWorkHours,
+                    PreferredLocation = p.PreferredLocation,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    SeekerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
+                .ToListAsync();
+        }
+
         public async Task<JobSeekerPostDtoOut?> GetByIdAsync(int id)
         {
             return await _db.JobSeekerPosts
