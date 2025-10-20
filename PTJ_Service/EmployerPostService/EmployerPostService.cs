@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using PTJ_Data;
 using PTJ_Models.DTO;
 using PTJ_Models.Models;
 using PTJ_Service.AIService;

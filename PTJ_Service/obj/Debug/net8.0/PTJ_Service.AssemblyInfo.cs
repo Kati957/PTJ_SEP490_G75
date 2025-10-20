@@ -14,7 +14,11 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PTJ_Service")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
+<<<<<<< Updated upstream
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ce1f70b09abf2a7e4aa8c3bf11f6c8f2ff2b5b18")]
+=======
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2dc51632c54c7b54d9524873f0374f569da1b420")]
+>>>>>>> Stashed changes
 [assembly: System.Reflection.AssemblyProductAttribute("PTJ_Service")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PTJ_Service")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
