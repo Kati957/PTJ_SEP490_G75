@@ -2,6 +2,7 @@
 using PTJ_Models.DTO;
 using PTJ_Models.Models;
 using PTJ_Service.AIService;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
@@ -45,7 +46,7 @@ namespace PTJ_Service.EmployerPostService
             if (text.Length > 6000) text = text[..6000];
             string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
-            // 3️⃣ Gọi OpenAI tạo embedding
+            // 3️⃣ Tạo embedding
             var vector = await _ai.CreateEmbeddingAsync(text);
 
             // 4️⃣ Ghi log embedding
@@ -62,7 +63,7 @@ namespace PTJ_Service.EmployerPostService
             });
             await _db.SaveChangesAsync();
 
-            // 5️⃣ Upsert lên Pinecone
+            // 5️⃣ Upsert Pinecone
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
                 id: $"EmployerPost:{post.EmployerPostId}",
@@ -75,9 +76,8 @@ namespace PTJ_Service.EmployerPostService
                     postId = post.EmployerPostId
                 });
 
-            // 6️⃣ Query tương tự ở job_seeker_posts
+            // 6️⃣ Lấy danh sách ứng viên tương tự (job_seeker_posts)
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 20);
-
             var allCandidates = new List<(dynamic Seeker, double Score)>();
 
             foreach (var m in matches)
@@ -102,29 +102,35 @@ namespace PTJ_Service.EmployerPostService
 
                 if (seeker == null) continue;
 
+                // ❌ Chỉ lấy ứng viên cùng Category
+                if (dto.CategoryID != seeker.CategoryId) continue;
+
                 double hybridScore = ComputeHybridScore(
-                    embeddingScore: m.Score,
-                    employerLocation: dto.Location ?? "",
-                    employerCategoryId: dto.CategoryID,
-                    employerTitle: dto.Title ?? "",
-                    seekerLocation: seeker.PreferredLocation,
-                    seekerCategoryId: seeker.CategoryId,
-                    seekerTitle: seeker.Title
+                    m.Score,
+                    dto.Location ?? "",
+                    dto.CategoryID,
+                    dto.Title ?? "",
+                    seeker.PreferredLocation,
+                    seeker.CategoryId,
+                    seeker.Title
                 );
 
                 allCandidates.Add((seeker, hybridScore));
             }
 
-            // 7️⃣ Ưu tiên lọc theo địa điểm (VD: “Hà Nội”)
-            var normalizedLocation = (dto.Location ?? "").ToLower();
-
+            // 7️⃣ Ưu tiên ứng viên cùng khu vực
+            var normalizedLocation = NormalizeString(dto.Location ?? "");
             var localCandidates = allCandidates
-                .Where(c => !string.IsNullOrEmpty(c.Seeker.PreferredLocation) &&
-                            c.Seeker.PreferredLocation.ToLower().Contains(normalizedLocation))
+                .Where(c =>
+                {
+                    var loc = NormalizeString(c.Seeker.PreferredLocation ?? "");
+                    return !string.IsNullOrEmpty(loc) &&
+                           (loc.Contains(normalizedLocation) || normalizedLocation.Contains(loc));
+                })
                 .OrderByDescending(c => c.Score)
                 .ToList();
 
-            // Nếu không có ai cùng khu vực → fallback toàn bộ
+            // Nếu không có ai cùng khu vực → fallback toàn bộ (vì cùng Category)
             var finalList = localCandidates.Any()
                 ? localCandidates
                 : allCandidates.OrderByDescending(c => c.Score).ToList();
@@ -141,7 +147,7 @@ namespace PTJ_Service.EmployerPostService
                     TargetId = seeker.JobSeekerPostId,
                     RawScore = hybridScore,
                     MatchPercent = (int)Math.Round(hybridScore * 100),
-                    Reason = $"AI + Ưu tiên địa điểm gần '{dto.Location}'",
+                    Reason = $"AI gợi ý ứng viên cùng loại Category và ưu tiên khu vực gần '{dto.Location}'",
                     CreatedAt = DateTime.Now
                 });
 
@@ -162,7 +168,7 @@ namespace PTJ_Service.EmployerPostService
             };
         }
 
-        // 🧮 Hàm tính điểm hybrid tổng hợp
+        // 🧮 Tính điểm hybrid
         private double ComputeHybridScore(
             double embeddingScore,
             string employerLocation,
@@ -173,48 +179,52 @@ namespace PTJ_Service.EmployerPostService
             string? seekerTitle)
         {
             double locationBonus = 0;
-            double categoryBonus = 0;
+            double categoryBonus = 0.2; // cùng Category luôn được +0.2
             double titleBonus = 0;
+            double penalty = 1.0;
 
-            // 1️⃣ Ưu tiên địa điểm
-            if (!string.IsNullOrEmpty(seekerLocation) && !string.IsNullOrEmpty(employerLocation))
+            var eLoc = NormalizeString(employerLocation);
+            var sLoc = NormalizeString(seekerLocation ?? "");
+
+            // Ưu tiên địa điểm
+            if (!string.IsNullOrEmpty(eLoc) && !string.IsNullOrEmpty(sLoc))
             {
-                var eLoc = employerLocation.ToLower();
-                var sLoc = seekerLocation.ToLower();
-
-                if (sLoc == eLoc)
-                    locationBonus = 0.35; // cùng khu vực
+                if (eLoc == sLoc)
+                    locationBonus = 0.35;
                 else if (eLoc.Contains(sLoc) || sLoc.Contains(eLoc))
-                    locationBonus = 0.25; // gần khu vực
+                    locationBonus = 0.25;
                 else if (eLoc.Split(' ').Any(w => sLoc.Contains(w)))
-                    locationBonus = 0.15; // có từ địa danh trùng
+                    locationBonus = 0.15;
+                else
+                    penalty = 0.8; // khác khu vực => giảm 20%
             }
 
-            // 2️⃣ Ưu tiên loại công việc
-            if (employerCategoryId.HasValue && seekerCategoryId.HasValue)
-            {
-                if (employerCategoryId == seekerCategoryId)
-                    categoryBonus = 0.20;
-            }
-
-            // 3️⃣ Ưu tiên tiêu đề
+            // Ưu tiên tiêu đề
             if (!string.IsNullOrEmpty(seekerTitle) && !string.IsNullOrEmpty(employerTitle))
             {
-                var eTitle = employerTitle.ToLower();
-                var sTitle = seekerTitle.ToLower();
-
+                var eTitle = employerTitle.ToLowerInvariant();
+                var sTitle = seekerTitle.ToLowerInvariant();
                 if (sTitle.Contains(eTitle) || eTitle.Contains(sTitle))
                     titleBonus = 0.15;
             }
 
-            // 4️⃣ Tổng điểm hybrid
-            double hybrid = embeddingScore + locationBonus + categoryBonus + titleBonus;
+            double hybrid = (embeddingScore + locationBonus + categoryBonus + titleBonus) * penalty;
             if (hybrid > 1) hybrid = 1;
             return hybrid;
         }
 
+        // 🔣 Bỏ dấu tiếng Việt để so khớp địa điểm linh hoạt
+        private string NormalizeString(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "";
+            input = input.ToLowerInvariant();
+            input = input.Normalize(NormalizationForm.FormD);
+            var chars = input.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray();
+            return new string(chars).Normalize(NormalizationForm.FormC);
+        }
+
         // ======================================
-        // 🧾 CÁC API LẤY DỮ LIỆU
+        // 📋 Các API LẤY DỮ LIỆU
         // ======================================
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
