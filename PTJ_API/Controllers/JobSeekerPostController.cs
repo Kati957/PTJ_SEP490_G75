@@ -1,30 +1,31 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO;
-using PTJ_Service.EmployerPostService;
+using PTJ_Service.JobSeekerPostService;
 
 namespace PTJ_API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class EmployerPostController : ControllerBase
+    public class JobSeekerPostController : ControllerBase
     {
-        private readonly IEmployerPostService _service;
+        private readonly IJobSeekerPostService _service;
 
-        public EmployerPostController(IEmployerPostService service)
+        public JobSeekerPostController(IJobSeekerPostService service)
         {
             _service = service;
         }
 
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromBody] EmployerPostDto dto)
+        public async Task<IActionResult> Create([FromBody] JobSeekerPostDto dto)
         {
-            var result = await _service.CreateEmployerPostAsync(dto);
+            var result = await _service.CreateJobSeekerPostAsync(dto);
             return Ok(new
             {
                 post = result.Post,
-                suggestions = result.SuggestedCandidates // Score tính theo %
+                suggestions = result.SuggestedJobs
             });
         }
+
 
 
         [HttpGet("all")]
@@ -46,9 +47,6 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> GetByUser(int userId)
         {
             var posts = await _service.GetByUserAsync(userId);
-            if (posts == null || !posts.Any())
-                return NotFound(new { message = "Không tìm thấy bài đăng nào cho người dùng này." });
-
             return Ok(posts);
         }
 
@@ -57,7 +55,7 @@ namespace PTJ_API.Controllers
         {
             var success = await _service.DeleteAsync(id);
             if (!success) return NotFound();
-            return Ok(new { message = "Deleted successfully" });
+            return NoContent();
         }
     }
 }

@@ -1,47 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Security.Cryptography;
-using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using Microsoft.Extensions.Configuration;
-
-using PTJ_Models.Models;
+﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTO;
-
-// ⚠️ Alias để tránh trùng tên namespace với class
+using PTJ_Models.Models;
+using PTJ_Service.AIService;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
-using PTJ_Service.EmployerPostService;
 
 namespace PTJ_Service.EmployerPostService
 {
     public class EmployerPostService : IEmployerPostService
     {
-        private readonly JobMatchingAiDbContext _db;
-        private readonly HttpClient _http;
-        private readonly string _openAiKey;
+        private readonly JobMatchingDbContext _db;
+        private readonly IAIService _ai;
 
-        public EmployerPostService(JobMatchingAiDbContext db, IConfiguration config)
+        public EmployerPostService(JobMatchingDbContext db, IAIService ai)
         {
             _db = db;
-            _http = new HttpClient();
-            _openAiKey = config["OpenAI:ApiKey"] ?? throw new Exception("Missing OpenAI key in appsettings.json");
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _openAiKey);
+            _ai = ai;
         }
 
-        // =====================================
-        // 1️⃣ TẠO BÀI ĐĂNG + GỌI EMBEDDING
-        // =====================================
-        public async Task<EmployerPostModel> CreateEmployerPostAsync(EmployerPostDto dto)
+        public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto)
         {
-            // 1️⃣ Lưu bài đăng gốc
+            // 1️⃣ Lưu bài đăng tuyển
             var post = new EmployerPostModel
             {
-                
+                UserId = dto.UserID,
                 Title = dto.Title,
                 Description = dto.Description,
                 Salary = dto.Salary,
@@ -57,69 +41,265 @@ namespace PTJ_Service.EmployerPostService
             _db.EmployerPosts.Add(post);
             await _db.SaveChangesAsync();
 
-            // 2️⃣ Chuẩn bị nội dung cho embedding
-            string canonicalText =
-                $"{dto.Title}\n{dto.Description}\nYêu cầu: {dto.Requirements}\nĐịa điểm: {dto.Location}\nLương: {dto.Salary}";
-            string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonicalText)));
+            // 2️⃣ Chuẩn hoá text để embedding
+            string text = $"{dto.Title}. {dto.Description}. Yêu cầu: {dto.Requirements}. Địa điểm: {dto.Location}. Lương: {dto.Salary}";
+            if (text.Length > 6000) text = text[..6000];
+            string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
-            var aiContent = new AiContentForEmbedding
+            // 3️⃣ Tạo embedding
+            var vector = await _ai.CreateEmbeddingAsync(text);
+
+            // 4️⃣ Ghi log embedding
+            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
             {
                 EntityType = "EmployerPost",
                 EntityId = post.EmployerPostId,
-                Lang = "vi",
-                CanonicalText = canonicalText,
-                Hash = hash,
-                LastPreparedAt = DateTime.Now
-            };
-
-            _db.AiContentForEmbeddings.Add(aiContent);
-            await _db.SaveChangesAsync();
-
-            // 3️⃣ Gọi OpenAI API để tạo embedding
-            var embedding = await GenerateEmbeddingAsync(canonicalText);
-
-            // 4️⃣ Lưu trạng thái embedding
-            var pineconeId = $"EmployerPost-{post.EmployerPostId}";
-            var status = new AiEmbeddingStatus
-            {
-                EntityType = "EmployerPost",
-                EntityId = post.EmployerPostId,
-                Model = "text-embedding-3-large",
-                VectorDim = embedding.Count,
-                PineconeId = pineconeId,
                 ContentHash = hash,
+                Model = "text-embedding-3-large",
+                VectorDim = vector.Length,
+                PineconeId = $"EmployerPost:{post.EmployerPostId}",
                 Status = "OK",
                 UpdatedAt = DateTime.Now
-            };
-
-            _db.AiEmbeddingStatuses.Add(status);
+            });
             await _db.SaveChangesAsync();
 
-            return post;
+            // 5️⃣ Upsert Pinecone
+            await _ai.UpsertVectorAsync(
+                ns: "employer_posts",
+                id: $"EmployerPost:{post.EmployerPostId}",
+                vector: vector,
+                metadata: new
+                {
+                    title = dto.Title ?? "",
+                    location = dto.Location ?? "",
+                    salary = dto.Salary ?? 0,
+                    postId = post.EmployerPostId
+                });
+
+            // 6️⃣ Lấy danh sách ứng viên tương tự (job_seeker_posts)
+            var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 20);
+            var allCandidates = new List<(dynamic Seeker, double Score)>();
+
+            foreach (var m in matches)
+            {
+                int seekerPostId = 0;
+                if (m.Id.StartsWith("JobSeekerPost:"))
+                    int.TryParse(m.Id.Split(':')[1], out seekerPostId);
+
+                var seeker = await _db.JobSeekerPosts
+                    .Include(x => x.User)
+                    .Where(x => x.JobSeekerPostId == seekerPostId)
+                    .Select(x => new
+                    {
+                        x.JobSeekerPostId,
+                        x.Title,
+                        x.PreferredLocation,
+                        x.PreferredWorkHours,
+                        x.CategoryId,
+                        SeekerName = x.User.Username
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (seeker == null) continue;
+
+                // ❌ Chỉ lấy ứng viên cùng Category
+                if (dto.CategoryID != seeker.CategoryId) continue;
+
+                double hybridScore = ComputeHybridScore(
+                    m.Score,
+                    dto.Location ?? "",
+                    dto.CategoryID,
+                    dto.Title ?? "",
+                    seeker.PreferredLocation,
+                    seeker.CategoryId,
+                    seeker.Title
+                );
+
+                allCandidates.Add((seeker, hybridScore));
+            }
+
+            // 7️⃣ Ưu tiên ứng viên cùng khu vực
+            var normalizedLocation = NormalizeString(dto.Location ?? "");
+            var localCandidates = allCandidates
+                .Where(c =>
+                {
+                    var loc = NormalizeString(c.Seeker.PreferredLocation ?? "");
+                    return !string.IsNullOrEmpty(loc) &&
+                           (loc.Contains(normalizedLocation) || normalizedLocation.Contains(loc));
+                })
+                .OrderByDescending(c => c.Score)
+                .ToList();
+
+            // Nếu không có ai cùng khu vực → fallback toàn bộ (vì cùng Category)
+            var finalList = localCandidates.Any()
+                ? localCandidates
+                : allCandidates.OrderByDescending(c => c.Score).ToList();
+
+            // 8️⃣ Ghi DB + trả kết quả
+            var suggestions = new List<AIResultDto>();
+            foreach (var (seeker, hybridScore) in finalList.Take(5))
+            {
+                _db.AiMatchSuggestions.Add(new AiMatchSuggestion
+                {
+                    SourceType = "EmployerPost",
+                    SourceId = post.EmployerPostId,
+                    TargetType = "JobSeekerPost",
+                    TargetId = seeker.JobSeekerPostId,
+                    RawScore = hybridScore,
+                    MatchPercent = (int)Math.Round(hybridScore * 100),
+                    Reason = $"AI gợi ý ứng viên cùng loại Category và ưu tiên khu vực gần '{dto.Location}'",
+                    CreatedAt = DateTime.Now
+                });
+
+                suggestions.Add(new AIResultDto
+                {
+                    Id = $"JobSeekerPost:{seeker.JobSeekerPostId}",
+                    Score = Math.Round(hybridScore * 100, 2),
+                    ExtraInfo = seeker
+                });
+            }
+
+            await _db.SaveChangesAsync();
+
+            return new EmployerPostResultDto
+            {
+                Post = post,
+                SuggestedCandidates = suggestions
+            };
         }
 
-        // =====================================
-        // 2️⃣ LẤY DANH SÁCH BÀI ĐĂNG
-        // =====================================
-        public async Task<IEnumerable<EmployerPostModel>> GetAllAsync()
+        // 🧮 Tính điểm hybrid
+        private double ComputeHybridScore(
+            double embeddingScore,
+            string employerLocation,
+            int? employerCategoryId,
+            string employerTitle,
+            string? seekerLocation,
+            int? seekerCategoryId,
+            string? seekerTitle)
+        {
+            double locationBonus = 0;
+            double categoryBonus = 0.2; // cùng Category luôn được +0.2
+            double titleBonus = 0;
+            double penalty = 1.0;
+
+            var eLoc = NormalizeString(employerLocation);
+            var sLoc = NormalizeString(seekerLocation ?? "");
+
+            // Ưu tiên địa điểm
+            if (!string.IsNullOrEmpty(eLoc) && !string.IsNullOrEmpty(sLoc))
+            {
+                if (eLoc == sLoc)
+                    locationBonus = 0.35;
+                else if (eLoc.Contains(sLoc) || sLoc.Contains(eLoc))
+                    locationBonus = 0.25;
+                else if (eLoc.Split(' ').Any(w => sLoc.Contains(w)))
+                    locationBonus = 0.15;
+                else
+                    penalty = 0.8; // khác khu vực => giảm 20%
+            }
+
+            // Ưu tiên tiêu đề
+            if (!string.IsNullOrEmpty(seekerTitle) && !string.IsNullOrEmpty(employerTitle))
+            {
+                var eTitle = employerTitle.ToLowerInvariant();
+                var sTitle = seekerTitle.ToLowerInvariant();
+                if (sTitle.Contains(eTitle) || eTitle.Contains(sTitle))
+                    titleBonus = 0.15;
+            }
+
+            double hybrid = (embeddingScore + locationBonus + categoryBonus + titleBonus) * penalty;
+            if (hybrid > 1) hybrid = 1;
+            return hybrid;
+        }
+
+        // 🔣 Bỏ dấu tiếng Việt để so khớp địa điểm linh hoạt
+        private string NormalizeString(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "";
+            input = input.ToLowerInvariant();
+            input = input.Normalize(NormalizationForm.FormD);
+            var chars = input.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray();
+            return new string(chars).Normalize(NormalizationForm.FormC);
+        }
+
+        // ======================================
+        // 📋 Các API LẤY DỮ LIỆU
+        // ======================================
+
+        public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
         {
             return await _db.EmployerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
                 .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new EmployerPostDtoOut
+                {
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
                 .ToListAsync();
         }
 
-        // =====================================
-        // 3️⃣ LẤY BÀI ĐĂNG THEO ID
-        // =====================================
-        public async Task<EmployerPostModel?> GetByIdAsync(int id)
+        public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
         {
             return await _db.EmployerPosts
-                .FirstOrDefaultAsync(p => p.EmployerPostId == id);
+                .Include(p => p.Category)
+                .Include(p => p.User)
+                .Where(p => p.UserId == userId)
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => new EmployerPostDtoOut
+                {
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
+                .ToListAsync();
         }
 
-        // =====================================
-        // 4️⃣ XOÁ BÀI ĐĂNG
-        // =====================================
+        public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
+        {
+            return await _db.EmployerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
+                .Where(p => p.EmployerPostId == id)
+                .Select(p => new EmployerPostDtoOut
+                {
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status
+                })
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<bool> DeleteAsync(int id)
         {
             var post = await _db.EmployerPosts.FindAsync(id);
@@ -128,31 +308,6 @@ namespace PTJ_Service.EmployerPostService
             _db.EmployerPosts.Remove(post);
             await _db.SaveChangesAsync();
             return true;
-        }
-
-        // =====================================
-        // 🔹 HÀM GỌI API OPENAI
-        // =====================================
-        private async Task<List<float>> GenerateEmbeddingAsync(string text)
-        {
-            var request = new
-            {
-                model = "text-embedding-3-large",
-                input = text
-            };
-
-            var content = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
-            var response = await _http.PostAsync("https://api.openai.com/v1/embeddings", content);
-
-            response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync();
-            dynamic result = JsonConvert.DeserializeObject(json)!;
-
-            var list = ((IEnumerable<dynamic>)result.data[0].embedding)
-                .Select(x => (float)x)
-                .ToList();
-
-            return list;
         }
     }
 }

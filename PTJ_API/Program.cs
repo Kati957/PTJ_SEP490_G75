@@ -1,11 +1,18 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
+
+using Microsoft.OpenApi.Models;
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
+using PTJ_Service.JobSeekerPostService;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<JobMatchingAiDbContext>(opt =>
+
+// Ép API chạy đúng port 7100 (HTTPS) + 5169 (HTTP)
+//builder.WebHost.UseUrls("https://localhost:7100;http://localhost:5169");
+
+builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
@@ -17,8 +24,10 @@ builder.Services.AddSwaggerGen();
 // ⚙️ Thêm các service AI
 builder.Services.AddHttpClient<OpenAIService>();
 builder.Services.AddHttpClient<PineconeService>();
-builder.Services.AddScoped<AiMatchService>();
+builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
+builder.Services.AddScoped<IJobSeekerPostService, JobSeekerPostService>();
+
 
 builder.Services.AddControllers();
 
