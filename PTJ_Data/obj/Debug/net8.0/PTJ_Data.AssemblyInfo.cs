@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PTJ_Data")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+caa4342db5f82f81e20892e18eb93388954759a1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7e9db0c0f6b93458fa83e969a7be46b4cd58a247")]
 [assembly: System.Reflection.AssemblyProductAttribute("PTJ_Data")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PTJ_Data")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

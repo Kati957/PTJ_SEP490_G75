@@ -328,7 +328,13 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, string? ip)
     {
-        var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, new GoogleJsonWebSignature.ValidationSettings { /*Audience = new[] { "GOOGLE_CLIENT_ID" }*/ });
+        var payload = await GoogleJsonWebSignature.ValidateAsync(
+    dto.IdToken,
+    new GoogleJsonWebSignature.ValidationSettings
+    {
+        Audience = new[] { _cfg["Google:ClientId"] }
+    });
+
         var email = payload.Email.ToLowerInvariant();
 
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
