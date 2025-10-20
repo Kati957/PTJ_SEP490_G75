@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Globalization;
 using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
-using PTJ_Data;
+
 
 namespace PTJ_Service.JobSeekerPostService
 {

@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
-<<<<<<< Updated upstream
-=======
+
 using Microsoft.OpenApi.Models;
->>>>>>> Stashed changes
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
 using PTJ_Service.JobSeekerPostService;
@@ -12,7 +10,7 @@ using PTJ_Service.JobSeekerPostService;
 var builder = WebApplication.CreateBuilder(args);
 
 // Ép API chạy đúng port 7100 (HTTPS) + 5169 (HTTP)
-builder.WebHost.UseUrls("https://localhost:7100;http://localhost:5169");
+//builder.WebHost.UseUrls("https://localhost:7100;http://localhost:5169");
 
 builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
