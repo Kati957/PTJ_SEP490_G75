@@ -374,12 +374,21 @@ namespace PTJ_Service.EmployerPostService
             var post = await _db.EmployerPosts.FindAsync(id);
             if (post == null) return false;
 
-            // Soft delete
+            // ✅ 1. Đánh dấu xóa mềm
             post.Status = "Deleted";
             post.UpdatedAt = DateTime.Now;
+
+            // ✅ 2. Dọn sạch gợi ý AI liên quan đến bài đăng này
+            var targets = _db.AiMatchSuggestions
+                .Where(s => s.TargetType == "EmployerPost" && s.TargetId == id);
+            _db.AiMatchSuggestions.RemoveRange(targets);
+
+            // ✅ 3. Cập nhật DB
             await _db.SaveChangesAsync();
+
             return true;
         }
+
 
         // =========================
         // Helpers
@@ -443,10 +452,12 @@ namespace PTJ_Service.EmployerPostService
                 if (!int.TryParse(m.Id.Split(':')[1], out var seekerPostId)) continue;
 
                 var seeker = await _db.JobSeekerPosts
-                    .Include(x => x.User)
-                    .FirstOrDefaultAsync(x => x.JobSeekerPostId == seekerPostId);
+                .Include(x => x.User)
+                .Where(x => x.Status == "Active")                  // 👈 filter
+                .FirstOrDefaultAsync(x => x.JobSeekerPostId == seekerPostId);
 
                 if (seeker == null) continue;
+
 
                 // Bắt buộc cùng Category (nếu bạn muốn loosy, có thể giảm điều kiện này)
                 if (mustMatchCategoryId.HasValue && seeker.CategoryId != mustMatchCategoryId) continue;

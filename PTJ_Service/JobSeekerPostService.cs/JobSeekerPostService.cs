@@ -351,11 +351,21 @@ namespace PTJ_Service.JobSeekerPostService
             var post = await _db.JobSeekerPosts.FindAsync(id);
             if (post == null) return false;
 
+            // ✅ 1. Đánh dấu soft delete
             post.Status = "Deleted";
             post.UpdatedAt = DateTime.Now;
+
+            // ✅ 2. Dọn gợi ý AI có Target trỏ tới JobSeekerPost này
+            var targets = _db.AiMatchSuggestions
+                .Where(s => s.TargetType == "JobSeekerPost" && s.TargetId == id);
+            _db.AiMatchSuggestions.RemoveRange(targets);
+
+            // ✅ 3. Lưu thay đổi
             await _db.SaveChangesAsync();
+
             return true;
         }
+
 
         // =========================================================
         // 🧮 HELPER: EMBEDDING + SCORING + DTO BUILDER
