@@ -84,12 +84,12 @@ namespace PTJ_Service.EmployerPostService
 
                 return new EmployerPostResultDto
                 {
-                    Post = await BuildCleanPostDto(post),
+                    Post = await BuildCleanPostDto(post), // trả về entity; Controller map sang DTO Out để tránh vòng lặp
                     SuggestedCandidates = new List<AIResultDto>()
                 };
             }
 
-            // Có kết quả -> chấm điểm hybrid + lưu gợi ý
+            // Có kết quả -> chấm điểm hybrid (ưu tiên theo quận/tỉnh/miền) + lưu gợi ý
             var scored = await ScoreAndFilterCandidatesAsync(
                 matches,
                 mustMatchCategoryId: dto.CategoryID,
@@ -384,28 +384,6 @@ namespace PTJ_Service.EmployerPostService
         // =========================
         // Helpers
         // =========================
-        private async Task<EmployerPostDtoOut> BuildCleanPostDto(EmployerPostModel post)
-        {
-            var category = await _db.Categories.FindAsync(post.CategoryId);
-            var user = await _db.Users.FindAsync(post.UserId);
-
-            return new EmployerPostDtoOut
-            {
-                EmployerPostId = post.EmployerPostId,
-                Title = post.Title,
-                Description = post.Description,
-                Salary = post.Salary,
-                Requirements = post.Requirements,
-                WorkHours = post.WorkHours,
-                Location = post.Location,
-                PhoneContact = post.PhoneContact,
-                CategoryName = category?.Name,
-                EmployerName = user?.Username ?? "",
-                CreatedAt = post.CreatedAt,
-                Status = post.Status
-            };
-        }
-
         private async Task<(float[] Vector, string Hash)> EnsureEmbeddingAsync(string entityType, int entityId, string text)
         {
             if (text.Length > 6000) text = text[..6000];
@@ -470,6 +448,7 @@ namespace PTJ_Service.EmployerPostService
 
                 if (seeker == null) continue;
 
+                // Bắt buộc cùng Category (nếu bạn muốn loosy, có thể giảm điều kiện này)
                 if (mustMatchCategoryId.HasValue && seeker.CategoryId != mustMatchCategoryId) continue;
 
                 double score = ComputeHybridScore(
@@ -533,6 +512,9 @@ namespace PTJ_Service.EmployerPostService
             await _db.SaveChangesAsync();
         }
 
+        // =========================
+        // Scoring ưu tiên theo khu vực & miền
+        // =========================
         private double ComputeHybridScore(
             double embeddingScore,
             string employerLocation,
@@ -547,13 +529,37 @@ namespace PTJ_Service.EmployerPostService
             var eLoc = Normalize(employerLocation);
             var sLoc = Normalize(seekerLocation ?? "");
 
+            // Ưu tiên theo mức độ gần: cùng địa danh -> cùng miền -> xa
+            // 1) Cùng địa danh (quận/huyện/tỉnh/thành)
             if (!string.IsNullOrEmpty(eLoc) && !string.IsNullOrEmpty(sLoc))
             {
-                if (eLoc == sLoc) locationBonus = 0.35;                 // cùng khu
-                else if (eLoc.Contains(sLoc) || sLoc.Contains(eLoc)) locationBonus = 0.25; // gần khu
-                else penalty = 0.8;                                     // khác khu
+                if (eLoc == sLoc || eLoc.Contains(sLoc) || sLoc.Contains(eLoc))
+                {
+                    locationBonus = 0.40; // rất gần
+                }
+                else
+                {
+                    // 2) Cùng miền Bắc/Trung/Nam
+                    string[] north = { "ha noi", "hà nội", "hai phong", "hải phòng", "bac ninh", "bắc ninh", "bac giang", "bắc giang", "thai nguyen", "thái nguyên" };
+                    string[] central = { "da nang", "đà nẵng", "hue", "huế", "quang nam", "quảng nam", "quang ngai", "quảng ngãi" };
+                    string[] south = { "ho chi minh", "hồ chí minh", "tp hcm", "tphcm", "binh duong", "bình dương", "dong nai", "đồng nai", "can tho", "cần thơ" };
+
+                    bool eN = north.Any(l => eLoc.Contains(l));
+                    bool eC = central.Any(l => eLoc.Contains(l));
+                    bool eS = south.Any(l => eLoc.Contains(l));
+
+                    bool sN = north.Any(l => sLoc.Contains(l));
+                    bool sC = central.Any(l => sLoc.Contains(l));
+                    bool sS = south.Any(l => sLoc.Contains(l));
+
+                    if ((eN && sN) || (eC && sC) || (eS && sS))
+                        locationBonus = 0.25; // cùng miền
+                    else
+                        penalty = 0.60; // khác miền -> phạt mạnh
+                }
             }
 
+            // Ưu tiên tiêu đề có chứa nhau
             if (!string.IsNullOrEmpty(seekerTitle) && !string.IsNullOrEmpty(employerTitle))
             {
                 var eTitle = employerTitle.ToLowerInvariant();
@@ -573,5 +579,31 @@ namespace PTJ_Service.EmployerPostService
             var chars = input.Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray();
             return new string(chars).Normalize(NormalizationForm.FormC);
         }
+        // ======================================
+        // 🧩 Helper: chuyển từ Model -> DTO Out
+        // ======================================
+        private async Task<EmployerPostDtoOut> BuildCleanPostDto(EmployerPostModel post)
+        {
+            var category = await _db.Categories.FindAsync(post.CategoryId);
+            var user = await _db.Users.FindAsync(post.UserId);
+
+            return new EmployerPostDtoOut
+            {
+                EmployerPostId = post.EmployerPostId,
+                Title = post.Title,
+                Description = post.Description,
+                Salary = post.Salary,
+                Requirements = post.Requirements,
+                WorkHours = post.WorkHours,
+                Location = post.Location,
+                PhoneContact = post.PhoneContact,
+                CategoryName = category?.Name,
+                EmployerName = user?.Username ?? "",
+                CreatedAt = post.CreatedAt,
+                Status = post.Status
+            };
+        }
+
     }
+
 }

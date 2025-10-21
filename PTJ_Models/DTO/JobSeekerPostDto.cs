@@ -22,7 +22,10 @@ namespace PTJ_Models.DTO
 
     public class JobSeekerPostResultDto
     {
-        public PTJ_Models.Models.JobSeekerPost Post { get; set; } = new();
+        // ✅ Bài đăng mà AI vừa xử lý
+        public JobSeekerPostDtoOut Post { get; set; } = new();
+
+        // ✅ Danh sách gợi ý việc làm từ AI
         public List<AIResultDto> SuggestedJobs { get; set; } = new();
     }
 }
