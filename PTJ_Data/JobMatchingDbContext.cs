@@ -35,6 +35,8 @@ public partial class JobMatchingDbContext : DbContext
 
     public virtual DbSet<EmployerProfile> EmployerProfiles { get; set; }
 
+    public virtual DbSet<EmployerShortlistedCandidate> EmployerShortlistedCandidates { get; set; }
+
     public virtual DbSet<ExternalLogin> ExternalLogins { get; set; }
 
     public virtual DbSet<FavoritePost> FavoritePosts { get; set; }
@@ -42,6 +44,8 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<JobSeekerPost> JobSeekerPosts { get; set; }
 
     public virtual DbSet<JobSeekerProfile> JobSeekerProfiles { get; set; }
+
+    public virtual DbSet<JobSeekerShortlistedJob> JobSeekerShortlistedJobs { get; set; }
 
     public virtual DbSet<JobSeekerSubmission> JobSeekerSubmissions { get; set; }
 
@@ -150,6 +154,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.TargetType)
                 .HasMaxLength(30)
                 .IsUnicode(false);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 
         modelBuilder.Entity<AiQueryCache>(entity =>
@@ -340,6 +345,35 @@ public partial class JobMatchingDbContext : DbContext
                 .HasConstraintName("FK__EmployerP__UserI__4D94879B");
         });
 
+        modelBuilder.Entity<EmployerShortlistedCandidate>(entity =>
+        {
+            entity.HasKey(e => e.ShortlistId).HasName("PK__Employer__550C0D70ED5CD300");
+
+            entity.ToTable("Employer_ShortlistedCandidates");
+
+            entity.Property(e => e.ShortlistId).HasColumnName("ShortlistID");
+            entity.Property(e => e.AddedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.EmployerId).HasColumnName("EmployerID");
+            entity.Property(e => e.EmployerPostId).HasColumnName("EmployerPostID");
+            entity.Property(e => e.JobSeekerId).HasColumnName("JobSeekerID");
+
+            entity.HasOne(d => d.Employer).WithMany(p => p.EmployerShortlistedCandidateEmployers)
+                .HasForeignKey(d => d.EmployerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Employer___Emplo__7755B73D");
+
+            entity.HasOne(d => d.EmployerPost).WithMany(p => p.EmployerShortlistedCandidates)
+                .HasForeignKey(d => d.EmployerPostId)
+                .HasConstraintName("FK__Employer___Emplo__793DFFAF");
+
+            entity.HasOne(d => d.JobSeeker).WithMany(p => p.EmployerShortlistedCandidateJobSeekers)
+                .HasForeignKey(d => d.JobSeekerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Employer___JobSe__7849DB76");
+        });
+
         modelBuilder.Entity<ExternalLogin>(entity =>
         {
             entity.HasKey(e => e.ExternalLoginId).HasName("PK__External__A8FDB38E09F3803A");
@@ -461,6 +495,32 @@ public partial class JobMatchingDbContext : DbContext
                 .HasForeignKey<JobSeekerProfile>(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobSeeker__UserI__48CFD27E");
+        });
+
+        modelBuilder.Entity<JobSeekerShortlistedJob>(entity =>
+        {
+            entity.HasKey(e => e.ShortlistId);
+
+            entity.ToTable("JobSeeker_ShortlistedJobs");
+
+            entity.HasIndex(e => e.JobSeekerId, "IX_JobSeeker_ShortlistedJobs_JobSeeker");
+
+            entity.Property(e => e.ShortlistId).HasColumnName("ShortlistID");
+            entity.Property(e => e.AddedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.EmployerPostId).HasColumnName("EmployerPostID");
+            entity.Property(e => e.JobSeekerId).HasColumnName("JobSeekerID");
+
+            entity.HasOne(d => d.EmployerPost).WithMany(p => p.JobSeekerShortlistedJobs)
+                .HasForeignKey(d => d.EmployerPostId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_JobSeeker_ShortlistedJobs_EmployerPost");
+
+            entity.HasOne(d => d.JobSeeker).WithMany(p => p.JobSeekerShortlistedJobs)
+                .HasForeignKey(d => d.JobSeekerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_JobSeeker_ShortlistedJobs_JobSeeker");
         });
 
         modelBuilder.Entity<JobSeekerSubmission>(entity =>

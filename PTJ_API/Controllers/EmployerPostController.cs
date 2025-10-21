@@ -1,63 +1,62 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿// ================================================
+// PTJ_API/Controllers/EmployerPostsController.cs
+// ================================================
+using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO;
 using PTJ_Service.EmployerPostService;
+using System.Threading.Tasks;
 
 namespace PTJ_API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class EmployerPostController : ControllerBase
+    public class EmployerPostsController : ControllerBase
     {
         private readonly IEmployerPostService _service;
 
-        public EmployerPostController(IEmployerPostService service)
+        public EmployerPostsController(IEmployerPostService service)
         {
             _service = service;
         }
 
-        [HttpPost("create")]
-        public async Task<IActionResult> Create([FromBody] EmployerPostDto dto)
-        {
-            var result = await _service.CreateEmployerPostAsync(dto);
-            return Ok(new
-            {
-                post = result.Post,
-                suggestions = result.SuggestedCandidates // Score tính theo %
-            });
-        }
-
-
-        [HttpGet("all")]
+        // CRUD
+        [HttpGet]
         public async Task<IActionResult> GetAll()
-        {
-            var posts = await _service.GetAllAsync();
-            return Ok(posts);
-        }
+            => Ok(await _service.GetAllAsync());
+
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetByUser(int userId)
+            => Ok(await _service.GetByUserAsync(userId));
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var post = await _service.GetByIdAsync(id);
-            if (post == null) return NotFound();
-            return Ok(post);
-        }
-
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetByUser(int userId)
-        {
-            var posts = await _service.GetByUserAsync(userId);
-            if (posts == null || !posts.Any())
-                return NotFound(new { message = "Không tìm thấy bài đăng nào cho người dùng này." });
-
-            return Ok(posts);
+            var result = await _service.GetByIdAsync(id);
+            if (result == null) return NotFound("Không tìm thấy bài đăng.");
+            return Ok(result);
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var success = await _service.DeleteAsync(id);
-            if (!success) return NotFound();
-            return Ok(new { message = "Deleted successfully" });
+            var ok = await _service.DeleteAsync(id);
+            if (!ok) return NotFound("Không tìm thấy bài đăng để xoá.");
+            return Ok("Đã xoá bài đăng thành công.");
+        }
+
+        // AI
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] EmployerPostDto dto)
+        {
+            var result = await _service.CreateEmployerPostAsync(dto);
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/refresh")]
+        public async Task<IActionResult> Refresh(int id)
+        {
+            var result = await _service.RefreshSuggestionsAsync(id);
+            return Ok(result);
         }
     }
 }

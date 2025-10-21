@@ -6,6 +6,7 @@ using Microsoft.OpenApi.Models;
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
 using PTJ_Service.JobSeekerPostService;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +30,12 @@ builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 builder.Services.AddScoped<IJobSeekerPostService, JobSeekerPostService>();
 
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opt =>
+    {
+        opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 
 var app = builder.Build();
 

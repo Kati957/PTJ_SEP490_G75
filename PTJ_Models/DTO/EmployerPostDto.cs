@@ -12,9 +12,11 @@
         public int? CategoryID { get; set; }
         public string? PhoneContact { get; set; }
     }
+
+    // ✅ Đổi từ EmployerPost (entity) → EmployerPostDtoOut (DTO)
     public class EmployerPostResultDto
     {
-        public PTJ_Models.Models.EmployerPost Post { get; set; } = new();
+        public EmployerPostDtoOut Post { get; set; } = new();  // Đổi ở đây nè 👈
         public List<AIResultDto> SuggestedCandidates { get; set; } = new();
     }
 }
