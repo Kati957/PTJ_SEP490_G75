@@ -147,15 +147,19 @@ namespace PTJ_Service.EmployerPostService
         // =========================================================
         public async Task<EmployerPostResultDto> RefreshSuggestionsAsync(int employerPostId)
         {
+            // 🧱 1️⃣ Lấy bài đăng
             var post = await _db.EmployerPosts.FindAsync(employerPostId);
-            if (post == null) throw new Exception("Bài đăng không tồn tại.");
+            if (post == null)
+                throw new Exception("Bài đăng không tồn tại.");
 
+            // 🧩 2️⃣ Lấy embedding hoặc cache cũ
             var (vector, hash) = await EnsureEmbeddingAsync(
                 "EmployerPost",
                 post.EmployerPostId,
                 $"{post.Title}. {post.Description}. Yêu cầu: {post.Requirements}. Địa điểm: {post.Location}. Lương: {post.Salary}"
             );
 
+            // 🚀 3️⃣ Upsert lại vector vào Pinecone (đảm bảo luôn cập nhật)
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
                 id: $"EmployerPost:{post.EmployerPostId}",
@@ -168,7 +172,19 @@ namespace PTJ_Service.EmployerPostService
                     postId = post.EmployerPostId
                 });
 
+            // 🔍 4️⃣ Query tìm các JobSeeker tương tự
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 20);
+
+            // 🧹 5️⃣ Nếu có match mới, xoá pending cũ đi (nếu tồn tại)
+            var pendingOld = await _db.AiContentForEmbeddings
+                .FirstOrDefaultAsync(x => x.EntityType == "EmployerPost" && x.EntityId == post.EmployerPostId);
+            if (pendingOld != null)
+            {
+                _db.AiContentForEmbeddings.Remove(pendingOld);
+                await _db.SaveChangesAsync();
+            }
+
+            // 🧠 6️⃣ Nếu không có match nào → thêm vào bảng pending
             if (!matches.Any())
             {
                 bool hasPending = await _db.AiContentForEmbeddings
@@ -188,6 +204,7 @@ namespace PTJ_Service.EmployerPostService
                     await _db.SaveChangesAsync();
                 }
 
+                // Trả về rỗng vì chưa có gợi ý nào
                 return new EmployerPostResultDto
                 {
                     Post = await BuildCleanPostDto(post),
@@ -195,6 +212,7 @@ namespace PTJ_Service.EmployerPostService
                 };
             }
 
+            // ⚙️ 7️⃣ Có match → tính điểm hybrid
             var scored = await ScoreAndFilterCandidatesAsync(
                 matches,
                 mustMatchCategoryId: post.CategoryId,
@@ -202,13 +220,16 @@ namespace PTJ_Service.EmployerPostService
                 employerTitle: post.Title ?? ""
             );
 
+            // 💾 8️⃣ Ghi lại kết quả vào bảng gợi ý (AiMatchSuggestions)
             await UpsertSuggestionsAsync("EmployerPost", post.EmployerPostId, "JobSeekerPost", scored, keepTop: 5);
 
+            // 🔖 9️⃣ Lấy danh sách ứng viên đã lưu
             var savedIds = await _db.EmployerShortlistedCandidates
                 .Where(x => x.EmployerPostId == employerPostId)
                 .Select(x => x.JobSeekerId)
                 .ToListAsync();
 
+            // 🧩 🔟 Build danh sách kết quả trả về
             var suggestions = scored
                 .OrderByDescending(x => x.Score)
                 .Take(5)
@@ -228,12 +249,14 @@ namespace PTJ_Service.EmployerPostService
                 })
                 .ToList();
 
+            // ✅ 11️⃣ Trả kết quả đầy đủ
             return new EmployerPostResultDto
             {
                 Post = await BuildCleanPostDto(post),
                 SuggestedCandidates = suggestions
             };
         }
+
 
         // =========================================================
         // SCORING (category → location → title)

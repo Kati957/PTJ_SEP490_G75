@@ -67,15 +67,35 @@ namespace PTJ_Service.JobSeekerPostService
                 });
 
             // 🔎 Tìm EmployerPost tương tự về nội dung
+            // 🔎 Tìm EmployerPost tương tự về nội dung
             var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 20);
             if (!matches.Any())
             {
+                // 🧠 Không có đề xuất nào → lưu vào AI_ContentForEmbedding để theo dõi
+                var exist = await _db.AiContentForEmbeddings
+                    .FirstOrDefaultAsync(x => x.EntityType == "JobSeekerPost" && x.EntityId == post.JobSeekerPostId);
+
+                if (exist == null)
+                {
+                    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
+                    {
+                        EntityType = "JobSeekerPost",
+                        EntityId = post.JobSeekerPostId,
+                        Lang = "vi",
+                        CanonicalText = $"{dto.Title}. {dto.Description}. Giờ làm: {dto.PreferredWorkHours}.",
+                        Hash = hash,
+                        LastPreparedAt = DateTime.Now
+                    });
+                    await _db.SaveChangesAsync();
+                }
+
                 return new JobSeekerPostResultDto
                 {
                     Post = await BuildCleanPostDto(post),
                     SuggestedJobs = new List<AIResultDto>()
                 };
             }
+
 
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
@@ -123,18 +143,64 @@ namespace PTJ_Service.JobSeekerPostService
         // =========================================================
         public async Task<JobSeekerPostResultDto> RefreshSuggestionsAsync(int jobSeekerPostId)
         {
+            // 🧱 1️⃣ Lấy bài đăng
             var post = await _db.JobSeekerPosts.FindAsync(jobSeekerPostId);
-            if (post == null) throw new Exception("Không tìm thấy bài đăng.");
+            if (post == null)
+                throw new Exception("Không tìm thấy bài đăng.");
 
-            var (vector, _) = await EnsureEmbeddingAsync(
+            // 🧩 2️⃣ Tạo embedding hoặc dùng cache
+            var (vector, hash) = await EnsureEmbeddingAsync(
                 "JobSeekerPost",
                 post.JobSeekerPostId,
                 $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}."
             );
 
+            // 🚀 3️⃣ Upsert lại vector vào Pinecone để đảm bảo luôn đồng bộ
+            await _ai.UpsertVectorAsync(
+                ns: "job_seeker_posts",
+                id: $"JobSeekerPost:{post.JobSeekerPostId}",
+                vector: vector,
+                metadata: new
+                {
+                    title = post.Title ?? "",
+                    location = post.PreferredLocation ?? "",
+                    category = post.CategoryId ?? 0,
+                    postId = post.JobSeekerPostId
+                });
+
+            // 🔍 4️⃣ Query các EmployerPost tương tự
             var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 20);
+
+            // 🧹 5️⃣ Nếu trước đó bài này từng nằm trong AI_ContentForEmbeddings thì xoá đi
+            var pendingOld = await _db.AiContentForEmbeddings
+                .FirstOrDefaultAsync(x => x.EntityType == "JobSeekerPost" && x.EntityId == jobSeekerPostId);
+            if (pendingOld != null)
+            {
+                _db.AiContentForEmbeddings.Remove(pendingOld);
+                await _db.SaveChangesAsync();
+            }
+
+            // 🧠 6️⃣ Nếu không có match nào -> thêm vào bảng pending
             if (!matches.Any())
             {
+                bool hasPending = await _db.AiContentForEmbeddings
+                    .AnyAsync(x => x.EntityType == "JobSeekerPost" && x.EntityId == post.JobSeekerPostId);
+
+                if (!hasPending)
+                {
+                    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
+                    {
+                        EntityType = "JobSeekerPost",
+                        EntityId = post.JobSeekerPostId,
+                        Lang = "vi",
+                        CanonicalText = $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}. {post.PreferredLocation}",
+                        Hash = hash,
+                        LastPreparedAt = DateTime.Now
+                    });
+                    await _db.SaveChangesAsync();
+                }
+
+                // Trả về rỗng vì chưa có gợi ý
                 return new JobSeekerPostResultDto
                 {
                     Post = await BuildCleanPostDto(post),
@@ -142,6 +208,7 @@ namespace PTJ_Service.JobSeekerPostService
                 };
             }
 
+            // ⚙️ 7️⃣ Có match -> tính điểm hybrid
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 post.CategoryId,
@@ -149,13 +216,16 @@ namespace PTJ_Service.JobSeekerPostService
                 post.Title ?? ""
             );
 
-            await UpsertSuggestionsAsync("JobSeekerPost", post.JobSeekerPostId, "EmployerPost", scored, 5);
+            // 💾 8️⃣ Lưu vào bảng gợi ý (AiMatchSuggestions)
+            await UpsertSuggestionsAsync("JobSeekerPost", post.JobSeekerPostId, "EmployerPost", scored, keepTop: 5);
 
+            // 🔖 9️⃣ Lấy danh sách job đã lưu để đánh dấu
             var savedIds = await _db.JobSeekerShortlistedJobs
                 .Where(x => x.JobSeekerId == post.UserId)
                 .Select(x => x.EmployerPostId)
                 .ToListAsync();
 
+            // 🧩 10️⃣ Build danh sách kết quả trả về
             var suggestions = scored
                 .OrderByDescending(x => x.Score)
                 .Take(5)
@@ -175,12 +245,14 @@ namespace PTJ_Service.JobSeekerPostService
                 })
                 .ToList();
 
+            // ✅ 11️⃣ Trả kết quả đầy đủ
             return new JobSeekerPostResultDto
             {
                 Post = await BuildCleanPostDto(post),
                 SuggestedJobs = suggestions
             };
         }
+
 
         // =========================================================
         // ⭐ SHORTLIST
