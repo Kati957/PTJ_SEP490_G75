@@ -49,6 +49,8 @@ public partial class JobMatchingDbContext : DbContext
 
     public virtual DbSet<JobSeekerSubmission> JobSeekerSubmissions { get; set; }
 
+    public virtual DbSet<LocationCache> LocationCaches { get; set; }
+
     public virtual DbSet<LoginAttempt> LoginAttempts { get; set; }
 
     public virtual DbSet<News> News { get; set; }
@@ -552,6 +554,18 @@ public partial class JobMatchingDbContext : DbContext
                 .HasForeignKey(d => d.JobSeekerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobSeeker__JobSe__6C190EBB");
+        });
+
+        modelBuilder.Entity<LocationCache>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC075542B0B4");
+
+            entity.ToTable("LocationCache");
+
+            entity.Property(e => e.Address).HasMaxLength(255);
+            entity.Property(e => e.LastUpdated)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
         });
 
         modelBuilder.Entity<LoginAttempt>(entity =>

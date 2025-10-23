@@ -7,6 +7,7 @@ using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
 using PTJ_Service.JobSeekerPostService;
 using System.Text.Json.Serialization;
+using PTJ_Service.LocationService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +29,7 @@ builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 builder.Services.AddScoped<IJobSeekerPostService, JobSeekerPostService>();
-
+builder.Services.AddScoped<OpenMapService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
