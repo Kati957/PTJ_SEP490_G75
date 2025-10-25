@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using PTJ_Models.Models;
 
-namespace PTJ_Models.DTO
+namespace PTJ_Models.DTO.PostDTO
 {
     public class JobSeekerPostDto
     {

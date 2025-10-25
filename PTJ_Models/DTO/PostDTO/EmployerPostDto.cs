@@ -1,4 +1,4 @@
-﻿namespace PTJ_Models.DTO
+﻿namespace PTJ_Models.DTO.PostDTO
 {
     public class EmployerPostDto
     {

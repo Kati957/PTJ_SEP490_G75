@@ -8,18 +8,18 @@ using System.Net.Http.Json;
 using System.Text;
 
 namespace PTJ_Service.AIService
-{
-    public class AIService : IAIService
     {
+    public class AIService : IAIService
+        {
         private readonly HttpClient _http;
-        private readonly JobMatchingDbContext _db; // ✅ thêm DB context
+        private readonly JobMatchingDbContext _db;
         private readonly string _openAiKey;
         private readonly string _pineconeKey;
         private readonly string _pineconeUrl;
 
         public AIService(IConfiguration cfg, JobMatchingDbContext db)
-        {
-            _db = db; // ✅ inject DB
+            {
+            _db = db;
             _http = new HttpClient();
 
             _openAiKey = cfg["OpenAI:ApiKey"] ?? throw new Exception("Missing OpenAI:ApiKey in appsettings.json");
@@ -27,13 +27,13 @@ namespace PTJ_Service.AIService
             _pineconeUrl = cfg["Pinecone:IndexEndpoint"] ?? throw new Exception("Missing Pinecone:IndexEndpoint in appsettings.json");
 
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _openAiKey);
-        }
+            }
 
         // =====================================================
-        // 🧩 Embedding
+        // 🧠 Create Embedding
         // =====================================================
         public async Task<float[]> CreateEmbeddingAsync(string text)
-        {
+            {
             var payload = new { model = "text-embedding-3-large", input = text };
 
             var response = await _http.PostAsync(
@@ -50,13 +50,13 @@ namespace PTJ_Service.AIService
                 .ToArray();
 
             return embedding;
-        }
+            }
 
         // =====================================================
-        // 📥 Upsert vector vào Pinecone
+        // 📤 Upsert Vector vào Pinecone
         // =====================================================
         public async Task UpsertVectorAsync(string ns, string id, float[] vector, object metadata)
-        {
+            {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -70,7 +70,7 @@ namespace PTJ_Service.AIService
                 );
 
             var payload = new
-            {
+                {
                 vectors = new[]
                 {
                     new {
@@ -80,53 +80,35 @@ namespace PTJ_Service.AIService
                     }
                 },
                 @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
-            };
+                };
 
             var res = await client.PostAsJsonAsync($"{_pineconeUrl}/vectors/upsert", payload);
             if (!res.IsSuccessStatusCode)
-            {
+                {
                 var body = await res.Content.ReadAsStringAsync();
                 throw new Exception($"Pinecone Upsert failed: {res.StatusCode} - {body}");
+                }
+
+            // ⏳ Đợi Pinecone index xong để query liền sau
+            await Task.Delay(1500);
             }
-        }
 
         // =====================================================
-        // 🔍 QuerySimilarAsync có CACHE (ghi vào AI_QueryCache)
+        // 🔍 Query Similar — hỗ trợ Pinecone v1/v2 + riêng namespace
         // =====================================================
         public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
-        {
-            string vectorHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
-                Encoding.UTF8.GetBytes(string.Join(",", vector.Take(32))))); // hash rút gọn
-
-            // 🔎 Kiểm tra cache còn mới (dưới 6h)
-            var cache = await _db.AiQueryCaches
-                .Where(x => x.Namespace == ns && x.EntityId == 0)
-                .OrderByDescending(x => x.CachedAt)
-                .FirstOrDefaultAsync();
-
-            if (cache != null && (DateTime.Now - cache.CachedAt).TotalHours < 6)
             {
-                try
-                {
-                    var reuse = JsonConvert.DeserializeObject<List<(string Id, double Score)>>(cache.JsonResults);
-                    if (reuse != null && reuse.Any())
-                        return reuse;
-                }
-                catch { /* ignore parse error */ }
-            }
-
-            // 🧠 Nếu không có cache -> gọi Pinecone
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
 
             var payload = new
-            {
+                {
                 vector,
                 topK,
                 includeMetadata = true,
                 @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
-            };
+                };
 
             var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
             res.EnsureSuccessStatusCode();
@@ -135,29 +117,27 @@ namespace PTJ_Service.AIService
             dynamic result = JsonConvert.DeserializeObject(json)!;
 
             var list = new List<(string Id, double Score)>();
-            foreach (var m in result.matches)
-            {
-                list.Add(((string)m.id, (double)m.score));
-            }
 
-            // 💾 Lưu lại cache
-            try
-            {
-                _db.AiQueryCaches.Add(new AiQueryCache
+            // ✅ Pinecone v1
+            if (result?["matches"] != null)
                 {
-                    Namespace = ns,
-                    EntityId = 0,
-                    JsonResults = JsonConvert.SerializeObject(list),
-                    CachedAt = DateTime.Now
-                });
-                await _db.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"⚠️ Không thể lưu cache: {ex.Message}");
-            }
+                foreach (var m in result.matches)
+                    list.Add(((string)m.id, (double)m.score));
+                }
+            // ✅ Pinecone v2
+            else if (result?["results"] != null)
+                {
+                foreach (var resObj in result.results)
+                    {
+                    if (resObj?["matches"] != null)
+                        {
+                        foreach (var m in resObj.matches)
+                            list.Add(((string)m.id, (double)m.score));
+                        }
+                    }
+                }
 
             return list;
+            }
         }
     }
-}

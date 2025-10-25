@@ -1,7 +1,7 @@
-﻿using PTJ_Models.DTO;
+﻿using PTJ_Models.DTO.PostDTO;
 
 public interface IEmployerPostService
-{
+    {
     Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto);
     Task<EmployerPostResultDto> RefreshSuggestionsAsync(int employerPostId);
 
@@ -12,5 +12,7 @@ public interface IEmployerPostService
     Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync();
     Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId);
     Task<EmployerPostDtoOut?> GetByIdAsync(int id);
+    Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostDto dto);
+
     Task<bool> DeleteAsync(int id);
-}
+    }

@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
-
+using PTJ_Data.Repositories.Interfaces;
+using PTJ_Data.Repositories.Implementations;
 using Microsoft.OpenApi.Models;
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
 using PTJ_Service.JobSeekerPostService;
 using System.Text.Json.Serialization;
 using PTJ_Service.LocationService;
+using PTJ_Data.Repositories.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +32,9 @@ builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 builder.Services.AddScoped<IJobSeekerPostService, JobSeekerPostService>();
 builder.Services.AddScoped<OpenMapService>();
+builder.Services.AddScoped<IEmployerPostRepository, EmployerPostRepository>();
+builder.Services.AddScoped<IJobSeekerPostRepository, JobSeekerPostRepository>();
+
 
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
@@ -44,10 +49,10 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
-{
+    {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+    }
 
 app.UseHttpsRedirection();
 
