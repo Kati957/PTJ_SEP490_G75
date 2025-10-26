@@ -9,9 +9,9 @@ namespace PTJ_Data.Repositories.Implementations
     {
     public class JobApplicationRepository : IJobApplicationRepository
         {
-        private readonly JobMatchingDemoDbContext _db;
+        private readonly JobMatchingDbContext _db;
 
-        public JobApplicationRepository(JobMatchingDemoDbContext db)
+        public JobApplicationRepository(JobMatchingDbContext db)
             {
             _db = db;
             }
