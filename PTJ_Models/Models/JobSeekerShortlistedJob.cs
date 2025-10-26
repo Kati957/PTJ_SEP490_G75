@@ -3,21 +3,17 @@ using System.Collections.Generic;
 
 namespace PTJ_Models.Models;
 
-public partial class JobSeekerApplicationList
+public partial class JobSeekerShortlistedJob
 {
-    public int ApplicationListId { get; set; }
+    public int ShortlistId { get; set; }
 
     public int JobSeekerId { get; set; }
 
     public int EmployerPostId { get; set; }
 
-    public DateTime? ApplicationDate { get; set; }
+    public string? Note { get; set; }
 
-    public string? Status { get; set; }
-
-    public string? Notes { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
+    public DateTime AddedAt { get; set; }
 
     public virtual EmployerPost EmployerPost { get; set; } = null!;
 

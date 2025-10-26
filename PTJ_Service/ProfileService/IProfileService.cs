@@ -1,5 +1,4 @@
 ﻿using PTJ_Models.DTO;
-using System.Threading.Tasks;
 
 namespace PTJ_Service.ProfileService
 {

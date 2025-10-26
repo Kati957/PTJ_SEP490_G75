@@ -35,11 +35,13 @@ public partial class EmployerPost
 
     public virtual ICollection<EmployerCandidatesList> EmployerCandidatesLists { get; set; } = new List<EmployerCandidatesList>();
 
-    public virtual ICollection<EmployerInvitation> EmployerInvitations { get; set; } = new List<EmployerInvitation>();
-
     public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidates { get; set; } = new List<EmployerShortlistedCandidate>();
 
+    public virtual ICollection<JobSeekerShortlistedJob> JobSeekerShortlistedJobs { get; set; } = new List<JobSeekerShortlistedJob>();
+
     public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
+
+    public virtual ICollection<PostReport> PostReports { get; set; } = new List<PostReport>();
 
     public virtual User User { get; set; } = null!;
 }

@@ -7,7 +7,8 @@ using PTJ_Models.Models;
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
 using PTJ_Service.ProfileService; // ✅ thêm dòng này
-
+using PTJ_Service.RatingService;
+using PTJ_Service.SystemReportService;
 var builder = WebApplication.CreateBuilder(args);
 
 // =============================================
@@ -34,6 +35,8 @@ builder.Services.AddScoped<AiMatchService>();
 // ⚙️ Business Services
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 builder.Services.AddScoped<IProfileService, ProfileService>(); // ✅ thêm dòng này
+builder.Services.AddScoped<IRatingService, RatingService>();
+builder.Services.AddScoped<ISystemReportService, SystemReportService>();
 
 // ⚙️ Controller
 builder.Services.AddControllers();

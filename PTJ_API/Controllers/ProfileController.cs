@@ -15,24 +15,22 @@ namespace PTJ_API.Controllers
             _profileService = profileService;
         }
 
-        // ✅ Lấy thông tin hồ sơ
         [HttpGet("{userId}")]
         public async Task<IActionResult> GetProfile(int userId)
         {
             var profile = await _profileService.GetProfileAsync(userId);
-            if (profile == null) return NotFound("User not found.");
+            if (profile == null)
+                return NotFound("User not found");
             return Ok(profile);
         }
 
-        // ✅ Cập nhật hồ sơ
         [HttpPut("{userId}")]
         public async Task<IActionResult> UpdateProfile(int userId, [FromBody] ProfileDto dto)
         {
-            if (dto == null) return BadRequest("Profile data is required.");
-
+            if (dto == null) return BadRequest("Invalid profile data");
             var success = await _profileService.UpdateProfileAsync(userId, dto);
-            if (!success) return BadRequest("Cannot update profile.");
-            return Ok("Profile updated successfully.");
+            if (!success) return BadRequest("Update failed");
+            return Ok("Profile updated successfully");
         }
     }
 }
