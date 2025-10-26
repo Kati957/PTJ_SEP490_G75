@@ -17,16 +17,13 @@ namespace PTJ_Service.JobApplicationService
             _repo = repo;
             }
 
-        // =========================================================
-        // ỨNG VIÊN NỘP ĐƠN ỨNG TUYỂN
-        // =========================================================
+        // Ứng viên nộp đơn
         public async Task<bool> ApplyAsync(int jobSeekerId, int employerPostId, string? note = null)
             {
             var existing = await _repo.GetAsync(jobSeekerId, employerPostId);
-
             if (existing != null)
                 {
-                // Cho phép nộp lại nếu từng rút đơn
+                // Nếu đã từng rút đơn => cho phép nộp lại
                 if (existing.Status == "Withdrawn")
                     {
                     existing.Status = "Pending";
@@ -38,23 +35,21 @@ namespace PTJ_Service.JobApplicationService
                 return false;
                 }
 
-            var entity = new EmployerCandidatesList
+            var submission = new JobSeekerSubmission
                 {
-                EmployerPostId = employerPostId,
                 JobSeekerId = jobSeekerId,
-                ApplicationDate = DateTime.Now,
+                EmployerPostId = employerPostId,
+                AppliedAt = DateTime.Now,
                 Status = "Pending",
                 Notes = note,
                 UpdatedAt = DateTime.Now
                 };
 
-            await _repo.AddAsync(entity);
+            await _repo.AddAsync(submission);
             return true;
             }
 
-        // =========================================================
-        // ỨNG VIÊN RÚT ĐƠN
-        // =========================================================
+        // Rút đơn
         public async Task<bool> WithdrawAsync(int jobSeekerId, int employerPostId)
             {
             var app = await _repo.GetAsync(jobSeekerId, employerPostId);
@@ -69,9 +64,7 @@ namespace PTJ_Service.JobApplicationService
             return true;
             }
 
-        // =========================================================
-        // EMPLOYER XEM DANH SÁCH ỨNG VIÊN CỦA BÀI ĐĂNG
-        // =========================================================
+        // Employer xem danh sách ứng viên
         public async Task<IEnumerable<JobApplicationResultDto>> GetCandidatesByPostAsync(int employerPostId)
             {
             var list = await _repo.GetByEmployerPostWithDetailAsync(employerPostId);
@@ -82,7 +75,7 @@ namespace PTJ_Service.JobApplicationService
 
                 return new JobApplicationResultDto
                     {
-                    CandidateListId = x.CandidateListId,
+                    CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
                     Username = x.JobSeeker.Username,
                     FullName = profile?.FullName,
@@ -95,40 +88,64 @@ namespace PTJ_Service.JobApplicationService
                     PreferredJobType = profile?.PreferredJobType,
                     PreferredLocation = profile?.PreferredLocation,
                     Status = x.Status,
-                    ApplicationDate = x.ApplicationDate,
+                    ApplicationDate = x.AppliedAt,
                     Notes = x.Notes
                     };
             }).ToList();
             }
 
-        // =========================================================
-        // JOBSEEKER XEM DANH SÁCH BÀI ĐÃ ỨNG TUYỂN
-        // =========================================================
+        // JobSeeker xem các bài đã ứng tuyển
         public async Task<IEnumerable<JobApplicationResultDto>> GetApplicationsBySeekerAsync(int jobSeekerId)
             {
             var list = await _repo.GetByJobSeekerWithPostDetailAsync(jobSeekerId);
 
-            return list.Select(x => new JobApplicationResultDto
-                {
-                CandidateListId = x.CandidateListId,
-                JobSeekerId = x.JobSeekerId,
-                Username = x.JobSeeker.Username,
-                Status = x.Status,
-                ApplicationDate = x.ApplicationDate,
-                Notes = x.Notes
-                });
+            return list.Select(x =>
+            {
+                var post = x.EmployerPost;
+                var category = post?.Category;
+                var employer = post?.User;
+
+                return new JobApplicationResultDto
+                    {
+                    CandidateListId = x.SubmissionId,
+                    JobSeekerId = x.JobSeekerId,
+                    Username = x.JobSeeker?.Username ?? "Unknown",
+
+                    // 🔹 Trạng thái ứng tuyển
+                    Status = x.Status,
+                    ApplicationDate = x.AppliedAt,
+                    Notes = x.Notes,
+
+                    // 🔹 Thông tin bài đăng tuyển dụng
+                    EmployerPostId = post?.EmployerPostId ?? 0,
+                    PostTitle = post?.Title,
+                    CategoryName = category?.Name,
+                    EmployerName = employer?.Username,
+                    Location = post?.Location,
+                    Salary = post?.Salary,
+                    WorkHours = post?.WorkHours,
+                    PhoneContact = post?.PhoneContact
+                    };
+            }).ToList();
             }
 
-        // =========================================================
-        // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
-        // =========================================================
-        public async Task<bool> UpdateStatusAsync(int candidateListId, string status, string? note = null)
+
+        // Employer cập nhật trạng thái
+        public async Task<bool> UpdateStatusAsync(int submissionId, string status, string? note = null)
             {
-            var entity = await _repo.GetByIdAsync(candidateListId);
+            if (string.IsNullOrWhiteSpace(status))
+                return false;
+
+            // ✅ Chỉ chấp nhận Accepted / Rejected
+            var validStatuses = new[] { "Accepted", "Rejected" };
+            if (!validStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
+                return false;
+
+            var entity = await _repo.GetByIdAsync(submissionId);
             if (entity == null)
                 return false;
 
-            entity.Status = status;
+            entity.Status = status.Trim();
             entity.Notes = note;
             entity.UpdatedAt = DateTime.Now;
 

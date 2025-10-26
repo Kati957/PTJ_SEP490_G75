@@ -6,15 +6,13 @@ namespace PTJ_Data.Repositories.Interfaces
     {
     public interface IJobApplicationRepository
         {
-        Task AddAsync(EmployerCandidatesList entity);
+        Task AddAsync(JobSeekerSubmission entity);
         Task<bool> ExistsAsync(int jobSeekerId, int employerPostId);
-        Task<EmployerCandidatesList?> GetAsync(int jobSeekerId, int employerPostId);
-        Task<EmployerCandidatesList?> GetByIdAsync(int id);
-        Task<IEnumerable<EmployerCandidatesList>> GetByEmployerPostWithDetailAsync(int employerPostId);
-
-        Task<IEnumerable<EmployerCandidatesList>> GetByJobSeekerWithPostDetailAsync(int jobSeekerId);
-
-        Task UpdateAsync(EmployerCandidatesList entity);
+        Task<JobSeekerSubmission?> GetAsync(int jobSeekerId, int employerPostId);
+        Task<JobSeekerSubmission?> GetByIdAsync(int id);
+        Task<IEnumerable<JobSeekerSubmission>> GetByEmployerPostWithDetailAsync(int employerPostId);
+        Task<IEnumerable<JobSeekerSubmission>> GetByJobSeekerWithPostDetailAsync(int jobSeekerId);
+        Task UpdateAsync(JobSeekerSubmission entity);
         Task SaveChangesAsync();
         }
     }

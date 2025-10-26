@@ -16,59 +16,55 @@ namespace PTJ_Data.Repositories.Implementations
             _db = db;
             }
 
-        public async Task AddAsync(EmployerCandidatesList entity)
+        public async Task AddAsync(JobSeekerSubmission entity)
             {
-            _db.EmployerCandidatesLists.Add(entity);
+            _db.JobSeekerSubmissions.Add(entity);
             await _db.SaveChangesAsync();
             }
 
         public async Task<bool> ExistsAsync(int jobSeekerId, int employerPostId)
             {
-            return await _db.EmployerCandidatesLists
+            return await _db.JobSeekerSubmissions
                 .AnyAsync(x => x.JobSeekerId == jobSeekerId && x.EmployerPostId == employerPostId);
             }
 
-        public async Task<EmployerCandidatesList?> GetAsync(int jobSeekerId, int employerPostId)
+        public async Task<JobSeekerSubmission?> GetAsync(int jobSeekerId, int employerPostId)
             {
-            return await _db.EmployerCandidatesLists
+            return await _db.JobSeekerSubmissions
                 .FirstOrDefaultAsync(x => x.JobSeekerId == jobSeekerId && x.EmployerPostId == employerPostId);
             }
 
-        public async Task<EmployerCandidatesList?> GetByIdAsync(int id)
+        public async Task<JobSeekerSubmission?> GetByIdAsync(int id)
             {
-            return await _db.EmployerCandidatesLists.FindAsync(id);
+            return await _db.JobSeekerSubmissions.FindAsync(id);
             }
 
-        public async Task<IEnumerable<EmployerCandidatesList>> GetByEmployerPostWithDetailAsync(int employerPostId)
+        public async Task<IEnumerable<JobSeekerSubmission>> GetByEmployerPostWithDetailAsync(int employerPostId)
             {
-            return await _db.EmployerCandidatesLists
+            return await _db.JobSeekerSubmissions
                 .Include(x => x.JobSeeker)
-                    .ThenInclude(u => u.JobSeekerProfile) // 🟢 load thêm profile
-                .Include(x => x.JobSeeker)
-                    .ThenInclude(u => u.JobSeekerPosts)
-                        .ThenInclude(p => p.Category)
+                    .ThenInclude(u => u.JobSeekerProfile)
                 .Where(x => x.EmployerPostId == employerPostId)
-                .OrderByDescending(x => x.ApplicationDate)
+                .OrderByDescending(x => x.AppliedAt)
                 .ToListAsync();
             }
 
-
-
-        public async Task<IEnumerable<EmployerCandidatesList>> GetByJobSeekerWithPostDetailAsync(int jobSeekerId)
+        public async Task<IEnumerable<JobSeekerSubmission>> GetByJobSeekerWithPostDetailAsync(int jobSeekerId)
             {
-            return await _db.EmployerCandidatesLists
+            return await _db.JobSeekerSubmissions
+                .Include(x => x.JobSeeker)               // 🔥 Thêm dòng này
                 .Include(x => x.EmployerPost)
-                .ThenInclude(p => p.User)           // lấy thông tin employer
-                .Include(x => x.EmployerPost.Category) // lấy category của bài đăng
+                    .ThenInclude(p => p.User)
+                .Include(x => x.EmployerPost.Category)
                 .Where(x => x.JobSeekerId == jobSeekerId)
-                .OrderByDescending(x => x.ApplicationDate)
+                .OrderByDescending(x => x.AppliedAt)
                 .ToListAsync();
             }
 
 
-        public async Task UpdateAsync(EmployerCandidatesList entity)
+        public async Task UpdateAsync(JobSeekerSubmission entity)
             {
-            _db.EmployerCandidatesLists.Update(entity);
+            _db.JobSeekerSubmissions.Update(entity);
             await _db.SaveChangesAsync();
             }
 
@@ -78,4 +74,3 @@ namespace PTJ_Data.Repositories.Implementations
             }
         }
     }
-

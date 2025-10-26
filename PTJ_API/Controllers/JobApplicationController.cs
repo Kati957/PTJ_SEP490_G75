@@ -64,13 +64,38 @@ namespace PTJ_API.Controllers
         // =========================================================
         // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
         // =========================================================
+        // =========================================================
+        // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
+        // =========================================================
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] JobApplicationUpdateDto dto)
             {
+            // ✅ Danh sách trạng thái hợp lệ
+            var validStatuses = new[] { "Accepted", "Rejected" };
+
+            // ✅ Kiểm tra hợp lệ (không phân biệt hoa thường)
+            if (!validStatuses.Contains(dto.Status, StringComparer.OrdinalIgnoreCase))
+                {
+                return BadRequest(new
+                    {
+                    message = "Trạng thái không hợp lệ. Chỉ cho phép 'Accepted' hoặc 'Rejected'."
+                    });
+                }
+
             var result = await _service.UpdateStatusAsync(id, dto.Status, dto.Note);
-            return result
-                ? Ok(new { message = "Cập nhật trạng thái thành công." })
-                : NotFound(new { message = "Không tìm thấy ứng viên." });
+            if (!result)
+                return NotFound(new { message = "Không tìm thấy ứng viên." });
+
+            return Ok(new { message = $"Cập nhật trạng thái thành công: {dto.Status}" });
+            }
+        // =========================================================
+        // LẤY DANH SÁCH TRẠNG THÁI HỢP LỆ (cho frontend render dropdown)
+        // =========================================================
+        [HttpGet("valid-statuses")]
+        public IActionResult GetValidStatuses()
+            {
+            var statuses = new[] { "Accepted", "Rejected" };
+            return Ok(statuses);
             }
         }
     }

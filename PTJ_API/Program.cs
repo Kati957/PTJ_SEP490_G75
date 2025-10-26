@@ -11,6 +11,7 @@ using System.Text.Json.Serialization;
 using PTJ_Service.LocationService;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Service.JobApplicationService;
+using PTJ_Service.SearchService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,15 @@ builder.Services.AddScoped<IEmployerPostRepository, EmployerPostRepository>();
 builder.Services.AddScoped<IJobSeekerPostRepository, JobSeekerPostRepository>();
 builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
+
+// Repository
+builder.Services.AddScoped<IEmployerSearchRepository, EmployerSearchRepository>();
+builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository>();
+
+// Service
+builder.Services.AddScoped<IEmployerSearchService, EmployerSearchService>();
+builder.Services.AddScoped<IJobSeekerSearchService, JobSeekerSearchService>();
+builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
