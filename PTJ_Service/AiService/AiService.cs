@@ -1,21 +1,25 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using PTJ_Models.Models;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 
 namespace PTJ_Service.AIService
-{
-    public class AIService : IAIService
     {
+    public class AIService : IAIService
+        {
         private readonly HttpClient _http;
+        private readonly JobMatchingDbContext _db;
         private readonly string _openAiKey;
         private readonly string _pineconeKey;
         private readonly string _pineconeUrl;
 
-        public AIService(IConfiguration cfg)
-        {
+        public AIService(IConfiguration cfg, JobMatchingDbContext db)
+            {
+            _db = db;
             _http = new HttpClient();
 
             _openAiKey = cfg["OpenAI:ApiKey"] ?? throw new Exception("Missing OpenAI:ApiKey in appsettings.json");
@@ -23,10 +27,13 @@ namespace PTJ_Service.AIService
             _pineconeUrl = cfg["Pinecone:IndexEndpoint"] ?? throw new Exception("Missing Pinecone:IndexEndpoint in appsettings.json");
 
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _openAiKey);
-        }
+            }
 
+        // =====================================================
+        // 🧠 Create Embedding
+        // =====================================================
         public async Task<float[]> CreateEmbeddingAsync(string text)
-        {
+            {
             var payload = new { model = "text-embedding-3-large", input = text };
 
             var response = await _http.PostAsync(
@@ -43,30 +50,27 @@ namespace PTJ_Service.AIService
                 .ToArray();
 
             return embedding;
-        }
+            }
 
+        // =====================================================
+        // 📤 Upsert Vector vào Pinecone
+        // =====================================================
         public async Task UpsertVectorAsync(string ns, string id, float[] vector, object metadata)
-        {
+            {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
 
-            // Pinecone chỉ nhận string/number/bool/list<string> – chuẩn hoá metadata
             var metaDict = metadata
                 .GetType()
                 .GetProperties()
                 .ToDictionary(
                     p => p.Name,
-                    p =>
-                    {
-                        var v = p.GetValue(metadata, null);
-                        if (v == null) return ""; // tránh lỗi null
-                        return v;
-                    }
+                    p => p.GetValue(metadata, null) ?? ""
                 );
 
             var payload = new
-            {
+                {
                 vectors = new[]
                 {
                     new {
@@ -75,31 +79,36 @@ namespace PTJ_Service.AIService
                         metadata = metaDict
                     }
                 },
-                // Namespace phải ở root payload (không để null)
                 @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
-            };
+                };
 
             var res = await client.PostAsJsonAsync($"{_pineconeUrl}/vectors/upsert", payload);
             if (!res.IsSuccessStatusCode)
-            {
+                {
                 var body = await res.Content.ReadAsStringAsync();
                 throw new Exception($"Pinecone Upsert failed: {res.StatusCode} - {body}");
-            }
-        }
+                }
 
+            // ⏳ Đợi Pinecone index xong để query liền sau
+            await Task.Delay(1500);
+            }
+
+        // =====================================================
+        // 🔍 Query Similar — hỗ trợ Pinecone v1/v2 + riêng namespace
+        // =====================================================
         public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
-        {
+            {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
 
             var payload = new
-            {
+                {
                 vector,
                 topK,
                 includeMetadata = true,
                 @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
-            };
+                };
 
             var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
             res.EnsureSuccessStatusCode();
@@ -108,11 +117,27 @@ namespace PTJ_Service.AIService
             dynamic result = JsonConvert.DeserializeObject(json)!;
 
             var list = new List<(string Id, double Score)>();
-            foreach (var m in result.matches)
-            {
-                list.Add(((string)m.id, (double)m.score));
-            }
+
+            // ✅ Pinecone v1
+            if (result?["matches"] != null)
+                {
+                foreach (var m in result.matches)
+                    list.Add(((string)m.id, (double)m.score));
+                }
+            // ✅ Pinecone v2
+            else if (result?["results"] != null)
+                {
+                foreach (var resObj in result.results)
+                    {
+                    if (resObj?["matches"] != null)
+                        {
+                        foreach (var m in resObj.matches)
+                            list.Add(((string)m.id, (double)m.score));
+                        }
+                    }
+                }
+
             return list;
+            }
         }
     }
-}
