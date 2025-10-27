@@ -7,11 +7,11 @@ using Microsoft.Extensions.Logging;
 using PTJ_Data;
 using PTJ_Models.DTO.Auth;
 using PTJ_Service.Helpers;
-using PTJ_Service.Interfaces;
 using PTJ_Models.Models;
 using Microsoft.AspNetCore.WebUtilities;
+using PTJ_Service.AuthService.Interfaces;
 
-namespace PTJ_Service.Implementations;
+namespace PTJ_Service.AuthService.Implementations;
 
 public sealed class AuthService : IAuthService
 {
@@ -184,22 +184,28 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ip)
     {
-        // 🔹 Tìm user theo email hoặc username
-        var user = await _db.Users.FirstOrDefaultAsync(x =>
-            x.Email == dto.UsernameOrEmail || x.Username == dto.UsernameOrEmail);
+        // 🔒 1. Kiểm tra dữ liệu đầu vào (tránh login rỗng)
+        if (string.IsNullOrWhiteSpace(dto.UsernameOrEmail) || string.IsNullOrWhiteSpace(dto.Password))
+            throw new Exception("Username/email and password are required.");
 
-        // 🔹 Kiểm tra lockout
+        var key = dto.UsernameOrEmail.Trim().ToLowerInvariant();
+
+        // 🔍 2. Tìm user theo email hoặc username (không phân biệt hoa thường)
+        var user = await _db.Users.FirstOrDefaultAsync(x =>
+            x.Email.ToLower() == key || x.Username.ToLower() == key);
+
+        // 🚫 3. Kiểm tra tình trạng khóa tài khoản (lockout)
         if (user != null && user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
             throw new Exception("Account is temporarily locked. Please try again later.");
 
-        // 🔹 Kiểm tra sai mật khẩu hoặc không tồn tại
+        // ❌ 4. Kiểm tra sai mật khẩu hoặc user không tồn tại
         if (user == null || user.PasswordHash == null || !_hasher.Verify(user.PasswordHash, dto.Password))
         {
             if (user != null)
             {
                 user.FailedLoginCount++;
 
-                // Khóa tài khoản tạm thời sau 5 lần sai
+                // Nếu sai >= 5 lần → khóa tạm 10 phút
                 if (user.FailedLoginCount >= 5)
                 {
                     user.LockoutEnd = DateTime.UtcNow.AddMinutes(10);
@@ -223,13 +229,13 @@ public sealed class AuthService : IAuthService
             throw new Exception("Invalid username/email or password.");
         }
 
-        // 🔹 Reset login fail counters nếu đăng nhập thành công
+        // ✅ 5. Nếu đăng nhập đúng → reset bộ đếm lỗi
         user.FailedLoginCount = 0;
         user.LockoutEnd = null;
         user.LastLogin = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        // 🔹 Log đăng nhập thành công
+        // 📝 6. Ghi lại log đăng nhập thành công
         _db.LoginAttempts.Add(new LoginAttempt
         {
             UserId = user.UserId,
@@ -241,17 +247,16 @@ public sealed class AuthService : IAuthService
         });
         await _db.SaveChangesAsync();
 
-        // 🔹 Sinh token đăng nhập
+        // 🔑 7. Sinh token đăng nhập
         var response = await _tokens.IssueAsync(user, dto.DeviceInfo, ip);
 
-        // ⚠️ Nếu user chưa xác thực email => vẫn cấp token, nhưng thêm cảnh báo
+        // ⚠️ 8. Nếu user chưa xác thực email → thêm cảnh báo
         if (!user.IsVerified)
-        {
             response.Warning = "Your email is not verified. Please check your inbox to verify your account.";
-        }
 
         return response;
     }
+
 
 
     public Task<AuthResponseDto> RefreshAsync(string refreshToken, string? deviceInfo, string? ip)

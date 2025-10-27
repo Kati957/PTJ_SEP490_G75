@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using PTJ_Service.Interfaces;
 using PTJ_Models.DTO.Auth;
-using System.Net; // dùng cho UrlDecode
+using System.Net;
+using PTJ_Service.AuthService.Interfaces; // dùng cho UrlDecode
 
 namespace PTJ_API.Controllers;
 

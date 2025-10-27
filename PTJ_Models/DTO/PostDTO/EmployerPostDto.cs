@@ -10,7 +10,7 @@
         public string? WorkHours { get; set; }
         public string? Location { get; set; }
         public int? CategoryID { get; set; }
-        public string? PhoneContact { get; set; }
+        public int? PhoneContact { get; set; }
     }
 
     // ✅ Đổi từ EmployerPost (entity) → EmployerPostDtoOut (DTO)

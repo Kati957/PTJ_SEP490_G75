@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-
+using PTJ_Data;
 namespace PTJ_Models.Models;
 
 public partial class JobMatchingDbContext : DbContext
@@ -74,6 +74,8 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
+    public virtual DbSet<LocationCache> LocationCaches { get; set; }
+
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     { }

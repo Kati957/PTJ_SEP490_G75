@@ -1,6 +1,6 @@
 ﻿using PTJ_Models.DTO.Auth;
 
-namespace PTJ_Service.Interfaces;
+namespace PTJ_Service.AuthService.Interfaces;
 
 public interface IAuthService
 {

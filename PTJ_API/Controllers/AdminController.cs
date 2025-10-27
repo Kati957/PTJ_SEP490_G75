@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models.Models;
-using System.Security.Claims;
 using PTJ_Models.DTO.Admin;
+using System.Security.Claims;
 
 namespace PTJ_API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")] // ✅ chỉ Admin có thể truy cập
+    [Authorize(Roles = "Admin")]
     public class AdminController : ControllerBase
     {
         private readonly JobMatchingDbContext _db;
@@ -31,12 +31,14 @@ namespace PTJ_API.Controllers
                 {
                     r.PostReportId,
                     r.ReportType,
-                    r.ReportedItemId,
                     Reporter = new
                     {
                         r.Reporter.UserId,
                         r.Reporter.Email
                     },
+                    TargetUser = r.TargetUser != null
+                        ? new { r.TargetUser.UserId, r.TargetUser.Email }
+                        : null,
                     r.Reason,
                     r.Status,
                     r.CreatedAt
@@ -47,55 +49,92 @@ namespace PTJ_API.Controllers
             return Ok(reports);
         }
 
-        // ✅ 2️⃣ Xử lý report (ban user / bỏ qua / xóa bài)
+        // ✅ 2️⃣ Xử lý report (Ban / Unban / DeletePost / Warn / Ignore)
         [HttpPost("reports/resolve/{reportId}")]
         public async Task<IActionResult> ResolveReport(int reportId, [FromBody] AdminResolveReportDto dto)
         {
-            // Lấy thông tin Admin từ token
+            // Lấy ID admin từ token
             var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
 
-            var report = await _db.PostReports.FirstOrDefaultAsync(r => r.PostReportId == reportId);
+            var report = await _db.PostReports
+                .FirstOrDefaultAsync(r => r.PostReportId == reportId);
+
             if (report == null)
                 return NotFound(new { message = "Report not found." });
 
             if (report.Status != "Pending")
-                return BadRequest(new { message = "This report has already been processed." });
+                return BadRequest(new { message = "Report already processed." });
 
-            // Kiểm tra người bị ảnh hưởng
-            var affectedUser = await _db.Users.FirstOrDefaultAsync(u => u.UserId == dto.AffectedUserId);
-            if (affectedUser == null)
-                return NotFound(new { message = "Affected user not found." });
-
-            // ✅ Xử lý hành động
+            // ✅ Bắt đầu xử lý theo loại hành động
             switch (dto.ActionTaken)
             {
                 case "BanUser":
-                    affectedUser.IsActive = false;
-                    affectedUser.UpdatedAt = DateTime.UtcNow;
+                    if (report.TargetUserId == null)
+                        return BadRequest(new { message = "This report is not for a user." });
+
+                    var userToBan = await _db.Users.FindAsync(report.TargetUserId);
+                    if (userToBan == null) return NotFound("User not found.");
+
+                    userToBan.IsActive = false;
+                    userToBan.UpdatedAt = DateTime.UtcNow;
                     break;
+
                 case "UnbanUser":
-                    affectedUser.IsActive = true;
-                    affectedUser.UpdatedAt = DateTime.UtcNow;
+                    if (report.TargetUserId == null)
+                        return BadRequest(new { message = "This report is not for a user." });
+
+                    var userToUnban = await _db.Users.FindAsync(report.TargetUserId);
+                    if (userToUnban == null) return NotFound("User not found.");
+
+                    userToUnban.IsActive = true;
+                    userToUnban.UpdatedAt = DateTime.UtcNow;
                     break;
-                case "Ignore":
-                    // Không thay đổi trạng thái user
-                    break;
+
                 case "DeletePost":
-                    // Nếu bạn có bảng Posts thì xóa hoặc update tại đây
+                    if (dto.AffectedPostId == null || string.IsNullOrEmpty(dto.AffectedPostType))
+                        return BadRequest(new { message = "Missing post information (AffectedPostId or AffectedPostType)." });
+
+                    if (dto.AffectedPostType == "EmployerPost")
+                    {
+                        var post = await _db.EmployerPosts.FindAsync(dto.AffectedPostId);
+                        if (post != null)
+                        {
+                            post.Status = "Deleted";
+                            post.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+                    else if (dto.AffectedPostType == "JobSeekerPost")
+                    {
+                        var post = await _db.JobSeekerPosts.FindAsync(dto.AffectedPostId);
+                        if (post != null)
+                        {
+                            post.Status = "Deleted";
+                            post.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+                    else return BadRequest(new { message = "Invalid AffectedPostType." });
                     break;
+
+                case "Warn":
+                case "Ignore":
+                    // Không thay đổi dữ liệu, chỉ log lại
+                    break;
+
                 default:
-                    return BadRequest(new { message = "Invalid action. Valid values: BanUser, UnbanUser, Ignore, DeletePost." });
+                    return BadRequest(new { message = "Invalid ActionTaken value." });
             }
 
-            // ✅ Cập nhật trạng thái báo cáo
+            // ✅ Cập nhật trạng thái report
             report.Status = "Resolved";
 
-            // ✅ Ghi log xử lý vào PostReport_Solved
+            // ✅ Ghi log xử lý vào bảng PostReport_Solved
             var solved = new PostReportSolved
             {
                 PostReportId = report.PostReportId,
                 AdminId = adminId,
-                AffectedUserId = dto.AffectedUserId,
+                AffectedUserId = report.TargetUserId,
+                AffectedPostId = dto.AffectedPostId,
+                AffectedPostType = dto.AffectedPostType,
                 ActionTaken = dto.ActionTaken,
                 Reason = dto.Reason,
                 SolvedAt = DateTime.UtcNow
@@ -108,7 +147,6 @@ namespace PTJ_API.Controllers
             {
                 message = $"Report {reportId} resolved with action '{dto.ActionTaken}'.",
                 reportId,
-                dto.AffectedUserId,
                 dto.ActionTaken
             });
         }
@@ -125,9 +163,9 @@ namespace PTJ_API.Controllers
                 {
                     s.SolvedPostReportId,
                     s.PostReportId,
-                    Action = s.ActionTaken,
+                    s.ActionTaken,
                     Admin = new { s.Admin.UserId, s.Admin.Email },
-                    AffectedUser = new { s.AffectedUser.UserId, s.AffectedUser.Email },
+                    AffectedUser = s.AffectedUser != null ? new { s.AffectedUser.UserId, s.AffectedUser.Email } : null,
                     Report = new
                     {
                         s.PostReport.ReportType,
@@ -143,7 +181,4 @@ namespace PTJ_API.Controllers
             return Ok(solvedReports);
         }
     }
-
-    // 🧩 DTO định nghĩa cho request xử lý report
-   
 }

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.Auth;
-using PTJ_Service.Interfaces;
+using PTJ_Service.AuthService.Interfaces;
 using System.Security.Claims;
 
 namespace PTJ_API.Controllers

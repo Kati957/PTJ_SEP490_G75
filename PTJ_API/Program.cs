@@ -14,8 +14,6 @@ using PTJ_Models.Models;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
-using PTJ_Service.Interfaces;
-using PTJ_Service.Implementations;
 using PTJ_Service.AIService;
 using PTJ_Service.EmployerPostService;
 using PTJ_Service.JobSeekerPostService;
@@ -25,6 +23,8 @@ using PTJ_Service.SearchService;
 using PTJ_Service.ProfileService;
 using PTJ_Service.RatingService;
 using PTJ_Service.SystemReportService;
+using PTJ_Service.AuthService.Implementations;
+using PTJ_Service.AuthService.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -6,7 +6,7 @@
         public int UserId { get; set; }
         public string Username { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
-        public string? PhoneNumber { get; set; }
+        public int? PhoneNumber { get; set; }
         public string? Address { get; set; }
 
         // Loại user: "JobSeeker" hoặc "Employer"
@@ -26,7 +26,7 @@
         public string? DisplayName { get; set; }
         public string? Description { get; set; }
         public string? ContactName { get; set; }
-        public string? ContactPhone { get; set; }
+        public int? ContactPhone { get; set; }
         public string? ContactEmail { get; set; }
         public string? Website { get; set; }
         public string? Location { get; set; }

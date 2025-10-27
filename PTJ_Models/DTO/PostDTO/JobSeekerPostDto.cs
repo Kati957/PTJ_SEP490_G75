@@ -17,7 +17,7 @@ namespace PTJ_Models.DTO.PostDTO
         public string? PreferredWorkHours { get; set; }
         public string? PreferredLocation { get; set; }
         public int? CategoryID { get; set; }
-        public string? PhoneContact { get; set; }
+        public int? PhoneContact { get; set; }
     }
 
     public class JobSeekerPostResultDto
