@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using PTJ_Data;
+
 namespace PTJ_Models.Models;
 
 public partial class JobMatchingDbContext : DbContext
@@ -264,7 +264,6 @@ public partial class JobMatchingDbContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Location).HasMaxLength(255);
-            entity.Property(e => e.PhoneContact).HasMaxLength(20);
             entity.Property(e => e.Salary).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
@@ -296,7 +295,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.AvatarUrl).HasMaxLength(255);
             entity.Property(e => e.ContactEmail).HasMaxLength(100);
             entity.Property(e => e.ContactName).HasMaxLength(100);
-            entity.Property(e => e.ContactPhone).HasMaxLength(20);
             entity.Property(e => e.DisplayName).HasMaxLength(100);
             entity.Property(e => e.Location).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)
@@ -756,7 +754,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.LastLogin).HasColumnType("datetime");
             entity.Property(e => e.LockoutEnd).HasColumnType("datetime");
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
-            entity.Property(e => e.PhoneNumber).HasMaxLength(20);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
