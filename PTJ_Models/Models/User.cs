@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace PTJ_Models.Models;
@@ -38,6 +38,10 @@ public partial class User
     public virtual ICollection<EmployerFollower> EmployerFollowerEmployers { get; set; } = new List<EmployerFollower>();
 
     public virtual ICollection<EmployerFollower> EmployerFollowerJobSeekers { get; set; } = new List<EmployerFollower>();
+
+    public virtual ICollection<EmployerInvitation> EmployerInvitationEmployers { get; set; } = new List<EmployerInvitation>();
+
+    public virtual ICollection<EmployerInvitation> EmployerInvitationJobSeekers { get; set; } = new List<EmployerInvitation>();
 
     public virtual ICollection<EmployerPost> EmployerPosts { get; set; } = new List<EmployerPost>();
 

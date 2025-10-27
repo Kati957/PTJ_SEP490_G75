@@ -11,9 +11,9 @@ public partial class PostReportSolved
 
     public int AdminId { get; set; }
 
-    public string? ActionTaken { get; set; }
+    public int AffectedUserId { get; set; }
 
-    public bool AppliedAction { get; set; }
+    public string? ActionTaken { get; set; }
 
     public string? Reason { get; set; }
 
@@ -22,6 +22,8 @@ public partial class PostReportSolved
     public DateTime SolvedAt { get; set; }
 
     public virtual User Admin { get; set; } = null!;
+
+    public virtual User AffectedUser { get; set; } = null!;
 
     public virtual Notification? Notification { get; set; }
 
