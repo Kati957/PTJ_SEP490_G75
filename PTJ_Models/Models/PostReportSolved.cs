@@ -11,17 +11,25 @@ public partial class PostReportSolved
 
     public int AdminId { get; set; }
 
-    public string? ActionTaken { get; set; }
+    public int? AffectedUserId { get; set; }
 
-    public bool AppliedAction { get; set; }
+    public int? AffectedPostId { get; set; }
+
+    public string? AffectedPostType { get; set; }
+
+    public string ActionTaken { get; set; } = null!;
 
     public string? Reason { get; set; }
 
     public int? NotificationId { get; set; }
 
+    public bool AppliedAction { get; set; }
+
     public DateTime SolvedAt { get; set; }
 
     public virtual User Admin { get; set; } = null!;
+
+    public virtual User? AffectedUser { get; set; }
 
     public virtual Notification? Notification { get; set; }
 
