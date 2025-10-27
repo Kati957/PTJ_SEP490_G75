@@ -27,6 +27,8 @@ public partial class JobSeekerProfile
 
     public string? PreferredLocation { get; set; }
 
+    public decimal? AverageRating { get; set; }
+
     public DateTime UpdatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;

@@ -1,18 +1,17 @@
-﻿using PTJ_Models.DTO.PostDTO;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using PTJ_Models.DTO;
 
-public interface IEmployerPostService
+// ⚠️ Thêm alias để trùng với Service
+using EmployerPostModel = PTJ_Models.Models.EmployerPost;
+
+namespace PTJ_Service.EmployerPostService
+{
+    public interface IEmployerPostService
     {
-    Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto);
-    Task<EmployerPostResultDto> RefreshSuggestionsAsync(int employerPostId);
-
-    Task SaveCandidateAsync(SaveCandidateDto dto);
-    Task UnsaveCandidateAsync(SaveCandidateDto dto);
-    Task<IEnumerable<object>> GetShortlistedByPostAsync(int employerPostId);
-
-    Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync();
-    Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId);
-    Task<EmployerPostDtoOut?> GetByIdAsync(int id);
-    Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostDto dto);
-
-    Task<bool> DeleteAsync(int id);
+        Task<EmployerPostModel> CreateEmployerPostAsync(EmployerPostDto dto);
+        Task<IEnumerable<EmployerPostModel>> GetAllAsync();
+        Task<EmployerPostModel?> GetByIdAsync(int id);
+        Task<bool> DeleteAsync(int id);
     }
+}

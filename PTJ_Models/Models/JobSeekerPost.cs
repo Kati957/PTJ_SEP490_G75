@@ -33,7 +33,5 @@ public partial class JobSeekerPost
 
     public virtual Category? Category { get; set; }
 
-    public virtual ICollection<PostReport> PostReports { get; set; } = new List<PostReport>();
-
     public virtual User User { get; set; } = null!;
 }

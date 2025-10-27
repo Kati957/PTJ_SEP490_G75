@@ -22,6 +22,4 @@ public partial class AiMatchSuggestion
     public string? Reason { get; set; }
 
     public DateTime CreatedAt { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
 }

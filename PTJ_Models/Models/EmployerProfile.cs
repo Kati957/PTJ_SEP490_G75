@@ -25,6 +25,8 @@ public partial class EmployerProfile
 
     public string? Website { get; set; }
 
+    public decimal? AverageRating { get; set; }
+
     public DateTime UpdatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;

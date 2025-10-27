@@ -23,7 +23,5 @@ public partial class AiEmbeddingStatus
 
     public string? ErrorMsg { get; set; }
 
-    public string? VectorData { get; set; }
-
     public DateTime UpdatedAt { get; set; }
 }
