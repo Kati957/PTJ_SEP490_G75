@@ -1,16 +1,16 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.PostDTO;
-using PTJ_Service.EmployerPostService;
+using PTJ_Service.JobSeekerPostService;
 
 namespace PTJ_API.Controllers
     {
     [ApiController]
     [Route("api/[controller]")]
-    public class EmployerPostController : ControllerBase
+    public class JobSeekerPostController : ControllerBase
         {
-        private readonly IEmployerPostService _service;
+        private readonly IJobSeekerPostService _service;
 
-        public EmployerPostController(IEmployerPostService service)
+        public JobSeekerPostController(IJobSeekerPostService service)
             {
             _service = service;
             }
@@ -19,10 +19,10 @@ namespace PTJ_API.Controllers
         // CREATE
         // =========================================================
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromBody] EmployerPostDto dto)
+        public async Task<IActionResult> Create([FromBody] JobSeekerPostDto dto)
             {
-            var result = await _service.CreateEmployerPostAsync(dto);
-            return Ok(new { success = true, message = "Đăng bài tuyển dụng thành công.", data = result });
+            var result = await _service.CreateJobSeekerPostAsync(dto);
+            return Ok(new { success = true, message = "Đăng bài tìm việc thành công.", data = result });
             }
 
         // =========================================================
@@ -55,7 +55,7 @@ namespace PTJ_API.Controllers
         // UPDATE
         // =========================================================
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] EmployerPostDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] JobSeekerPostDto dto)
             {
             var result = await _service.UpdateAsync(id, dto);
             if (result == null)
@@ -80,30 +80,30 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> Refresh(int postId)
             {
             var result = await _service.RefreshSuggestionsAsync(postId);
-            return Ok(new { success = true, message = "Đã làm mới đề xuất ứng viên.", data = result });
+            return Ok(new { success = true, message = "Đã làm mới đề xuất việc làm.", data = result });
             }
 
         // =========================================================
         // SHORTLIST
         // =========================================================
-        [HttpPost("save-candidate")]
-        public async Task<IActionResult> SaveCandidate([FromBody] SaveCandidateDto dto)
+        [HttpPost("save-job")]
+        public async Task<IActionResult> SaveJob([FromBody] SaveJobDto dto)
             {
-            await _service.SaveCandidateAsync(dto);
-            return Ok(new { success = true, message = "Đã lưu ứng viên." });
+            await _service.SaveJobAsync(dto);
+            return Ok(new { success = true, message = "Đã lưu việc làm." });
             }
 
-        [HttpPost("unsave-candidate")]
-        public async Task<IActionResult> UnsaveCandidate([FromBody] SaveCandidateDto dto)
+        [HttpPost("unsave-job")]
+        public async Task<IActionResult> UnsaveJob([FromBody] SaveJobDto dto)
             {
-            await _service.UnsaveCandidateAsync(dto);
-            return Ok(new { success = true, message = "Đã bỏ lưu ứng viên." });
+            await _service.UnsaveJobAsync(dto);
+            return Ok(new { success = true, message = "Đã bỏ lưu việc làm." });
             }
 
-        [HttpGet("shortlist/{postId}")]
-        public async Task<IActionResult> GetShortlisted(int postId)
+        [HttpGet("saved/{jobSeekerId}")]
+        public async Task<IActionResult> GetSavedJobs(int jobSeekerId)
             {
-            var result = await _service.GetShortlistedByPostAsync(postId);
+            var result = await _service.GetSavedJobsAsync(jobSeekerId);
             return Ok(result);
             }
         }
