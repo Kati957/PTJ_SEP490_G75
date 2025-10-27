@@ -7,6 +7,9 @@ using PTJ_Data;
 using PTJ_Service.Helpers;
 using PTJ_Service.Interfaces;
 using PTJ_Service.Implementations;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
 using PTJ_Models.Models;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
@@ -25,16 +28,28 @@ var builder = WebApplication.CreateBuilder(args);
 // Ép API chạy đúng port 7100 (HTTPS) + 5169 (HTTP)
 //builder.WebHost.UseUrls("https://localhost:7100;http://localhost:5169");
 
+using PTJ_Service.ProfileService; // ✅ thêm dòng này
+using PTJ_Service.RatingService;
+using PTJ_Service.SystemReportService;
+var builder = WebApplication.CreateBuilder(args);
+
+// =============================================
+// 1️⃣ CONFIG DATABASE (EF CORE)
+// =============================================
 builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
-// Add services to the container.
-// ⚙️ Thêm Swagger
+
+// =============================================
+// 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
+// =============================================
+
+// ⚙️ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// ⚙️ Thêm các service AI
+// ⚙️ AI Services
 builder.Services.AddHttpClient<OpenAIService>();
 builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
