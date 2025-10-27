@@ -23,7 +23,7 @@ public partial class JobSeekerPost
 
     public int? CategoryId { get; set; }
 
-    public string? PhoneContact { get; set; }
+    public int? PhoneContact { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -32,6 +32,8 @@ public partial class JobSeekerPost
     public string Status { get; set; } = null!;
 
     public virtual Category? Category { get; set; }
+
+    public virtual ICollection<PostReport> PostReports { get; set; } = new List<PostReport>();
 
     public virtual User User { get; set; } = null!;
 }

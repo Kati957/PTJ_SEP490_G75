@@ -39,10 +39,6 @@ public partial class User
 
     public virtual ICollection<EmployerFollower> EmployerFollowerJobSeekers { get; set; } = new List<EmployerFollower>();
 
-    public virtual ICollection<EmployerInvitation> EmployerInvitationEmployers { get; set; } = new List<EmployerInvitation>();
-
-    public virtual ICollection<EmployerInvitation> EmployerInvitationJobSeekers { get; set; } = new List<EmployerInvitation>();
-
     public virtual ICollection<EmployerPost> EmployerPosts { get; set; } = new List<EmployerPost>();
 
     public virtual EmployerProfile? EmployerProfile { get; set; }
@@ -59,6 +55,8 @@ public partial class User
 
     public virtual JobSeekerProfile? JobSeekerProfile { get; set; }
 
+    public virtual ICollection<JobSeekerShortlistedJob> JobSeekerShortlistedJobs { get; set; } = new List<JobSeekerShortlistedJob>();
+
     public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
 
     public virtual ICollection<LoginAttempt> LoginAttempts { get; set; } = new List<LoginAttempt>();
@@ -69,11 +67,13 @@ public partial class User
 
     public virtual ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();
 
+    public virtual ICollection<PostReport> PostReportReporters { get; set; } = new List<PostReport>();
+
     public virtual ICollection<PostReportSolved> PostReportSolvedAdmins { get; set; } = new List<PostReportSolved>();
 
     public virtual ICollection<PostReportSolved> PostReportSolvedAffectedUsers { get; set; } = new List<PostReportSolved>();
 
-    public virtual ICollection<PostReport> PostReports { get; set; } = new List<PostReport>();
+    public virtual ICollection<PostReport> PostReportTargetUsers { get; set; } = new List<PostReport>();
 
     public virtual ICollection<Rating> RatingRatees { get; set; } = new List<Rating>();
 
