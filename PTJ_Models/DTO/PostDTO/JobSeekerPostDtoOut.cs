@@ -6,19 +6,19 @@ using System.Threading.Tasks;
 
 namespace PTJ_Models.DTO.PostDTO
 {
-    public class EmployerPostDtoOut
+    public class JobSeekerPostDtoOut
     {
-        public int EmployerPostId { get; set; }
+        public int JobSeekerPostId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public decimal? Salary { get; set; }
-        public string? Requirements { get; set; }
-        public string? WorkHours { get; set; }
-        public string? Location { get; set; }
+        public int? Age { get; set; }
+        public string? Gender { get; set; }
+        public string? PreferredWorkHours { get; set; }
+        public string? PreferredLocation { get; set; }
         public int? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
-        public string? EmployerName { get; set; }
+        public string? SeekerName { get; set; }
         public DateTime CreatedAt { get; set; }
-        public string Status { get; set; } = string.Empty;
+        public string? Status { get; set; }
     }
 }

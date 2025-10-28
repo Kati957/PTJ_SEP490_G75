@@ -23,7 +23,7 @@ public partial class EmployerPost
 
     public int? CategoryId { get; set; }
 
-    public string? PhoneContact { get; set; }
+    public int? PhoneContact { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
