@@ -74,6 +74,7 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
+
     public virtual DbSet<LocationCache> LocationCaches { get; set; }
 
 

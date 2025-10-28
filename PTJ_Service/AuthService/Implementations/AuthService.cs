@@ -48,6 +48,10 @@ public sealed class AuthService : IAuthService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
+        // Gán 1 role duy nhất: JobSeeker
+        await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
+
+
         // Tạo JobSeekerProfile (nếu chưa có)
         if (!await _db.JobSeekerProfiles.AnyAsync(p => p.UserId == user.UserId))
         {
@@ -266,26 +270,14 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponseDto> UpgradeToEmployerAsync(int userId, RegisterEmployerDto dto, string? ip)
     {
-        // nạp user + roles để làm việc qua navigation
-        var user = await _db.Users
-            .Include(u => u.Roles)
-            .FirstOrDefaultAsync(u => u.UserId == userId)
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId)
             ?? throw new Exception("User not found");
 
-        // lấy role Employer
-        var employerRole = await _db.Roles.FirstAsync(r => r.RoleName == "Employer");
+        // Chỉ còn 1 role: Employer
+        await RoleHelper.SetSingleRoleAsync(_db, userId, "Employer");
 
-        // kiểm tra và thêm role qua navigation (không dùng _db.UserRoles)
-        var hasRole = user.Roles.Any(r => r.RoleId == employerRole.RoleId);
-        if (!hasRole)
-        {
-            // attach role có sẵn vào collection
-            user.Roles.Add(employerRole);
-        }
-
-        // tạo EmployerProfile nếu chưa có
-        var hasProfile = await _db.EmployerProfiles.AnyAsync(p => p.UserId == userId);
-        if (!hasProfile)
+        // Tạo EmployerProfile nếu chưa có
+        if (!await _db.EmployerProfiles.AnyAsync(p => p.UserId == userId))
         {
             _db.EmployerProfiles.Add(new EmployerProfile
             {
@@ -293,11 +285,13 @@ public sealed class AuthService : IAuthService
                 DisplayName = dto.DisplayName ?? user.Username,
                 ContactPhone = dto.PhoneNumber
             });
+            await _db.SaveChangesAsync();
         }
 
-        await _db.SaveChangesAsync();
+        // Issue token mới để claims phản ánh role mới
         return await _tokens.IssueAsync(user, "web", ip);
     }
+
 
     public async Task RequestPasswordResetAsync(string email)
     {
@@ -333,23 +327,27 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, string? ip)
     {
+        // 1) Xác thực IdToken với Google
         var payload = await GoogleJsonWebSignature.ValidateAsync(
-    dto.IdToken,
-    new GoogleJsonWebSignature.ValidationSettings
-    {
-        Audience = new[] { _cfg["Google:ClientId"] }
-    });
+            dto.IdToken,
+            new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _cfg["Google:ClientId"] }
+            });
 
-        var email = payload.Email.ToLowerInvariant();
+        var email = payload.Email.Trim().ToLowerInvariant();
 
+        // 2) Tìm user theo email
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
+
         if (user == null)
         {
+            // 2a) Tạo user mới
             user = new User
             {
                 Email = email,
                 Username = email.Split('@')[0],
-                PasswordHash = null,
+                PasswordHash = null,                    // đăng nhập qua Google, không có password local
                 IsActive = true,
                 IsVerified = payload.EmailVerified,
                 CreatedAt = DateTime.UtcNow,
@@ -358,27 +356,78 @@ public sealed class AuthService : IAuthService
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
+            // Liên kết external login
             _db.ExternalLogins.Add(new ExternalLogin
             {
                 UserId = user.UserId,
                 Provider = "Google",
-                ProviderKey = payload.Subject,
+                ProviderKey = payload.Subject,          // sub
                 Email = email,
                 EmailVerified = payload.EmailVerified
             });
             await _db.SaveChangesAsync();
+
+            // GÁN 1 ROLE DUY NHẤT: JobSeeker
+            await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
+
+            // (Tuỳ chọn) tạo JobSeekerProfile nếu thiếu
+            if (!await _db.JobSeekerProfiles.AnyAsync(p => p.UserId == user.UserId))
+            {
+                _db.JobSeekerProfiles.Add(new JobSeekerProfile
+                {
+                    UserId = user.UserId,
+                    FullName = user.Username
+                });
+                await _db.SaveChangesAsync();
+            }
         }
         else
         {
-            var linked = await _db.ExternalLogins.AnyAsync(x => x.UserId == user.UserId && x.Provider == "Google" && x.ProviderKey == payload.Subject);
+            // 2b) User đã tồn tại: đảm bảo có external login Google
+            var linked = await _db.ExternalLogins.AnyAsync(x =>
+                x.UserId == user.UserId &&
+                x.Provider == "Google" &&
+                x.ProviderKey == payload.Subject);
+
             if (!linked)
             {
-                _db.ExternalLogins.Add(new ExternalLogin { UserId = user.UserId, Provider = "Google", ProviderKey = payload.Subject, Email = email, EmailVerified = payload.EmailVerified });
+                _db.ExternalLogins.Add(new ExternalLogin
+                {
+                    UserId = user.UserId,
+                    Provider = "Google",
+                    ProviderKey = payload.Subject,
+                    Email = email,
+                    EmailVerified = payload.EmailVerified
+                });
                 await _db.SaveChangesAsync();
             }
-            if (payload.EmailVerified && !user.IsVerified) { user.IsVerified = true; user.UpdatedAt = DateTime.UtcNow; await _db.SaveChangesAsync(); }
+
+            // Nếu Google xác nhận email verified mà user chưa verified → cập nhật
+            if (payload.EmailVerified && !user.IsVerified)
+            {
+                user.IsVerified = true;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+
+            // ĐẢM BẢO user có role (không ghi đè nếu đã có, chỉ set nếu chưa có vai trò nào)
+            await RoleHelper.EnsureRoleIfMissingAsync(_db, user.UserId, "JobSeeker");
+
+            // (Tuỳ chọn) đảm bảo có JobSeekerProfile nếu user chưa nâng cấp Employer
+            // (nếu đã có EmployerProfile thì bỏ qua)
+            var hasEmployer = await _db.EmployerProfiles.AnyAsync(p => p.UserId == user.UserId);
+            if (!hasEmployer && !await _db.JobSeekerProfiles.AnyAsync(p => p.UserId == user.UserId))
+            {
+                _db.JobSeekerProfiles.Add(new JobSeekerProfile
+                {
+                    UserId = user.UserId,
+                    FullName = user.Username
+                });
+                await _db.SaveChangesAsync();
+            }
         }
 
+        // 3) Cấp token đăng nhập
         return await _tokens.IssueAsync(user, "google", ip);
     }
 }
