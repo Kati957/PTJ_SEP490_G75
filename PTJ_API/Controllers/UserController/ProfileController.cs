@@ -2,7 +2,7 @@
 using PTJ_Models.DTO;
 using PTJ_Service.ProfileService.Interfaces;
 
-namespace PTJ_API.Controllers
+namespace PTJ_API.Controllers.UserController
 {
     [Route("api/[controller]")]
     [ApiController]

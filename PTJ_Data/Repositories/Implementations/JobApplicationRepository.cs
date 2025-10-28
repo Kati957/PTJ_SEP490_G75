@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PTJ_Data.Repositories.Implementations
-    {
+{
     public class JobApplicationRepository : IJobApplicationRepository
         {
         private readonly JobMatchingDbContext _db;

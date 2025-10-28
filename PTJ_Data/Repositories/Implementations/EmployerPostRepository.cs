@@ -3,7 +3,7 @@ using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Implementations
-    {
+{
     public class EmployerPostRepository : IEmployerPostRepository
         {
         private readonly JobMatchingDbContext _db;

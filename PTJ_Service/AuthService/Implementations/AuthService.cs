@@ -4,12 +4,12 @@ using System.Security.Cryptography;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using PTJ_Data;
 using PTJ_Models.DTO.Auth;
 using PTJ_Service.Helpers;
 using PTJ_Models.Models;
 using Microsoft.AspNetCore.WebUtilities;
 using PTJ_Service.AuthService.Interfaces;
+using PTJ_Data;
 
 namespace PTJ_Service.AuthService.Implementations;
 

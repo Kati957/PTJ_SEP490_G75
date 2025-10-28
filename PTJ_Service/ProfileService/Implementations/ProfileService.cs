@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using PTJ_Data;
 using PTJ_Models.DTO;
-using PTJ_Models.Models;
 using PTJ_Service.ProfileService.Interfaces;
 
 namespace PTJ_Service.ProfileService.Implementations

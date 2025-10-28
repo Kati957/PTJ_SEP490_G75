@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PTJ_Data;
 using PTJ_Models.DTO.Auth;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -8,6 +7,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using PTJ_Models.Models;
 using PTJ_Service.AuthService.Interfaces;
+using PTJ_Data;
 
 public sealed class TokenService : ITokenService
 {

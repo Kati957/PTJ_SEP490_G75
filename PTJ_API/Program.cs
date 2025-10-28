@@ -9,8 +9,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
-using PTJ_Data;
-using PTJ_Models.Models;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
@@ -29,20 +27,28 @@ using PTJ_Service.JobApplicationService.Implementations;
 using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Service.AiService.Implementations;
 using PTJ_Service.AiService.Interfaces;
+using PTJ_Data;
+using PTJ_Data.Repo.Implement;
+using PTJ_Data.Repo.Interface;
+using PTJ_Service.Implement;
+using PTJ_Service.Interface;
+using PTJ_Data.Repositories.Implementations.Admin;
+using PTJ_Data.Repositories.Interfaces.Admin;
+using PTJ_Service.Admin.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =============================================
+
 // 1️⃣ CONFIG DATABASE (EF CORE)
-// =============================================
+
 builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
 
-// =============================================
+
 // 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
-// =============================================
+
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -80,6 +86,8 @@ builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IAdminReportService, AdminReportService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
 builder.Services.AddScoped<IJobSeekerPostService, JobSeekerPostService>();
 builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
@@ -87,12 +95,17 @@ builder.Services.AddScoped<IEmployerSearchService, EmployerSearchService>();
 builder.Services.AddScoped<IJobSeekerSearchService, JobSeekerSearchService>();
 builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 
+
 // Repository
+builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+builder.Services.AddScoped<IAdminReportRepository, AdminReportRepository>();
 builder.Services.AddScoped<IEmployerPostRepository, EmployerPostRepository>();
 builder.Services.AddScoped<IJobSeekerPostRepository, JobSeekerPostRepository>();
 builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 builder.Services.AddScoped<IEmployerSearchRepository, EmployerSearchRepository>();
 builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository>();
+
+
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -102,9 +115,9 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
-// =============================================
+
 // 3️⃣ CẤU HÌNH JWT AUTHENTICATION
-// =============================================
+
 var jwt = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -123,9 +136,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             };
     });
 
-// =============================================
 // 4️⃣ CẤU HÌNH CORS
-// =============================================
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost", policy =>
@@ -140,9 +152,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-// =============================================
+
 // 5️⃣ CONTROLLERS + JSON OPTIONS
-// =============================================
+
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>
     {
@@ -150,9 +162,9 @@ builder.Services.AddControllers()
         opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
 
-// =============================================
+
 // 6️⃣ BUILD APP
-// =============================================
+
 var app = builder.Build();
 
 // Swagger

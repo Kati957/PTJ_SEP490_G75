@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using PTJ_Data;
-namespace PTJ_Models.Models;
+using PTJ_Models.Models;
+namespace PTJ_Data;
 
 public partial class JobMatchingDbContext : DbContext
 {

@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using PTJ_Models.DTO.Auth;
 using System.Net;
-using PTJ_Service.AuthService.Interfaces; // dùng cho UrlDecode
+using PTJ_Service.AuthService.Interfaces;
 
-namespace PTJ_API.Controllers;
+namespace PTJ_API.Controllers.AuthController;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -20,10 +20,9 @@ public class AuthController : ControllerBase
         _svc = svc;
         _cfg = cfg;
     }
-
-    // ---------------------------
+    
     // 1️⃣ Đăng ký Job Seeker
-    // ---------------------------
+  
     [HttpPost("register/jobseeker")]
     [AllowAnonymous]
     public async Task<IActionResult> RegisterJobSeeker(RegisterJobSeekerDto dto)
@@ -32,9 +31,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Please check your email to verify your account." });
     }
 
-    // ---------------------------
+   
     // 2️⃣ Xác thực email (Swagger hoặc FE gọi POST)
-    // ---------------------------
+    
     [HttpPost("verify-email")]
     [AllowAnonymous]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest dto)
@@ -55,9 +54,9 @@ public class AuthController : ControllerBase
         public string Token { get; set; } = string.Empty;
     }
 
-    // ---------------------------
+   
     // 3️⃣ Xác thực email (qua link trong email)
-    // ---------------------------
+   
     [HttpGet("verify-email")]
     [AllowAnonymous]
     public async Task<IActionResult> VerifyEmailLink([FromQuery] string token)
@@ -80,9 +79,9 @@ public class AuthController : ControllerBase
         }
     }
 
-    // ---------------------------
+    
     // 4️⃣ Gửi lại email xác thực
-    // ---------------------------
+    
     [HttpPost("resend-verification")]
     [AllowAnonymous]
     public async Task<IActionResult> ResendVerification([FromBody] ResendVerifyDto dto)
@@ -91,25 +90,25 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Verification email resent if account exists." });
     }
 
-    // ---------------------------
+   
     // 5️⃣ Đăng nhập
-    // ---------------------------
+    
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto dto)
         => Ok(await _svc.LoginAsync(dto, IP));
 
-    // ---------------------------
+   
     // 6️⃣ Refresh Token
-    // ---------------------------
+    
     [HttpPost("refresh")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshDto dto)
         => Ok(await _svc.RefreshAsync(dto.RefreshToken, dto.DeviceInfo, IP));
 
-    // ---------------------------
+    
     // 7️⃣ Logout
-    // ---------------------------
+   
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout([FromBody] RefreshDto dto)
@@ -118,9 +117,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logged out successfully." });
     }
 
-    // ---------------------------
+   
     // 8️⃣ Lấy thông tin user hiện tại
-    // ---------------------------
+    
     [Authorize]
     [HttpGet("me")]
     public IActionResult Me()
@@ -134,9 +133,9 @@ public class AuthController : ControllerBase
         return Ok(new { id, email, username, verified, roles });
     }
 
-    // ---------------------------
+   
     // 9️⃣ Nâng cấp Employer
-    // ---------------------------
+    
     [Authorize]
     [HttpPost("register/employer")]
     public async Task<ActionResult<AuthResponseDto>> UpgradeToEmployer(RegisterEmployerDto dto)
@@ -145,9 +144,9 @@ public class AuthController : ControllerBase
         return Ok(await _svc.UpgradeToEmployerAsync(userId, dto, IP));
     }
 
-    // ---------------------------
+  
     // 🔟 Quên mật khẩu
-    // ---------------------------
+    
     [HttpPost("forgot-password")]
     [AllowAnonymous]
     public async Task<IActionResult> Forgot(ForgotPasswordDto dto)
@@ -156,9 +155,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = "If this email exists, a reset link has been sent." });
     }
 
-    // ---------------------------
+   
     // 11️⃣ Reset mật khẩu
-    // ---------------------------
+    
     [HttpPost("reset-password")]
     [AllowAnonymous]
     public async Task<IActionResult> Reset(ResetPasswordDto dto)
@@ -167,9 +166,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Password reset successfully." });
     }
 
-    // ---------------------------
+   
     // 12️⃣ Đăng nhập Google
-    // ---------------------------
+    
     [HttpPost("google")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> Google(GoogleLoginDto dto)
