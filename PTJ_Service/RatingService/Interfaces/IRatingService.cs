@@ -1,6 +1,6 @@
 ﻿using PTJ_Models.DTOs;
 
-namespace PTJ_Service.RatingService
+namespace PTJ_Service.RatingService.Interfaces
 {
     public interface IRatingService
     {

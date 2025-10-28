@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTOs;
 using PTJ_Models.Models;
+using PTJ_Service.SystemReportService.Interfaces;
 
-namespace PTJ_Service.SystemReportService
+namespace PTJ_Service.SystemReportService.Implementations
 {
     public class SystemReportService : ISystemReportService
     {

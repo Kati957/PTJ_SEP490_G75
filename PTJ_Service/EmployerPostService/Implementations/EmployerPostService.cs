@@ -3,16 +3,16 @@ using Newtonsoft.Json;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
-using PTJ_Service.AIService;
+using PTJ_Service.AiService.Interfaces;
 using PTJ_Service.LocationService;
 using System.Security.Cryptography;
 using System.Text;
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
 
-namespace PTJ_Service.EmployerPostService
-    {
+namespace PTJ_Service.EmployerPostService.Implementations
+{
     public class EmployerPostService : IEmployerPostService
-        {
+    {
         private readonly IEmployerPostRepository _repo;
         private readonly JobMatchingDbContext _db;
         private readonly IAIService _ai;
@@ -23,20 +23,20 @@ namespace PTJ_Service.EmployerPostService
             JobMatchingDbContext db,
             IAIService ai,
             OpenMapService map)
-            {
+        {
             _repo = repo;
             _db = db;
             _ai = ai;
             _map = map;
-            }
+        }
 
         // =========================================================
         // CREATE
         // =========================================================
         public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto)
-            {
+        {
             var post = new EmployerPostModel
-                {
+            {
                 UserId = dto.UserID,
                 Title = dto.Title,
                 Description = dto.Description,
@@ -49,7 +49,7 @@ namespace PTJ_Service.EmployerPostService
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
                 Status = "Active"
-                };
+            };
 
             await _repo.AddAsync(post);
 
@@ -68,37 +68,37 @@ namespace PTJ_Service.EmployerPostService
                 id: $"EmployerPost:{post.EmployerPostId}",
                 vector: vector,
                 metadata: new
-                    {
+                {
                     title = post.Title ?? "",
                     location = post.Location ?? "",
                     salary = post.Salary ?? 0,
                     categoryId = post.CategoryId ?? 0,
                     postId = post.EmployerPostId
-                    });
+                });
 
             // Query rộng để không bỏ sót (topK=100)
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
             if (!matches.Any())
-                {
+            {
                 // Pending nếu chưa có kết quả
                 _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
-                    {
+                {
                     EntityType = "EmployerPost",
                     EntityId = post.EmployerPostId,
                     Lang = "vi",
                     CanonicalText = $"{dto.Title}. {dto.Description}. {dto.Requirements}. {dto.Location}. {dto.Salary}",
                     Hash = hash,
                     LastPreparedAt = DateTime.Now
-                    });
+                });
                 await _db.SaveChangesAsync();
 
                 return new EmployerPostResultDto
-                    {
+                {
                     Post = await BuildCleanPostDto(post),
                     SuggestedCandidates = new List<AIResultDto>()
-                    };
-                }
+                };
+            }
 
             var scored = await ScoreAndFilterCandidatesAsync(
                 matches,
@@ -118,36 +118,36 @@ namespace PTJ_Service.EmployerPostService
                 .OrderByDescending(x => x.Score)
                 .Take(5)
                 .Select(x => new AIResultDto
-                    {
+                {
                     Id = $"JobSeekerPost:{x.Seeker.JobSeekerPostId}",
                     Score = Math.Round(x.Score * 100, 2),
                     ExtraInfo = new
-                        {
+                    {
                         x.Seeker.JobSeekerPostId,
                         x.Seeker.Title,
                         x.Seeker.PreferredLocation,
                         x.Seeker.PreferredWorkHours,
                         SeekerName = x.Seeker.User.Username,
                         IsSaved = savedIds.Contains(x.Seeker.JobSeekerPostId)
-                        }
-                    })
+                    }
+                })
                 .ToList();
 
             return new EmployerPostResultDto
-                {
+            {
                 Post = await BuildCleanPostDto(post),
                 SuggestedCandidates = suggestions
-                };
-            }
+            };
+        }
 
         // =========================================================
         // READ
         // =========================================================
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
-            {
+        {
             var posts = await _repo.GetAllAsync();
             return posts.Select(p => new EmployerPostDtoOut
-                {
+            {
                 EmployerPostId = p.EmployerPostId,
                 Title = p.Title,
                 Description = p.Description,
@@ -160,14 +160,14 @@ namespace PTJ_Service.EmployerPostService
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
-                });
-            }
+            });
+        }
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
-            {
+        {
             var posts = await _repo.GetByUserAsync(userId);
             return posts.Select(p => new EmployerPostDtoOut
-                {
+            {
                 EmployerPostId = p.EmployerPostId,
                 Title = p.Title,
                 Description = p.Description,
@@ -180,17 +180,17 @@ namespace PTJ_Service.EmployerPostService
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
-                });
-            }
+            });
+        }
 
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
-            {
+        {
             var post = await _repo.GetByIdAsync(id);
             if (post == null)
                 return null;
 
             return new EmployerPostDtoOut
-                {
+            {
                 EmployerPostId = post.EmployerPostId,
                 Title = post.Title,
                 Description = post.Description,
@@ -203,14 +203,14 @@ namespace PTJ_Service.EmployerPostService
                 EmployerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
-                };
-            }
+            };
+        }
 
         // =========================================================
         // UPDATE
         // =========================================================
         public async Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostDto dto)
-            {
+        {
             var post = await _repo.GetByIdAsync(id);
             if (post == null || post.Status == "Deleted")
                 return null;
@@ -238,39 +238,39 @@ namespace PTJ_Service.EmployerPostService
                 id: $"EmployerPost:{post.EmployerPostId}",
                 vector: vector,
                 metadata: new
-                    {
+                {
                     title = post.Title ?? "",
                     location = post.Location ?? "",
                     salary = post.Salary ?? 0,
                     categoryId = post.CategoryId ?? 0,
                     postId = post.EmployerPostId
-                    });
+                });
 
             return await BuildCleanPostDto(post);
-            }
+        }
 
         // =========================================================
         // DELETE (Soft)
         // =========================================================
         public async Task<bool> DeleteAsync(int id)
-            {
+        {
             await _repo.SoftDeleteAsync(id);
 
             var targets = _db.AiMatchSuggestions
-                .Where(s => (s.SourceType == "EmployerPost" && s.SourceId == id)
-                         || (s.TargetType == "EmployerPost" && s.TargetId == id));
+                .Where(s => s.SourceType == "EmployerPost" && s.SourceId == id
+                         || s.TargetType == "EmployerPost" && s.TargetId == id);
 
             _db.AiMatchSuggestions.RemoveRange(targets);
             await _db.SaveChangesAsync();
 
             return true;
-            }
+        }
 
         // =========================================================
         // REFRESH
         // =========================================================
         public async Task<EmployerPostResultDto> RefreshSuggestionsAsync(int employerPostId)
-            {
+        {
             var post = await _repo.GetByIdAsync(employerPostId);
             if (post == null)
                 throw new Exception("Bài đăng không tồn tại.");
@@ -286,23 +286,23 @@ namespace PTJ_Service.EmployerPostService
                 id: $"EmployerPost:{post.EmployerPostId}",
                 vector: vector,
                 metadata: new
-                    {
+                {
                     title = post.Title ?? "",
                     location = post.Location ?? "",
                     salary = post.Salary ?? 0,
                     categoryId = post.CategoryId ?? 0,
                     postId = post.EmployerPostId
-                    });
+                });
 
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
             if (!matches.Any())
-                {
+            {
                 return new EmployerPostResultDto
-                    {
+                {
                     Post = await BuildCleanPostDto(post),
                     SuggestedCandidates = new List<AIResultDto>()
-                    };
-                }
+                };
+            }
 
             var scored = await ScoreAndFilterCandidatesAsync(matches, post.CategoryId, post.Location ?? "", post.Title ?? "");
             await UpsertSuggestionsAsync("EmployerPost", post.EmployerPostId, "JobSeekerPost", scored, keepTop: 5);
@@ -316,27 +316,27 @@ namespace PTJ_Service.EmployerPostService
                 .OrderByDescending(x => x.Score)
                 .Take(5)
                 .Select(x => new AIResultDto
-                    {
+                {
                     Id = $"JobSeekerPost:{x.Seeker.JobSeekerPostId}",
                     Score = Math.Round(x.Score * 100, 2),
                     ExtraInfo = new
-                        {
+                    {
                         x.Seeker.JobSeekerPostId,
                         x.Seeker.Title,
                         x.Seeker.PreferredLocation,
                         x.Seeker.PreferredWorkHours,
                         SeekerName = x.Seeker.User.Username,
                         IsSaved = savedIds.Contains(x.Seeker.JobSeekerPostId)
-                        }
-                    })
+                    }
+                })
                 .ToList();
 
             return new EmployerPostResultDto
-                {
+            {
                 Post = await BuildCleanPostDto(post),
                 SuggestedCandidates = suggestions
-                };
-            }
+            };
+        }
 
         // =========================================================
         // SCORING
@@ -346,11 +346,11 @@ namespace PTJ_Service.EmployerPostService
             int? mustMatchCategoryId,
             string employerLocation,
             string employerTitle)
-            {
+        {
             var result = new List<(JobSeekerPost, double)>();
 
             foreach (var m in matches)
-                {
+            {
                 if (!m.Id.StartsWith("JobSeekerPost:"))
                     continue;
                 if (!int.TryParse(m.Id.Split(':')[1], out var seekerPostId))
@@ -371,10 +371,10 @@ namespace PTJ_Service.EmployerPostService
                     m.Score, employerLocation, employerTitle, seeker.PreferredLocation, seeker.Title);
 
                 result.Add((seeker, score));
-                }
+            }
 
             return result;
-            }
+        }
 
         private async Task<double> ComputeHybridScoreAsync(
             double embeddingScore,
@@ -382,7 +382,7 @@ namespace PTJ_Service.EmployerPostService
             string titleA,
             string? locationB,
             string? titleB)
-            {
+        {
             const double W_EMBED = 0.7;
             const double W_LOC = 0.2;
             const double W_TITLE = 0.1;
@@ -392,13 +392,13 @@ namespace PTJ_Service.EmployerPostService
 
             // LOCATION
             if (!string.IsNullOrWhiteSpace(locationA) && !string.IsNullOrWhiteSpace(locationB))
-                {
+            {
                 try
-                    {
+                {
                     var a = await _map.GetCoordinatesAsync(locationA);
                     var b = await _map.GetCoordinatesAsync(locationB);
                     if (a != null && b != null)
-                        {
+                    {
                         var d = _map.ComputeDistanceKm(a.Value.lat, a.Value.lng, b.Value.lat, b.Value.lng);
                         if (d <= 2)
                             locScore = 1;
@@ -412,90 +412,90 @@ namespace PTJ_Service.EmployerPostService
                             locScore = 0.4;
                         else
                             locScore = 0.2;
-                        }
                     }
-                catch { locScore = 0.5; }
                 }
+                catch { locScore = 0.5; }
+            }
 
             // TITLE
             if (!string.IsNullOrEmpty(titleA) && !string.IsNullOrEmpty(titleB))
-                {
+            {
                 try
-                    {
+                {
                     var vecA = await GetOrCreateTitleEmbeddingAsync(titleA);
                     var vecB = await GetOrCreateTitleEmbeddingAsync(titleB);
 
                     double dot = 0, magA = 0, magB = 0;
                     for (int i = 0; i < vecA.Length; i++)
-                        {
+                    {
                         dot += vecA[i] * vecB[i];
                         magA += vecA[i] * vecA[i];
                         magB += vecB[i] * vecB[i];
-                        }
+                    }
 
                     double cosine = dot / (Math.Sqrt(magA) * Math.Sqrt(magB));
-                    titleScore = Math.Clamp(0.4 + (cosine * 0.6), 0, 1);
-                    }
-                catch { titleScore = 0.5; }
+                    titleScore = Math.Clamp(0.4 + cosine * 0.6, 0, 1);
                 }
-
-            return Math.Clamp((embeddingScore * W_EMBED) + (locScore * W_LOC) + (titleScore * W_TITLE), 0, 1);
+                catch { titleScore = 0.5; }
             }
+
+            return Math.Clamp(embeddingScore * W_EMBED + locScore * W_LOC + titleScore * W_TITLE, 0, 1);
+        }
 
         // =========================================================
         // SHORTLIST
         // =========================================================
         public async Task SaveCandidateAsync(SaveCandidateDto dto)
-            {
+        {
             bool exists = await _db.EmployerShortlistedCandidates
                 .AnyAsync(x => x.EmployerPostId == dto.EmployerPostId && x.JobSeekerId == dto.JobSeekerId);
 
             if (!exists)
-                {
+            {
                 _db.EmployerShortlistedCandidates.Add(new EmployerShortlistedCandidate
-                    {
+                {
                     EmployerId = dto.EmployerId,
                     JobSeekerId = dto.JobSeekerId,
                     EmployerPostId = dto.EmployerPostId,
                     Note = dto.Note,
                     AddedAt = DateTime.Now
-                    });
+                });
                 await _db.SaveChangesAsync();
-                }
             }
+        }
 
         public async Task UnsaveCandidateAsync(SaveCandidateDto dto)
-            {
+        {
             var record = await _db.EmployerShortlistedCandidates
                 .FirstOrDefaultAsync(x => x.EmployerPostId == dto.EmployerPostId && x.JobSeekerId == dto.JobSeekerId);
 
             if (record != null)
-                {
+            {
                 _db.EmployerShortlistedCandidates.Remove(record);
                 await _db.SaveChangesAsync();
-                }
             }
+        }
 
         public async Task<IEnumerable<object>> GetShortlistedByPostAsync(int employerPostId)
-            {
+        {
             return await _db.EmployerShortlistedCandidates
                 .Include(x => x.JobSeeker)
                 .Where(x => x.EmployerPostId == employerPostId)
                 .Select(x => new
-                    {
+                {
                     x.JobSeekerId,
                     x.Note,
                     x.AddedAt,
                     JobSeekerName = x.JobSeeker.Username
-                    })
+                })
                 .ToListAsync();
-            }
+        }
 
         // =========================================================
         // HELPERS
         // =========================================================
         private async Task<(float[] Vector, string Hash)> EnsureEmbeddingAsync(string entityType, int entityId, string text)
-            {
+        {
             if (text.Length > 6000)
                 text = text[..6000];
             string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
@@ -504,18 +504,18 @@ namespace PTJ_Service.EmployerPostService
                 .FirstOrDefaultAsync(x => x.EntityType == entityType && x.EntityId == entityId);
 
             if (embed != null && embed.ContentHash == hash && !string.IsNullOrEmpty(embed.VectorData))
-                {
+            {
                 var cached = JsonConvert.DeserializeObject<float[]>(embed.VectorData!)!;
                 return (cached, hash);
-                }
+            }
 
             var vector = await _ai.CreateEmbeddingAsync(text);
             var jsonVec = JsonConvert.SerializeObject(vector);
 
             if (embed == null)
-                {
+            {
                 _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
-                    {
+                {
                     EntityType = entityType,
                     EntityId = entityId,
                     ContentHash = hash,
@@ -525,21 +525,21 @@ namespace PTJ_Service.EmployerPostService
                     Status = "OK",
                     UpdatedAt = DateTime.Now,
                     VectorData = jsonVec
-                    });
-                }
+                });
+            }
             else
-                {
+            {
                 embed.ContentHash = hash;
                 embed.VectorData = jsonVec;
                 embed.UpdatedAt = DateTime.Now;
-                }
+            }
 
             await _db.SaveChangesAsync();
             return (vector, hash);
-            }
+        }
 
         private async Task<float[]> GetOrCreateTitleEmbeddingAsync(string title)
-            {
+        {
             string entityType = "TitleCache";
             string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(title.ToLowerInvariant())));
 
@@ -553,7 +553,7 @@ namespace PTJ_Service.EmployerPostService
             var json = JsonConvert.SerializeObject(vector);
 
             _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
-                {
+            {
                 EntityType = entityType,
                 EntityId = 0,
                 ContentHash = hash,
@@ -563,19 +563,19 @@ namespace PTJ_Service.EmployerPostService
                 Status = "OK",
                 UpdatedAt = DateTime.Now,
                 VectorData = json
-                });
+            });
             await _db.SaveChangesAsync();
 
             return vector;
-            }
+        }
 
         private async Task<EmployerPostDtoOut> BuildCleanPostDto(EmployerPostModel post)
-            {
+        {
             var category = await _db.Categories.FindAsync(post.CategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
 
             return new EmployerPostDtoOut
-                {
+            {
                 EmployerPostId = post.EmployerPostId,
                 Title = post.Title,
                 Description = post.Description,
@@ -588,18 +588,18 @@ namespace PTJ_Service.EmployerPostService
                 EmployerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
-                };
-            }
+            };
+        }
 
         private async Task UpsertSuggestionsAsync(
             string sourceType, int sourceId, string targetType,
             List<(JobSeekerPost Seeker, double Score)> scored, int keepTop)
-            {
+        {
             var top = scored.OrderByDescending(x => x.Score).Take(keepTop).ToList();
             var keepIds = top.Select(t => t.Seeker.JobSeekerPostId).ToHashSet();
 
             foreach (var (seeker, score) in top)
-                {
+            {
                 var exist = await _db.AiMatchSuggestions.FirstOrDefaultAsync(x =>
                     x.SourceType == sourceType &&
                     x.SourceId == sourceId &&
@@ -607,9 +607,9 @@ namespace PTJ_Service.EmployerPostService
                     x.TargetId == seeker.JobSeekerPostId);
 
                 if (exist == null)
-                    {
+                {
                     _db.AiMatchSuggestions.Add(new AiMatchSuggestion
-                        {
+                    {
                         SourceType = sourceType,
                         SourceId = sourceId,
                         TargetType = targetType,
@@ -618,16 +618,16 @@ namespace PTJ_Service.EmployerPostService
                         MatchPercent = (int)Math.Round(score * 100),
                         Reason = "AI đề xuất ứng viên",
                         CreatedAt = DateTime.Now
-                        });
-                    }
+                    });
+                }
                 else
-                    {
+                {
                     exist.RawScore = score;
                     exist.MatchPercent = (int)Math.Round(score * 100);
                     exist.Reason = "AI cập nhật đề xuất";
                     exist.UpdatedAt = DateTime.Now;
-                    }
                 }
+            }
 
             var obsolete = await _db.AiMatchSuggestions
                 .Where(x => x.SourceType == sourceType && x.SourceId == sourceId && x.TargetType == targetType && !keepIds.Contains(x.TargetId))
@@ -637,6 +637,6 @@ namespace PTJ_Service.EmployerPostService
                 _db.AiMatchSuggestions.RemoveRange(obsolete);
 
             await _db.SaveChangesAsync();
-            }
         }
     }
+}

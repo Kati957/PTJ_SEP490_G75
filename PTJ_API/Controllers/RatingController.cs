@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PTJ_Service.RatingService;
 using PTJ_Models.DTOs;
+using PTJ_Service.RatingService.Interfaces;
 
 namespace PTJ_API.Controllers
 {

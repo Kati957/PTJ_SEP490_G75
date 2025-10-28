@@ -1,6 +1,6 @@
 ﻿using PTJ_Models.DTO;
 
-namespace PTJ_Service.ProfileService
+namespace PTJ_Service.ProfileService.Interfaces
 {
     public interface IProfileService
     {

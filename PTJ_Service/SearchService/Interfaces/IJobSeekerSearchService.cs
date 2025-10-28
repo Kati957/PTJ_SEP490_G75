@@ -1,10 +1,10 @@
 ﻿using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.DTO.SearchDTO;
 
-namespace PTJ_Service.SearchService
-    {
+namespace PTJ_Service.SearchService.Interfaces
+{
     public interface IJobSeekerSearchService
-        {
+    {
         Task<IEnumerable<EmployerPostDtoOut>> SearchEmployerPostsAsync(JobSeekerSearchFilterDto filter);
-        }
     }
+}

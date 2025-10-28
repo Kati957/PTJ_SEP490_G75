@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
-namespace PTJ_Service.AIService
+namespace PTJ_Service.AiService.Implementations
 {
     public class PineconeService
     {

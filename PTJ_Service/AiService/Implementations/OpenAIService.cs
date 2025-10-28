@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
 using Microsoft.Extensions.Configuration;
 
-namespace PTJ_Service.AIService
+namespace PTJ_Service.AiService.Implementations
 {
     public class OpenAIService
     {

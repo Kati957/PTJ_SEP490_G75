@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTOs;
 using PTJ_Models.Models;
+using PTJ_Service.RatingService.Interfaces;
 
-namespace PTJ_Service.RatingService
+namespace PTJ_Service.RatingService.Implementations
 {
     public class RatingService : IRatingService
     {
@@ -55,7 +56,7 @@ namespace PTJ_Service.RatingService
         {
             var avg = await _context.Ratings
                 .Where(r => r.RateeId == rateeId)
-                .AverageAsync(r => (decimal?)r.RatingValue) ?? 0;
+                .AverageAsync(r => r.RatingValue) ?? 0;
 
             return Math.Round(avg, 2);
         }

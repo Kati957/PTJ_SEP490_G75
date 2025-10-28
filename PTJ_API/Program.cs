@@ -14,17 +14,21 @@ using PTJ_Models.Models;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
-using PTJ_Service.AIService;
-using PTJ_Service.EmployerPostService;
-using PTJ_Service.JobSeekerPostService;
-using PTJ_Service.JobApplicationService;
 using PTJ_Service.LocationService;
-using PTJ_Service.SearchService;
 using PTJ_Service.ProfileService;
 using PTJ_Service.RatingService;
 using PTJ_Service.SystemReportService;
 using PTJ_Service.AuthService.Implementations;
 using PTJ_Service.AuthService.Interfaces;
+using PTJ_Service.SearchService.Interfaces;
+using PTJ_Service.SearchService.Implementations;
+using PTJ_Service.JobSeekerPostService.cs.Interfaces;
+using PTJ_Service.JobSeekerPostService.cs.Implementations;
+using PTJ_Service.JobApplicationService.Interfaces;
+using PTJ_Service.JobApplicationService.Implementations;
+using PTJ_Service.EmployerPostService.Implementations;
+using PTJ_Service.AiService.Implementations;
+using PTJ_Service.AiService.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 

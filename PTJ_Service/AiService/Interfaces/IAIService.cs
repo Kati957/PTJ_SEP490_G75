@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace PTJ_Service.AIService
+namespace PTJ_Service.AiService.Interfaces
 {
     public interface IAIService
     {

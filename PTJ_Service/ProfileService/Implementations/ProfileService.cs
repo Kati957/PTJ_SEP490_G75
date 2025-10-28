@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTO;
 using PTJ_Models.Models;
+using PTJ_Service.ProfileService.Interfaces;
 
-namespace PTJ_Service.ProfileService
+namespace PTJ_Service.ProfileService.Implementations
 {
     public class ProfileService : IProfileService
     {

@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO;
-using PTJ_Service.ProfileService;
+using PTJ_Service.ProfileService.Interfaces;
 
 namespace PTJ_API.Controllers
 {

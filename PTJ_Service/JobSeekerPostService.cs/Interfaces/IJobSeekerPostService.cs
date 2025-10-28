@@ -1,10 +1,10 @@
 ﻿using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
 
-namespace PTJ_Service.JobSeekerPostService
-    {
+namespace PTJ_Service.JobSeekerPostService.cs.Interfaces
+{
     public interface IJobSeekerPostService
-        {
+    {
         // CRUD
         Task<IEnumerable<JobSeekerPostDtoOut>> GetAllAsync();
         Task<IEnumerable<JobSeekerPostDtoOut>> GetByUserAsync(int userId);
@@ -20,5 +20,5 @@ namespace PTJ_Service.JobSeekerPostService
         Task SaveJobAsync(SaveJobDto dto);
         Task UnsaveJobAsync(SaveJobDto dto);
         Task<IEnumerable<object>> GetSavedJobsAsync(int jobSeekerId);
-        }
     }
+}

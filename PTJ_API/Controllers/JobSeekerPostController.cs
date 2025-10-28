@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.PostDTO;
-using PTJ_Service.JobSeekerPostService;
+using PTJ_Service.JobSeekerPostService.cs.Interfaces;
 
 namespace PTJ_API.Controllers
-    {
+{
     [ApiController]
     [Route("api/[controller]")]
     public class JobSeekerPostController : ControllerBase
