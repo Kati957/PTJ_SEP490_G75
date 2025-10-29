@@ -18,5 +18,6 @@ namespace PTJ_Service.Admin.Interfaces
         Task<UserDetailDto> GetUserDetailAsync(int id);
 
         Task ToggleUserActiveAsync(int id);
+        Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync();
     }
 }

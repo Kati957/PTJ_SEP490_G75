@@ -23,4 +23,3 @@ namespace PTJ_Service.JobSeekerPostService.cs.Interfaces
         Task<IEnumerable<JobSeekerJobSuggestionDto>> GetSuggestionsByPostAsync(int jobSeekerPostId, int take = 10, int skip = 0);
         }
     }
-}

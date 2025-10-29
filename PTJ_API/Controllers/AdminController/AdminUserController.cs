@@ -36,5 +36,11 @@ namespace PTJ_API.Controllers.Admin
             await _svc.ToggleUserActiveAsync(id);
             return Ok(new { message = "User active toggled successfully." });
         }
+        [HttpGet("full")]
+        public async Task<IActionResult> GetAllUserFull()
+        {
+            var data = await _svc.GetAllUserFullAsync();
+            return Ok(data);
+        }
     }
 }

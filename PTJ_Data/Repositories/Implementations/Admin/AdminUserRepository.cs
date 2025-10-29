@@ -105,6 +105,60 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
             return dto;
         }
+        // ============ Chi tiết người dùng đầy đủ (Admin) =============
+        public async Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync()
+        {
+            // 1) Query lấy dữ liệu thô (KHÔNG gọi .ToString() trong Select)
+            var rows = await _db.Users
+                .Include(u => u.Roles)
+                .Include(u => u.JobSeekerProfile)
+                .Include(u => u.EmployerProfile)
+                .Select(u => new
+                {
+                    u.UserId,
+                    u.Username,
+                    u.Email,
+                    Role = u.Roles.Select(r => r.RoleName).FirstOrDefault(),
+                    u.IsActive,
+                    u.IsVerified,
+                    u.CreatedAt,
+                    u.LastLogin,
+                    u.Address,
+                    Phone = u.PhoneNumber,                       // giữ nguyên kiểu gốc (int?)
+                    JS = u.JobSeekerProfile,
+                    EP = u.EmployerProfile
+                })
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync(); // 2) Materialize tại đây
+
+            // 3) Map sang DTO và lúc này mới .ToString()
+            var result = rows.Select(x => new AdminUserFullDto
+            {
+                UserId = x.UserId,
+                Username = x.Username,
+                Email = x.Email,
+                Role = x.Role ?? "Unknown",
+                IsActive = x.IsActive,
+                IsVerified = x.IsVerified,
+                CreatedAt = x.CreatedAt,
+                LastLogin = x.LastLogin,
+                Address = x.Address,
+                PhoneNumber = x.Phone?.ToString(),             // OK: chạy trên bộ nhớ, không còn translate SQL
+
+                // Job Seeker
+                FullName = x.JS?.FullName,
+                Gender = x.JS?.Gender,
+                BirthYear = x.JS?.BirthYear,
+                PreferredLocation = x.JS?.PreferredLocation,
+
+                // Employer
+                CompanyName = x.EP?.DisplayName,
+                Website = x.EP?.Website
+            });
+
+            return result;
+        }
+
 
         // ============= Khóa / Mở khóa =============
         public async Task<bool> ToggleUserActiveAsync(int id)
