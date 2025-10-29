@@ -491,6 +491,46 @@ namespace PTJ_Service.EmployerPostService
                 .ToListAsync();
             }
 
+        public async Task<IEnumerable<EmployerPostSuggestionDto>> GetSuggestionsByPostAsync(
+           int employerPostId, int take = 10, int skip = 0)
+            {
+            // Danh sách ứng viên đã được employer "save" (shortlist) cho post này
+            var savedIds = await _db.EmployerShortlistedCandidates
+                .Where(x => x.EmployerPostId == employerPostId)
+                .Select(x => x.JobSeekerId)
+                .ToListAsync();
+
+            // Lấy gợi ý đã cache trong AiMatchSuggestions
+            var query =
+                from s in _db.AiMatchSuggestions
+                where s.SourceType == "EmployerPost"
+                   && s.SourceId == employerPostId
+                   && s.TargetType == "JobSeekerPost"
+                join jsp in _db.JobSeekerPosts.Include(x => x.User)
+                     on s.TargetId equals jsp.JobSeekerPostId
+                where jsp.Status == "Active" // chỉ lấy bài seeker còn active
+                orderby s.MatchPercent descending, s.RawScore descending, s.CreatedAt descending
+                select new EmployerPostSuggestionDto
+                    {
+                    JobSeekerPostId = jsp.JobSeekerPostId,
+                    Title = jsp.Title ?? string.Empty,
+                    PreferredLocation = jsp.PreferredLocation,
+                    PreferredWorkHours = jsp.PreferredWorkHours,
+                    SeekerName = jsp.User.Username,
+                    MatchPercent = s.MatchPercent,
+                    RawScore = Math.Round(s.RawScore, 4),
+                    IsSaved = savedIds.Contains(jsp.JobSeekerPostId),
+                    CreatedAt = s.CreatedAt,
+                    UpdatedAt = s.UpdatedAt
+                    };
+
+            if (skip > 0)
+                query = query.Skip(skip);
+            if (take > 0)
+                query = query.Take(take);
+
+            return await query.ToListAsync();
+            }
         // =========================================================
         // HELPERS
         // =========================================================

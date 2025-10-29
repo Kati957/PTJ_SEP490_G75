@@ -13,6 +13,6 @@ public interface IEmployerPostService
     Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId);
     Task<EmployerPostDtoOut?> GetByIdAsync(int id);
     Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostDto dto);
-
+    Task<IEnumerable<EmployerPostSuggestionDto>> GetSuggestionsByPostAsync(int employerPostId, int take = 10, int skip = 0);
     Task<bool> DeleteAsync(int id);
     }

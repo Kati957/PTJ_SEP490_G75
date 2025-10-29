@@ -20,5 +20,6 @@ namespace PTJ_Service.JobSeekerPostService
         Task SaveJobAsync(SaveJobDto dto);
         Task UnsaveJobAsync(SaveJobDto dto);
         Task<IEnumerable<object>> GetSavedJobsAsync(int jobSeekerId);
+        Task<IEnumerable<JobSeekerJobSuggestionDto>> GetSuggestionsByPostAsync(int jobSeekerPostId, int take = 10, int skip = 0);
         }
     }

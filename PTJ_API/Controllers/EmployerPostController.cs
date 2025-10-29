@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Service.EmployerPostService;
 
@@ -6,6 +7,7 @@ namespace PTJ_API.Controllers
     {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Employer,Admin")]
     public class EmployerPostController : ControllerBase
         {
         private readonly IEmployerPostService _service;
@@ -105,6 +107,22 @@ namespace PTJ_API.Controllers
             {
             var result = await _service.GetShortlistedByPostAsync(postId);
             return Ok(result);
+            }
+
+
+        // =========================================================
+        // AI SUGGESTIONS - GET (đã lưu trong AiMatchSuggestions)
+        // =========================================================
+        [HttpGet("{postId:int}/suggestions")]
+        public async Task<IActionResult> GetSuggestions(int postId, [FromQuery] int take = 10, [FromQuery] int skip = 0)
+            {
+            var items = await _service.GetSuggestionsByPostAsync(postId, take, skip);
+
+            // Nếu muốn total chính xác cho phân trang lớn, có thể tính riêng:
+            // var total = await _service.CountSuggestionsByPostAsync(postId); // (tuỳ chọn)
+            // return Ok(new { total, items });
+
+            return Ok(new { total = items.Count(), items });
             }
         }
     }

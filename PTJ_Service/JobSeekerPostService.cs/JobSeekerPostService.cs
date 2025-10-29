@@ -484,6 +484,64 @@ namespace PTJ_Service.JobSeekerPostService
                     }).ToListAsync();
             }
 
+        /// <summary>
+        /// Lấy lại danh sách job đã được AI đề xuất (đã lưu trong AiMatchSuggestions)
+        /// cho một JobSeekerPost cụ thể, trả về DTO dễ đọc cho UI.
+        /// </summary>
+        public async Task<IEnumerable<JobSeekerJobSuggestionDto>> GetSuggestionsByPostAsync(
+            int jobSeekerPostId, int take = 10, int skip = 0)
+            {
+            // 1) Lấy JobSeekerPost để biết userId (dùng check IsSaved)
+            var seekerPost = await _db.JobSeekerPosts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.JobSeekerPostId == jobSeekerPostId);
+
+            if (seekerPost == null)
+                return Enumerable.Empty<JobSeekerJobSuggestionDto>();
+
+            var seekerUserId = seekerPost.UserId;
+
+            // 2) Lấy danh sách job mà ứng viên (userId) đã lưu -> đánh dấu IsSaved
+            var savedJobIds = await _db.JobSeekerShortlistedJobs
+                .Where(x => x.JobSeekerId == seekerUserId)
+                .Select(x => x.EmployerPostId)
+                .ToListAsync();
+
+            // 3) Đọc gợi ý đã cache trong bảng AiMatchSuggestions
+            var query =
+                from s in _db.AiMatchSuggestions
+                where s.SourceType == "JobSeekerPost"
+                   && s.SourceId == jobSeekerPostId
+                   && s.TargetType == "EmployerPost"
+                join ep in _db.EmployerPosts.Include(e => e.User)
+                     on s.TargetId equals ep.EmployerPostId
+                where ep.Status == "Active" // chỉ lấy job còn active
+                orderby s.MatchPercent descending, s.RawScore descending, s.CreatedAt descending
+                select new JobSeekerJobSuggestionDto
+                    {
+                    EmployerPostId = ep.EmployerPostId,
+                    Title = ep.Title ?? string.Empty,
+                    Location = ep.Location,
+                    WorkHours = ep.WorkHours,
+                    EmployerName = ep.User.Username,
+
+                    MatchPercent = s.MatchPercent,
+                    RawScore = Math.Round(s.RawScore, 4),
+
+                    IsSaved = savedJobIds.Contains(ep.EmployerPostId),
+
+                    CreatedAt = s.CreatedAt,
+                    UpdatedAt = s.UpdatedAt
+                    };
+
+            if (skip > 0)
+                query = query.Skip(skip);
+            if (take > 0)
+                query = query.Take(take);
+
+            return await query.ToListAsync();
+            }
+
         // =========================================================
         // HELPERS
         // =========================================================

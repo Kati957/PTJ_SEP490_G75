@@ -28,6 +28,7 @@ using PTJ_Service.AuthService.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddAuthorization();
 // =============================================
 // 1️⃣ CONFIG DATABASE (EF CORE)
 // =============================================

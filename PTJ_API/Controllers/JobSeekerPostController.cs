@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Service.JobSeekerPostService;
 
@@ -6,6 +7,7 @@ namespace PTJ_API.Controllers
     {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "JobSeeker,Admin")]
     public class JobSeekerPostController : ControllerBase
         {
         private readonly IJobSeekerPostService _service;
@@ -105,6 +107,18 @@ namespace PTJ_API.Controllers
             {
             var result = await _service.GetSavedJobsAsync(jobSeekerId);
             return Ok(result);
+            }
+
+        // =========================================================
+        // AI SUGGESTIONS - GET (đã lưu trong AiMatchSuggestions)
+        // =========================================================
+        [HttpGet("{postId:int}/suggestions")]
+        public async Task<IActionResult> GetSuggestions(int postId, [FromQuery] int take = 10, [FromQuery] int skip = 0)
+            {
+            var items = await _service.GetSuggestionsByPostAsync(postId, take, skip);
+
+            // Nếu cần phân trang "chuẩn total", có thể bổ sung hàm Count riêng trong service.
+            return Ok(new { total = items.Count(), items });
             }
         }
     }
