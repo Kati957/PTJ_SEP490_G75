@@ -198,6 +198,10 @@ public sealed class AuthService : IAuthService
         var user = await _db.Users.FirstOrDefaultAsync(x =>
             x.Email.ToLower() == key || x.Username.ToLower() == key);
 
+        // 🚫 2.1 Kiểm tra tài khoản có bị khóa (IsActive = false) không
+        if (user != null && !user.IsActive)
+            throw new Exception("Your account has been deactivated by an administrator.");
+
         // 🚫 3. Kiểm tra tình trạng khóa tài khoản (lockout)
         if (user != null && user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
             throw new Exception("Account is temporarily locked. Please try again later.");

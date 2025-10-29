@@ -25,5 +25,7 @@ namespace PTJ_Service.Implement
             if (!ok)
                 throw new KeyNotFoundException($"Không tìm thấy người dùng có ID = {id}");
         }
+        public Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync()
+            => _repo.GetAllUserFullAsync();
     }
 }
