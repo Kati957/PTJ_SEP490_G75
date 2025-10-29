@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.SearchDTO;
-using PTJ_Service.SearchService;
+using PTJ_Service.SearchService.Interfaces;
 
 namespace PTJ_API.Controllers
-    {
+{
     [Route("api/[controller]")]
     [ApiController]
     public class SearchController : ControllerBase

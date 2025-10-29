@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.ApplicationDTO;
-using PTJ_Service.JobApplicationService;
+using PTJ_Service.JobApplicationService.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace PTJ_API.Controllers
-    {
+{
     [ApiController]
     [Route("api/[controller]")]
     public class JobApplicationController : ControllerBase
