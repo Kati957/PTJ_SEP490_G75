@@ -3,6 +3,7 @@ using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.DTO.SearchDTO;
 
+
 namespace PTJ_Data.Repositories.Implementations
 {
     public class JobSeekerSearchRepository : IJobSeekerSearchRepository
@@ -22,7 +23,7 @@ namespace PTJ_Data.Repositories.Implementations
                 .Where(p => p.Status == "Active")
                 .AsQueryable();
 
-            // 🔍 Keyword
+            //  Keyword
             if (!string.IsNullOrEmpty(filter.Keyword))
                 {
                 var key = filter.Keyword.ToLower();
@@ -32,26 +33,26 @@ namespace PTJ_Data.Repositories.Implementations
                     (p.Requirements != null && p.Requirements.ToLower().Contains(key)));
                 }
 
-            // 🗂 Category
+            //  Category
             if (filter.CategoryID.HasValue)
                 query = query.Where(p => p.CategoryId == filter.CategoryID.Value);
 
-            // 📍 Location
+            //  Location
             if (!string.IsNullOrEmpty(filter.Location))
                 query = query.Where(p => p.Location.Contains(filter.Location));
 
-            // 🕐 Work Hours
+            //  Work Hours
             if (!string.IsNullOrEmpty(filter.WorkHours))
                 query = query.Where(p => p.WorkHours.Contains(filter.WorkHours));
 
-            // 💰 Salary
+            //  Salary
             if (filter.MinSalary.HasValue)
                 query = query.Where(p => p.Salary >= filter.MinSalary.Value);
 
             if (filter.MaxSalary.HasValue)
                 query = query.Where(p => p.Salary <= filter.MaxSalary.Value);
 
-            // ⚡ Map sang DTO
+            //  Map sang DTO
             return await query
                 .OrderByDescending(p => p.CreatedAt)
                 .Select(p => new EmployerPostDtoOut

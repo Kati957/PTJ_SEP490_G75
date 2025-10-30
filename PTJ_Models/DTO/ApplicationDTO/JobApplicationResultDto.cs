@@ -34,6 +34,6 @@ namespace PTJ_Models.DTO.ApplicationDTO
         public string? Location { get; set; }
         public decimal? Salary { get; set; }
         public string? WorkHours { get; set; }
-        public int? PhoneContact { get; set; }
+        public string? PhoneContact { get; set; }
         }
     }

@@ -17,9 +17,9 @@ namespace PTJ_API.Controllers
             _http = new HttpClient();
             }
 
-        // ==============================
-        // 🧩 FULL AI TEST: EMBED + UPSERT + QUERY
-        // ==============================
+        
+        //  FULL AI TEST: EMBED + UPSERT + QUERY
+        
         [HttpPost("test-full")]
         public async Task<IActionResult> TestFull([FromBody] string text)
             {

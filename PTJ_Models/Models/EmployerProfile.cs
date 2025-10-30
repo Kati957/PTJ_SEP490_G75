@@ -17,7 +17,7 @@ public partial class EmployerProfile
 
     public string? ContactName { get; set; }
 
-    public int? ContactPhone { get; set; }
+    public string? ContactPhone { get; set; }
 
     public string? ContactEmail { get; set; }
 

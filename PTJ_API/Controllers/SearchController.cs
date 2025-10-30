@@ -17,7 +17,7 @@ namespace PTJ_API.Controllers
             _jobSeekerSearch = jobSeekerSearch;
             }
 
-        // 👔 Employer tìm JobSeeker
+        //  Employer tìm JobSeeker
         [HttpPost("jobseekers")]
         public async Task<IActionResult> SearchJobSeekers([FromBody] EmployerSearchFilterDto filter)
             {
@@ -25,7 +25,7 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // 👩 JobSeeker tìm EmployerPost
+        //  JobSeeker tìm EmployerPost
         [HttpPost("employerposts")]
         public async Task<IActionResult> SearchEmployerPosts([FromBody] JobSeekerSearchFilterDto filter)
             {
