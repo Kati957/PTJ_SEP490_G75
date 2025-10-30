@@ -33,81 +33,92 @@ public sealed class AuthService : IAuthService
         if (await _db.Users.AnyAsync(x => x.Email == email))
             throw new Exception("Email already exists.");
 
-        // Tạo user mới
-        var user = new User
+        // Mở transaction
+        using var transaction = await _db.Database.BeginTransactionAsync();
+
+        try
         {
-            Email = email,
-            Username = email.Split('@')[0],
-            PasswordHash = _hasher.Hash(dto.Password),
-            IsActive = true,
-            IsVerified = false, // soft verify
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            // 1️⃣ Tạo user mới
+            var user = new User
+            {
+                Email = email,
+                Username = email.Split('@')[0],
+                PasswordHash = _hasher.Hash(dto.Password),
+                IsActive = true,
+                IsVerified = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
+            // 2️⃣ Gán role
+            await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
 
-        // Gán 1 role duy nhất: JobSeeker
-        await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
+            // 3️⃣ Tạo JobSeekerProfile
+            if (!await _db.JobSeekerProfiles.AnyAsync(p => p.UserId == user.UserId))
+            {
+                _db.JobSeekerProfiles.Add(new JobSeekerProfile
+                {
+                    UserId = user.UserId,
+                    FullName = dto.FullName
+                });
+                await _db.SaveChangesAsync();
+            }
 
+            // 4️⃣ Tạo token xác thực email
+            var tokenBytes = RandomNumberGenerator.GetBytes(48);
+            var token = WebEncoders.Base64UrlEncode(tokenBytes);
 
-        // Tạo JobSeekerProfile (nếu chưa có)
-        if (!await _db.JobSeekerProfiles.AnyAsync(p => p.UserId == user.UserId))
-        {
-            _db.JobSeekerProfiles.Add(new JobSeekerProfile
+            _db.EmailVerificationTokens.Add(new EmailVerificationToken
             {
                 UserId = user.UserId,
-                FullName = dto.FullName
+                Token = token,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30)
             });
             await _db.SaveChangesAsync();
-        }
 
-        // Tạo token xác thực email (Base64UrlEncode)
-        var tokenBytes = RandomNumberGenerator.GetBytes(48);
-        var token = WebEncoders.Base64UrlEncode(tokenBytes);
+            // ✅ Commit transaction: tất cả bước ghi DB thành công
+            await transaction.CommitAsync();
 
-        _db.EmailVerificationTokens.Add(new EmailVerificationToken
-        {
-            UserId = user.UserId,
-            Token = token,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-        });
-        await _db.SaveChangesAsync();
-
-        // Gửi email xác thực (async nền)
-        _ = Task.Run(async () =>
-        {
-            try
+            // 5️⃣ Gửi email xác thực (ngoài transaction)
+            _ = Task.Run(async () =>
             {
-                var baseUrlApi = _cfg["App:BaseUrl"] ?? "https://localhost:7100";
-                var verifyUrl = $"{baseUrlApi}/api/Auth/verify-email?token={token}";
+                try
+                {
+                    var baseUrlApi = _cfg["App:BaseUrl"] ?? "https://localhost:7100";
+                    var verifyUrl = $"{baseUrlApi}/api/Auth/verify-email?token={token}";
 
-                var body = $@"
+                    var body = $@"
                 <h2>Welcome to PTJ!</h2>
                 <p>Hi <b>{WebUtility.HtmlEncode(user.Username)}</b>,</p>
-                <p>Thanks for registering. Please verify your email by clicking below:</p>
-                <a href='{verifyUrl}' 
-                   style='background:#007bff;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;'>Verify Email</a>
+                <p>Please verify your email:</p>
+                <a href='{verifyUrl}' style='background:#007bff;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;'>Verify Email</a>
                 <p>This link will expire in 30 minutes.</p>";
 
-                await _email.SendEmailAsync(user.Email, "Xác thực tài khoản PTJ", body);
-            }
-            catch (Exception ex)
-            {
-                _log.LogError(ex, "Send verification email failed for {Email}", user.Email);
-            }
-        });
+                    await _email.SendEmailAsync(user.Email, "Xác thực tài khoản PTJ", body);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogError(ex, "Send verification email failed for {Email}", user.Email);
+                }
+            });
 
-        // Sinh token đăng nhập (deviceInfo/ip không có trong method này → truyền null)
-        var response = await _tokens.IssueAsync(user, deviceInfo: null, ip: null);
+            // 6️⃣ Sinh token đăng nhập
+            var response = await _tokens.IssueAsync(user, deviceInfo: null, ip: null);
+            if (!user.IsVerified)
+                response.Warning = "Your email is not verified. Please check your inbox.";
 
-        // Gắn cảnh báo mềm nếu chưa verify
-        if (!user.IsVerified)
-            response.Warning = "Your email is not verified. Please check your inbox to verify your account.";
-
-        return response;
+            return response;
+        }
+        catch (Exception ex)
+        {
+            // ❌ Có lỗi → rollback
+            await transaction.RollbackAsync();
+            throw new Exception($"Registration failed: {ex.Message}");
+        }
     }
+
 
 
 

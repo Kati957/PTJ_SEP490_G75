@@ -150,6 +150,7 @@ builder.Services.AddCors(options =>
             "https://localhost:7025"  // trường hợp FE dev khác port
         )
         .AllowAnyHeader()
+        .AllowCredentials()
         .AllowAnyMethod();
     });
 });
