@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.ApplicationDTO;
 using PTJ_Service.JobApplicationService.Interfaces;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace PTJ_API.Controllers
@@ -19,27 +20,29 @@ namespace PTJ_API.Controllers
             }
 
         // =========================================================
-        // ỨNG VIÊN NỘP ĐƠN ỨNG TUYỂN
+        // ỨNG VIÊN NỘP ĐƠN
         // =========================================================
         [Authorize(Roles = "JobSeeker,Admin")]
         [HttpPost("apply")]
         public async Task<IActionResult> Apply([FromBody] JobApplicationCreateDto dto)
             {
             if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
+                {
+                return BadRequest(new
+                    {
+                    success = false,
+                    message = "Dữ liệu không hợp lệ.",
+                    errors = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))
+                    });
+                }
 
-            if (dto.JobSeekerId <= 0 || dto.EmployerPostId <= 0)
-                return BadRequest(new { success = false, message = "Thiếu thông tin ứng viên hoặc bài đăng." });
-
-            // 🔒 Chỉ cho phép ứng viên tự nộp đơn của mình
             var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
             if (!User.IsInRole("Admin") && dto.JobSeekerId != currentUserId)
                 return Forbid("Bạn không thể nộp đơn thay người khác.");
 
-            var result = await _service.ApplyAsync(dto.JobSeekerId, dto.EmployerPostId, dto.Note);
-
-            if (!result)
-                return BadRequest(new { success = false, message = "Bạn đã ứng tuyển bài này hoặc có lỗi xảy ra." });
+            var (success, error) = await _service.ApplyAsync(dto.JobSeekerId, dto.EmployerPostId, dto.Note);
+            if (!success)
+                return BadRequest(new { success = false, message = error });
 
             return Ok(new { success = true, message = "Ứng tuyển thành công." });
             }
@@ -66,7 +69,7 @@ namespace PTJ_API.Controllers
             }
 
         // =========================================================
-        // EMPLOYER XEM DANH SÁCH ỨNG VIÊN CỦA BÀI ĐĂNG
+        // EMPLOYER XEM DANH SÁCH ỨNG VIÊN
         // =========================================================
         [Authorize(Roles = "Employer,Admin")]
         [HttpGet("by-post/{employerPostId}")]
@@ -108,7 +111,7 @@ namespace PTJ_API.Controllers
                 return BadRequest(new { success = false, message = "Thiếu trạng thái cập nhật." });
 
             var validStatuses = new[] { "Accepted", "Rejected" };
-            if (!validStatuses.Contains(dto.Status, StringComparer.OrdinalIgnoreCase))
+            if (!validStatuses.Contains(dto.Status, System.StringComparer.OrdinalIgnoreCase))
                 return BadRequest(new { success = false, message = "Trạng thái không hợp lệ. Chỉ chấp nhận 'Accepted' hoặc 'Rejected'." });
 
             var result = await _service.UpdateStatusAsync(id, dto.Status, dto.Note);
@@ -119,7 +122,7 @@ namespace PTJ_API.Controllers
             }
 
         // =========================================================
-        // LẤY DANH SÁCH TRẠNG THÁI HỢP LỆ (cho frontend render dropdown)
+        // LẤY DANH SÁCH TRẠNG THÁI HỢP LỆ
         // =========================================================
         [HttpGet("valid-statuses")]
         public IActionResult GetValidStatuses()

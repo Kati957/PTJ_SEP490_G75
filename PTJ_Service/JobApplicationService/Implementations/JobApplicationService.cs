@@ -1,4 +1,6 @@
-﻿using PTJ_Data.Repositories.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using PTJ_Data;
+using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.DTO.ApplicationDTO;
 using PTJ_Models.Models;
 using PTJ_Service.JobApplicationService.Interfaces;
@@ -8,51 +10,70 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PTJ_Service.JobApplicationService.Implementations
-{
-    public class JobApplicationService : IJobApplicationService
     {
+    public class JobApplicationService : IJobApplicationService
+        {
         private readonly IJobApplicationRepository _repo;
+        private readonly JobMatchingDbContext _db;
 
-        public JobApplicationService(IJobApplicationRepository repo)
-        {
+        public JobApplicationService(IJobApplicationRepository repo, JobMatchingDbContext db)
+            {
             _repo = repo;
-        }
+            _db = db;
+            }
 
-        // Ứng viên nộp đơn
-        public async Task<bool> ApplyAsync(int jobSeekerId, int employerPostId, string? note = null)
-        {
+        // =========================================================
+        // ỨNG VIÊN NỘP ĐƠN (có validation)
+        // =========================================================
+        public async Task<(bool success, string? error)> ApplyAsync(int jobSeekerId, int employerPostId, string? note)
+            {
+            // 1️⃣ Kiểm tra user hợp lệ
+            var seeker = await _db.Users.FirstOrDefaultAsync(u => u.UserId == jobSeekerId);
+            if (seeker == null || !seeker.IsActive)
+                return (false, "Tài khoản ứng viên không tồn tại hoặc đã bị khóa.");
+
+            // 2️⃣ Kiểm tra bài đăng hợp lệ
+            var post = await _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == employerPostId);
+            if (post == null)
+                return (false, "Bài đăng không tồn tại.");
+            if (post.Status == "Deleted" || post.Status == "Closed")
+                return (false, "Bài đăng đã đóng tuyển.");
+
+            // 3️⃣ Kiểm tra đã ứng tuyển chưa
             var existing = await _repo.GetAsync(jobSeekerId, employerPostId);
             if (existing != null)
-            {
-                // Nếu đã từng rút đơn => cho phép nộp lại
-                if (existing.Status == "Withdrawn")
                 {
+                if (existing.Status == "Withdrawn")
+                    {
                     existing.Status = "Pending";
                     existing.Notes = note;
                     existing.UpdatedAt = DateTime.Now;
                     await _repo.UpdateAsync(existing);
-                    return true;
+                    return (true, null);
+                    }
+                return (false, "Bạn đã ứng tuyển bài này trước đó.");
                 }
-                return false;
-            }
 
+            // 4️⃣ Tạo đơn ứng tuyển mới
             var submission = new JobSeekerSubmission
-            {
+                {
                 JobSeekerId = jobSeekerId,
                 EmployerPostId = employerPostId,
                 AppliedAt = DateTime.Now,
                 Status = "Pending",
                 Notes = note,
                 UpdatedAt = DateTime.Now
-            };
+                };
 
             await _repo.AddAsync(submission);
-            return true;
-        }
+            return (true, null);
+            }
 
-        // Rút đơn
+        // =========================================================
+        // RÚT ĐƠN
+        // =========================================================
         public async Task<bool> WithdrawAsync(int jobSeekerId, int employerPostId)
-        {
+            {
             var app = await _repo.GetAsync(jobSeekerId, employerPostId);
             if (app == null)
                 return false;
@@ -63,11 +84,13 @@ namespace PTJ_Service.JobApplicationService.Implementations
 
             await _repo.UpdateAsync(app);
             return true;
-        }
+            }
 
-        // Employer xem danh sách ứng viên
+        // =========================================================
+        // EMPLOYER XEM DANH SÁCH ỨNG VIÊN
+        // =========================================================
         public async Task<IEnumerable<JobApplicationResultDto>> GetCandidatesByPostAsync(int employerPostId)
-        {
+            {
             var list = await _repo.GetByEmployerPostWithDetailAsync(employerPostId);
 
             return list.Select(x =>
@@ -75,7 +98,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 var profile = x.JobSeeker.JobSeekerProfile;
 
                 return new JobApplicationResultDto
-                {
+                    {
                     CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
                     Username = x.JobSeeker.Username,
@@ -91,13 +114,15 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Status = x.Status,
                     ApplicationDate = x.AppliedAt,
                     Notes = x.Notes
-                };
+                    };
             }).ToList();
-        }
+            }
 
-        // JobSeeker xem các bài đã ứng tuyển
+        // =========================================================
+        // JOBSEEKER XEM CÁC BÀI ĐÃ ỨNG TUYỂN
+        // =========================================================
         public async Task<IEnumerable<JobApplicationResultDto>> GetApplicationsBySeekerAsync(int jobSeekerId)
-        {
+            {
             var list = await _repo.GetByJobSeekerWithPostDetailAsync(jobSeekerId);
 
             return list.Select(x =>
@@ -107,17 +132,13 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 var employer = post?.User;
 
                 return new JobApplicationResultDto
-                {
+                    {
                     CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
                     Username = x.JobSeeker?.Username ?? "Unknown",
-
-                    // 🔹 Trạng thái ứng tuyển
                     Status = x.Status,
                     ApplicationDate = x.AppliedAt,
                     Notes = x.Notes,
-
-                    // 🔹 Thông tin bài đăng tuyển dụng
                     EmployerPostId = post?.EmployerPostId ?? 0,
                     PostTitle = post?.Title,
                     CategoryName = category?.Name,
@@ -126,25 +147,24 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Salary = post?.Salary,
                     WorkHours = post?.WorkHours,
                     PhoneContact = post?.PhoneContact
-                };
+                    };
             }).ToList();
-        }
+            }
 
-
-        // Employer cập nhật trạng thái
+        // =========================================================
+        // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
+        // =========================================================
         public async Task<bool> UpdateStatusAsync(int submissionId, string status, string? note = null)
-        {
-            if (string.IsNullOrWhiteSpace(status))
-                return false;
-
-            // ✅ Chỉ chấp nhận Accepted / Rejected
+            {
             var validStatuses = new[] { "Accepted", "Rejected" };
             if (!validStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
-                return false;
+                throw new ArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận 'Accepted' hoặc 'Rejected'.");
 
             var entity = await _repo.GetByIdAsync(submissionId);
             if (entity == null)
-                return false;
+                throw new Exception("Không tìm thấy đơn ứng tuyển.");
+            if (entity.Status == "Withdrawn")
+                throw new Exception("Không thể cập nhật đơn đã bị rút.");
 
             entity.Status = status.Trim();
             entity.Notes = note;
@@ -152,6 +172,6 @@ namespace PTJ_Service.JobApplicationService.Implementations
 
             await _repo.UpdateAsync(entity);
             return true;
+            }
         }
     }
-}
