@@ -69,7 +69,9 @@ public partial class User
 
     public virtual ICollection<PostReport> PostReportReporters { get; set; } = new List<PostReport>();
 
-    public virtual ICollection<PostReportSolved> PostReportSolveds { get; set; } = new List<PostReportSolved>();
+    public virtual ICollection<PostReportSolved> PostReportSolvedAdmins { get; set; } = new List<PostReportSolved>();
+
+    public virtual ICollection<PostReportSolved> PostReportSolvedAffectedUsers { get; set; } = new List<PostReportSolved>();
 
     public virtual ICollection<PostReport> PostReportTargetUsers { get; set; } = new List<PostReport>();
 

@@ -1,16 +1,21 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using System.Text.Json.Serialization;
 
-using PTJ_Models.Models;
-using PTJ_Service.AIService;
-using PTJ_Service.EmployerPostService;
-using PTJ_Service.ProfileService; // ✅ thêm dòng này
+// PTJ Namespaces
+using PTJ_Data.Repositories.Interfaces;
+using PTJ_Data.Repositories.Implementations;
+using PTJ_Service.Helpers;
+using PTJ_Service.LocationService;
+using PTJ_Service.ProfileService;
 using PTJ_Service.RatingService;
 using PTJ_Service.SystemReportService;
-<<<<<<< Updated upstream
-=======
 using PTJ_Service.AuthService.Implementations;
 using PTJ_Service.AuthService.Interfaces;
 using PTJ_Service.SearchService.Interfaces;
@@ -30,47 +35,69 @@ using PTJ_Service.Interface;
 using PTJ_Data.Repositories.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Service.Admin.Interfaces;
-using PTJ_Service.HomeService;
-using PTJ_Service.FollowService;
 
->>>>>>> Stashed changes
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddAuthorization();
 // =============================================
+
 // 1️⃣ CONFIG DATABASE (EF CORE)
-// =============================================
+
 builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
 
-// =============================================
+
 // 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
-// =============================================
 
-// ⚙️ Swagger
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "PTJ API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+        Description = "Nhập JWT token.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+        });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
-// ⚙️ AI Services
+// AI Services
 builder.Services.AddHttpClient<OpenAIService>();
 builder.Services.AddHttpClient<PineconeService>();
-builder.Services.AddScoped<AiMatchService>();
+builder.Services.AddScoped<IAIService, AIService>();
 
-// ⚙️ Business Services
+// Application Services
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IAdminReportService, AdminReportService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
-builder.Services.AddScoped<IProfileService, ProfileService>(); // ✅ thêm dòng này
-builder.Services.AddScoped<IRatingService, RatingService>();
-builder.Services.AddScoped<ISystemReportService, SystemReportService>();
+builder.Services.AddScoped<IJobSeekerPostService, JobSeekerPostService>();
+builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
+builder.Services.AddScoped<IEmployerSearchService, EmployerSearchService>();
+builder.Services.AddScoped<IJobSeekerSearchService, JobSeekerSearchService>();
+builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 
-// ⚙️ Controller
-builder.Services.AddControllers();
 
-<<<<<<< Updated upstream
-// =============================================
-// 3️⃣ BUILD APP
-// =============================================
-=======
 // Repository
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 builder.Services.AddScoped<IAdminReportRepository, AdminReportRepository>();
@@ -79,7 +106,6 @@ builder.Services.AddScoped<IJobSeekerPostRepository, JobSeekerPostRepository>();
 builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 builder.Services.AddScoped<IEmployerSearchRepository, EmployerSearchRepository>();
 builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository>();
-builder.Services.AddScoped<IFollowService, FollowService>();
 
 
 
@@ -90,7 +116,7 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IHomeService, HomeService>();
+
 
 // 3️⃣ CẤU HÌNH JWT AUTHENTICATION
 
@@ -141,19 +167,22 @@ builder.Services.AddControllers()
 
 // 6️⃣ BUILD APP
 
->>>>>>> Stashed changes
 var app = builder.Build();
 
-// =============================================
-// 4️⃣ MIDDLEWARE PIPELINE
-// =============================================
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// Middleware
 if (app.Environment.IsDevelopment())
-{
+    {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+    }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowLocalhost");   // Phải đặt trước Authentication
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
