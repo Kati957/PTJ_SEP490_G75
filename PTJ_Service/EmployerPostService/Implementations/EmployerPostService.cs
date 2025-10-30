@@ -192,6 +192,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return new EmployerPostDtoOut
             {
                 EmployerPostId = post.EmployerPostId,
+                EmployerId = post.UserId,
                 Title = post.Title,
                 Description = post.Description,
                 Salary = post.Salary,

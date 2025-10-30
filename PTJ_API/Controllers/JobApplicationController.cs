@@ -64,7 +64,12 @@ namespace PTJ_API.Controllers
             if (jobSeekerId <= 0 || employerPostId <= 0)
                 return BadRequest(new { success = false, message = "Thiếu thông tin để rút đơn." });
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin user." });
+
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
                 return Forbid("Bạn không thể rút đơn của người khác.");
 
