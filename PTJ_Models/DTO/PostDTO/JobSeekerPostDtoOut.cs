@@ -9,6 +9,7 @@ namespace PTJ_Models.DTO.PostDTO
     public class JobSeekerPostDtoOut
     {
         public int JobSeekerPostId { get; set; }
+        public int UserID { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public int? Age { get; set; }

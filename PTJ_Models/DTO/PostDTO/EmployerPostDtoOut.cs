@@ -9,6 +9,7 @@ namespace PTJ_Models.DTO.PostDTO
     public class EmployerPostDtoOut
     {
         public int EmployerPostId { get; set; }
+        public int EmployerId { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public decimal? Salary { get; set; }

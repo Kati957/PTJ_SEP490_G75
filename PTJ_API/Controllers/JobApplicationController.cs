@@ -4,6 +4,7 @@ using PTJ_Models.DTO.ApplicationDTO;
 using PTJ_Service.JobApplicationService.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace PTJ_API.Controllers
@@ -36,7 +37,13 @@ namespace PTJ_API.Controllers
                     });
                 }
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+
+            var currentUserId = int.Parse(sub.Value);
+            dto.JobSeekerId = currentUserId;
+
             if (!User.IsInRole("Admin") && dto.JobSeekerId != currentUserId)
                 return Forbid("Bạn không thể nộp đơn thay người khác.");
 
@@ -57,7 +64,12 @@ namespace PTJ_API.Controllers
             if (jobSeekerId <= 0 || employerPostId <= 0)
                 return BadRequest(new { success = false, message = "Thiếu thông tin để rút đơn." });
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin user." });
+
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
                 return Forbid("Bạn không thể rút đơn của người khác.");
 
@@ -87,14 +99,28 @@ namespace PTJ_API.Controllers
         // =========================================================
         [Authorize(Roles = "JobSeeker,Admin")]
         [HttpGet("by-seeker/{jobSeekerId}")]
-        public async Task<ActionResult<IEnumerable<JobApplicationResultDto>>> GetBySeeker(int jobSeekerId)
+        public async Task<IActionResult> GetBySeeker(int jobSeekerId)
             {
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
-            if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
-                return Forbid("Bạn không thể xem danh sách ứng tuyển của người khác.");
+            // ✅ Lấy userId an toàn từ JWT
+            var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin user." });
 
+            var currentUserId = int.Parse(sub.Value);
+
+            // ✅ Check quyền
+            if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
+                return Forbid("Bạn không thể xem đơn ứng tuyển của người khác.");
+
+            // ✅ Gọi service
             var result = await _service.GetApplicationsBySeekerAsync(jobSeekerId);
-            return Ok(new { success = true, total = result.Count(), data = result });
+
+            return Ok(new
+                {
+                success = true,
+                total = result.Count(),
+                data = result
+                });
             }
 
         // =========================================================

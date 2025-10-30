@@ -35,7 +35,9 @@ using PTJ_Service.Interface;
 using PTJ_Data.Repositories.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Service.Admin.Interfaces;
+using System.IdentityModel.Tokens.Jwt;
 
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAuthorization();

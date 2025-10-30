@@ -190,6 +190,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             return new JobSeekerPostDtoOut
             {
                 JobSeekerPostId = post.JobSeekerPostId,
+                UserID = post.UserId,
                 Title = post.Title,
                 Description = post.Description,
                 PreferredLocation = post.PreferredLocation,
