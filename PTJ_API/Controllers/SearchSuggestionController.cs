@@ -14,9 +14,9 @@ namespace PTJ_API.Controllers
             _suggestionService = suggestionService;
             }
 
-        /// <summary>
-        /// Gợi ý theo keyword + roleId
-        /// </summary>
+        
+        // Gợi ý theo keyword + roleId
+        
         [HttpGet("suggestions")]
         public async Task<IActionResult> GetSuggestions([FromQuery] string? keyword, [FromQuery] int? roleId)
             {
@@ -24,9 +24,9 @@ namespace PTJ_API.Controllers
             return Ok(suggestions);
             }
 
-        /// <summary>
-        /// Từ khóa phổ biến theo roleId
-        /// </summary>
+       
+        // Từ khóa phổ biến theo roleId
+        
         [HttpGet("popular")]
         public async Task<IActionResult> GetPopularKeywords([FromQuery] int? roleId)
             {

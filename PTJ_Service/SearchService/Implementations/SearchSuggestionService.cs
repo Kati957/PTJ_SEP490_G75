@@ -23,7 +23,7 @@ namespace PTJ_Service.SearchService.Implementations
 
             List<string> results = new();
 
-            // 👔 Employer (roleId = 2) tìm ứng viên
+            //  Employer (roleId = 2) tìm ứng viên
             if (roleId == 2)
             {
                 var fromTitle = await _db.JobSeekerPosts
@@ -43,7 +43,7 @@ namespace PTJ_Service.SearchService.Implementations
                 results.AddRange(fromTitle);
                 results.AddRange(fromCategory);
             }
-            // 👩‍💼 JobSeeker (roleId = 1) tìm bài tuyển dụng
+            //  JobSeeker (roleId = 1) tìm bài tuyển dụng
             else if (roleId == 1)
             {
                 var fromTitle = await _db.EmployerPosts

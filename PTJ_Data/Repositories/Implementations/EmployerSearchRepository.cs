@@ -22,7 +22,7 @@ namespace PTJ_Data.Repositories.Implementations
                 .Where(p => p.Status == "Active")
                 .AsQueryable();
 
-            // 🔍 Keyword
+            //  Keyword
             if (!string.IsNullOrEmpty(filter.Keyword))
                 {
                 var key = filter.Keyword.ToLower();
@@ -31,19 +31,19 @@ namespace PTJ_Data.Repositories.Implementations
                     (p.Description != null && p.Description.ToLower().Contains(key)));
                 }
 
-            // 🗂 Category
+            //  Category
             if (filter.CategoryID.HasValue)
                 query = query.Where(p => p.CategoryId == filter.CategoryID.Value);
 
-            // 📍 Location
+            //  Location
             if (!string.IsNullOrEmpty(filter.Location))
                 query = query.Where(p => p.PreferredLocation.Contains(filter.Location));
 
-            // 🕐 Job Type
+            //  Job Type
             if (!string.IsNullOrEmpty(filter.PreferredJobType))
                 query = query.Where(p => p.PreferredWorkHours.Contains(filter.PreferredJobType));
 
-            // ⚡ Map sang DTO
+            //  Map sang DTO
             return await query
                 .OrderByDescending(p => p.CreatedAt)
                 .Select(p => new JobSeekerPostDtoOut

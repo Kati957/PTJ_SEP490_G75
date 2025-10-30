@@ -17,15 +17,15 @@ namespace PTJ_Models.DTO.PostDTO
         public string? PreferredWorkHours { get; set; }
         public string? PreferredLocation { get; set; }
         public int? CategoryID { get; set; }
-        public int? PhoneContact { get; set; }
+        public string? PhoneContact { get; set; }
     }
 
     public class JobSeekerPostResultDto
     {
-        // ✅ Bài đăng mà AI vừa xử lý
+        //  Bài đăng mà AI vừa xử lý
         public JobSeekerPostDtoOut Post { get; set; } = new();
 
-        // ✅ Danh sách gợi ý việc làm từ AI
+        //  Danh sách gợi ý việc làm từ AI
         public List<AIResultDto> SuggestedJobs { get; set; } = new();
     }
 }

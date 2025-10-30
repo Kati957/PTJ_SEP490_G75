@@ -7,9 +7,9 @@ namespace PTJ_Service.Helpers
 {
     public static class RoleHelper
     {
-        /// <summary>
-        /// Xóa toàn bộ role hiện có và gán DUY NHẤT roleName cho user (dùng skip navigation).
-        /// </summary>
+        
+        // Xóa toàn bộ role hiện có và gán DUY NHẤT roleName cho user (dùng skip navigation).
+       
         public static async Task SetSingleRoleAsync(JobMatchingDbContext db, int userId, string roleName)
         {
             roleName = roleName.Trim();

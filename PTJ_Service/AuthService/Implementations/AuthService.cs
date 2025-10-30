@@ -188,25 +188,25 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ip)
     {
-        // 🔒 1. Kiểm tra dữ liệu đầu vào (tránh login rỗng)
+        //  1. Kiểm tra dữ liệu đầu vào (tránh login rỗng)
         if (string.IsNullOrWhiteSpace(dto.UsernameOrEmail) || string.IsNullOrWhiteSpace(dto.Password))
             throw new Exception("Username/email and password are required.");
 
         var key = dto.UsernameOrEmail.Trim().ToLowerInvariant();
 
-        // 🔍 2. Tìm user theo email hoặc username (không phân biệt hoa thường)
+        //  2. Tìm user theo email hoặc username (không phân biệt hoa thường)
         var user = await _db.Users.FirstOrDefaultAsync(x =>
             x.Email.ToLower() == key || x.Username.ToLower() == key);
 
-        // 🚫 2.1 Kiểm tra tài khoản có bị khóa (IsActive = false) không
+        //  2.1 Kiểm tra tài khoản có bị khóa (IsActive = false) không
         if (user != null && !user.IsActive)
             throw new Exception("Your account has been deactivated by an administrator.");
 
-        // 🚫 3. Kiểm tra tình trạng khóa tài khoản (lockout)
+        //  3. Kiểm tra tình trạng khóa tài khoản (lockout)
         if (user != null && user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
             throw new Exception("Account is temporarily locked. Please try again later.");
 
-        // ❌ 4. Kiểm tra sai mật khẩu hoặc user không tồn tại
+        //  4. Kiểm tra sai mật khẩu hoặc user không tồn tại
         if (user == null || user.PasswordHash == null || !_hasher.Verify(user.PasswordHash, dto.Password))
         {
             if (user != null)
@@ -237,13 +237,13 @@ public sealed class AuthService : IAuthService
             throw new Exception("Invalid username/email or password.");
         }
 
-        // ✅ 5. Nếu đăng nhập đúng → reset bộ đếm lỗi
+        //  5. Nếu đăng nhập đúng → reset bộ đếm lỗi
         user.FailedLoginCount = 0;
         user.LockoutEnd = null;
         user.LastLogin = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        // 📝 6. Ghi lại log đăng nhập thành công
+        //  6. Ghi lại log đăng nhập thành công
         _db.LoginAttempts.Add(new LoginAttempt
         {
             UserId = user.UserId,
@@ -255,10 +255,10 @@ public sealed class AuthService : IAuthService
         });
         await _db.SaveChangesAsync();
 
-        // 🔑 7. Sinh token đăng nhập
+        //  7. Sinh token đăng nhập
         var response = await _tokens.IssueAsync(user, dto.DeviceInfo, ip);
 
-        // ⚠️ 8. Nếu user chưa xác thực email → thêm cảnh báo
+        //  8. Nếu user chưa xác thực email → thêm cảnh báo
         if (!user.IsVerified)
             response.Warning = "Your email is not verified. Please check your inbox to verify your account.";
 

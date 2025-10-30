@@ -31,9 +31,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
             _map = map;
         }
 
-        // =========================================================
         // CREATE
-        // =========================================================
+        
         public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto)
         {
             var post = new EmployerPostModel
@@ -54,7 +53,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             await _repo.AddAsync(post);
 
-            // 🔥 Quan trọng: đảm bảo có ID thật trước khi tạo embedding
+            //  Quan trọng: đảm bảo có ID thật trước khi tạo embedding
             await _db.SaveChangesAsync();
 
             // Embedding nội dung (không nhồi location)
@@ -141,9 +140,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             };
         }
 
-        // =========================================================
+        
         // READ
-        // =========================================================
+      
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
         {
             var posts = await _repo.GetAllAsync();
@@ -207,9 +206,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             };
         }
 
-        // =========================================================
+       
         // UPDATE
-        // =========================================================
+       
         public async Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostDto dto)
         {
             var post = await _repo.GetByIdAsync(id);
@@ -250,9 +249,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return await BuildCleanPostDto(post);
         }
 
-        // =========================================================
+        
         // DELETE (Soft)
-        // =========================================================
+       
         public async Task<bool> DeleteAsync(int id)
         {
             await _repo.SoftDeleteAsync(id);
@@ -267,9 +266,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return true;
         }
 
-        // =========================================================
+       
         // REFRESH
-        // =========================================================
+       
         public async Task<EmployerPostResultDto> RefreshSuggestionsAsync(int employerPostId)
         {
             var post = await _repo.GetByIdAsync(employerPostId);
@@ -339,9 +338,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             };
         }
 
-        // =========================================================
+        
         // SCORING
-        // =========================================================
+       
         private async Task<List<(JobSeekerPost Seeker, double Score)>> ScoreAndFilterCandidatesAsync(
             List<(string Id, double Score)> matches,
             int? mustMatchCategoryId,
@@ -443,9 +442,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return Math.Clamp(embeddingScore * W_EMBED + locScore * W_LOC + titleScore * W_TITLE, 0, 1);
         }
 
-        // =========================================================
+        
         // SHORTLIST
-        // =========================================================
+        
         public async Task SaveCandidateAsync(SaveCandidateDto dto)
         {
             bool exists = await _db.EmployerShortlistedCandidates
@@ -532,9 +531,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             return await query.ToListAsync();
             }
-        // =========================================================
+        
         // HELPERS
-        // =========================================================
+       
         private async Task<(float[] Vector, string Hash)> EnsureEmbeddingAsync(string entityType, int entityId, string text)
         {
             if (text.Length > 6000)

@@ -32,9 +32,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             _map = map;
         }
 
-        // =========================================================
+        
         // CREATE
-        // =========================================================
+        
         public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostDto dto)
         {
             var post = new JobSeekerPostModel
@@ -55,17 +55,17 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
 
             await _repo.AddAsync(post);
 
-            // 🔥 FIX: cần SaveChanges để có ID thật (tránh JobSeekerPostId=0)
+            //  FIX: cần SaveChanges để có ID thật (tránh JobSeekerPostId=0)
             await _db.SaveChangesAsync();
 
-            // 🧠 Tạo embedding vector
+            //  Tạo embedding vector
             var (vector, hash) = await EnsureEmbeddingAsync(
                 "JobSeekerPost",
                 post.JobSeekerPostId,
                 $"{dto.Title}. {dto.Description}. Giờ làm: {dto.PreferredWorkHours}."
             );
 
-            // 🧩 Upsert vector vào Pinecone / vector DB
+            //  Upsert vector vào Pinecone / vector DB
             await _ai.UpsertVectorAsync(
                 ns: "job_seeker_posts",
                 id: $"JobSeekerPost:{post.JobSeekerPostId}",
@@ -78,10 +78,10 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                     postId = post.JobSeekerPostId
                 });
 
-            // 🔍 Truy vấn gợi ý việc làm tương tự
+            //  Truy vấn gợi ý việc làm tương tự
             var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
 
-            // ⛔ Nếu chưa có job nào để match (DB còn trống)
+            //  Nếu chưa có job nào để match (DB còn trống)
             if (!matches.Any())
             {
                 _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
@@ -102,7 +102,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 };
             }
 
-            // 🧮 Tính điểm hybrid và lọc theo category
+            //  Tính điểm hybrid và lọc theo category
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 dto.CategoryID,
@@ -110,16 +110,16 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 dto.Title ?? ""
             );
 
-            // 💾 Lưu gợi ý top 5 vào bảng AiMatchSuggestions
+            //  Lưu gợi ý top 5 vào bảng AiMatchSuggestions
             await UpsertSuggestionsAsync("JobSeekerPost", post.JobSeekerPostId, "EmployerPost", scored, keepTop: 5);
 
-            // 🧾 Lấy danh sách job mà seeker đã lưu
+            //  Lấy danh sách job mà seeker đã lưu
             var savedIds = await _db.JobSeekerShortlistedJobs
                 .Where(x => x.JobSeekerId == post.UserId)
                 .Select(x => x.EmployerPostId)
                 .ToListAsync();
 
-            // 🧩 Chuẩn hóa danh sách gợi ý trả ra client
+            //  Chuẩn hóa danh sách gợi ý trả ra client
             var suggestions = scored
                 .OrderByDescending(x => x.Score)
                 .Take(5)
@@ -146,9 +146,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             };
         }
 
-        // =========================================================
+        
         // READ
-        // =========================================================
+       
         public async Task<IEnumerable<JobSeekerPostDtoOut>> GetAllAsync()
         {
             var posts = await _repo.GetAllAsync();
@@ -200,9 +200,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             };
         }
 
-        // =========================================================
+        
         // UPDATE
-        // =========================================================
+        
         public async Task<JobSeekerPostDtoOut?> UpdateAsync(int id, JobSeekerPostDto dto)
         {
             var post = await _repo.GetByIdAsync(id);
@@ -243,9 +243,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             return await BuildCleanPostDto(post);
         }
 
-        // =========================================================
+        
         // DELETE (Soft)
-        // =========================================================
+        
         public async Task<bool> DeleteAsync(int id)
         {
             await _repo.SoftDeleteAsync(id);
@@ -260,9 +260,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             return true;
         }
 
-        // =========================================================
+        
         // REFRESH SUGGESTIONS
-        // =========================================================
+       
         public async Task<JobSeekerPostResultDto> RefreshSuggestionsAsync(int jobSeekerPostId)
         {
             var post = await _repo.GetByIdAsync(jobSeekerPostId);
@@ -329,16 +329,16 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             };
         }
 
-        // =========================================================
+        
         // SCORING (Hybrid)
-        // =========================================================
+        
         private async Task<List<(EmployerPost Job, double Score)>> ScoreAndFilterJobsAsync(
      List<(string Id, double Score)> matches,
      int? categoryId,
      string seekerLocation,
      string seekerTitle)
         {
-            // ✅ Đặt tên cho tuple ở đây
+            //  Đặt tên cho tuple ở đây
             var list = new List<(EmployerPost Job, double Score)>();
 
             foreach (var m in matches)
@@ -363,7 +363,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 list.Add((job, score));
             }
 
-            // 🧹 Lọc bỏ các job có score quá thấp (ví dụ < 0.4)
+            //  Lọc bỏ các job có score quá thấp (ví dụ < 0.4)
             return list.Where(x => x.Score >= 0.4).ToList();
         }
 
@@ -382,7 +382,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             double locScore = 0.5;
             double titleScore = 0.5;
 
-            // 🎯 Location
+            //  Location
             if (!string.IsNullOrWhiteSpace(locationA) && !string.IsNullOrWhiteSpace(locationB))
             {
                 try
@@ -409,7 +409,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 catch { locScore = 0.5; }
             }
 
-            // 🎯 Title similarity
+            //  Title similarity
             if (!string.IsNullOrEmpty(titleA) && !string.IsNullOrEmpty(titleB))
             {
                 try
@@ -436,9 +436,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 0, 1);
         }
 
-        // =========================================================
+        
         // SHORTLIST
-        // =========================================================
+       
         public async Task SaveJobAsync(SaveJobDto dto)
         {
             bool exists = await _db.JobSeekerShortlistedJobs
@@ -486,10 +486,10 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 }).ToListAsync();
         }
 
-        /// <summary>
-        /// Lấy lại danh sách job đã được AI đề xuất (đã lưu trong AiMatchSuggestions)
-        /// cho một JobSeekerPost cụ thể, trả về DTO dễ đọc cho UI.
-        /// </summary>
+        
+        // Lấy lại danh sách job đã được AI đề xuất (đã lưu trong AiMatchSuggestions)
+        // cho một JobSeekerPost cụ thể, trả về DTO dễ đọc cho UI.
+       
         public async Task<IEnumerable<JobSeekerJobSuggestionDto>> GetSuggestionsByPostAsync(
             int jobSeekerPostId, int take = 10, int skip = 0)
             {
@@ -544,9 +544,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             return await query.ToListAsync();
             }
 
-        // =========================================================
+       
         // HELPERS
-        // =========================================================
+        
         private async Task<(float[] Vector, string Hash)> EnsureEmbeddingAsync(string entityType, int entityId, string text)
         {
             if (text.Length > 6000)

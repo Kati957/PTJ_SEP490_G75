@@ -10,10 +10,10 @@
         public string? WorkHours { get; set; }
         public string? Location { get; set; }
         public int? CategoryID { get; set; }
-        public int? PhoneContact { get; set; }
+        public string? PhoneContact { get; set; }
     }
 
-    // ✅ Đổi từ EmployerPost (entity) → EmployerPostDtoOut (DTO)
+    //  Đổi từ EmployerPost (entity) → EmployerPostDtoOut (DTO)
     public class EmployerPostResultDto
     {
         public EmployerPostDtoOut Post { get; set; } = new();  // Đổi ở đây nè 👈

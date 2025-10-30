@@ -36,7 +36,7 @@ namespace PTJ_API.Attributes
                     return; // OK
             }
 
-            // ❌ Chưa xác thực email → chặn
+            //  Chưa xác thực email → chặn
             context.Result = new ObjectResult(new
             {
                 message = "Please verify your email before using this feature."

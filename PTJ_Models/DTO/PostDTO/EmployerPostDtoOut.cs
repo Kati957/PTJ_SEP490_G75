@@ -15,7 +15,7 @@ namespace PTJ_Models.DTO.PostDTO
         public string? Requirements { get; set; }
         public string? WorkHours { get; set; }
         public string? Location { get; set; }
-        public int? PhoneContact { get; set; }
+        public string? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
         public string? EmployerName { get; set; }
         public DateTime CreatedAt { get; set; }

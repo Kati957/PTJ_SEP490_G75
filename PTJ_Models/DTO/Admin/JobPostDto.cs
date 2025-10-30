@@ -27,28 +27,28 @@ namespace PTJ_Models.DTO.Admin
         public string? Requirements { get; set; }
         public string? WorkHours { get; set; }
         public string? Location { get; set; }
-        public int? PhoneContact { get; set; }
+        public string? PhoneContact { get; set; }
         public DateTime UpdatedAt { get; set; }
     }
 
-    // Dùng cho danh sách bài đăng của JobSeeker (tìm việc)
+    
     public class AdminJobSeekerPostDto
     {
-        public int Id { get; set; }                 // JobSeekerPostID
+        public int Id { get; set; }                
         public string Title { get; set; } = string.Empty;
         public int UserId { get; set; }
         public string UserEmail { get; set; } = string.Empty;
-        public string? FullName { get; set; }       // JobSeekerProfiles.FullName
+        public string? FullName { get; set; }      
         public int? CategoryId { get; set; }
         public string? CategoryName { get; set; }
         public string? Gender { get; set; }
         public string? PreferredLocation { get; set; }
         public string? PreferredWorkHours { get; set; }
-        public string Status { get; set; } = "Active"; // Active|Archived|Deleted
+        public string Status { get; set; } = "Active"; 
         public DateTime CreatedAt { get; set; }
     }
 
-    // Chi tiết JobSeeker post
+    
     public class AdminJobSeekerPostDetailDto : AdminJobSeekerPostDto
     {
         public string? Description { get; set; }
