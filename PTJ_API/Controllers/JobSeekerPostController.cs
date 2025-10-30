@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
-using PTJ_Service.JobSeekerPostService;
 
 namespace PTJ_API.Controllers
     {
@@ -27,13 +27,15 @@ namespace PTJ_API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
 
-            // 🔒 Lấy userId từ JWT
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+
+            var currentUserId = int.Parse(sub.Value);
 
             if (!User.IsInRole("Admin") && dto.UserID != currentUserId)
                 return Forbid("Bạn không thể đăng bài thay người khác.");
 
-            // ✅ Kiểm tra logic đầu vào
             if (string.IsNullOrWhiteSpace(dto.Title) || dto.Title.Length < 5)
                 return BadRequest(new { success = false, message = "Tiêu đề phải có ít nhất 5 ký tự." });
 
@@ -51,7 +53,7 @@ namespace PTJ_API.Controllers
         // READ
         // =========================================================
         [HttpGet("all")]
-        [Authorize(Roles = "Admin")] // chỉ admin mới xem tất cả
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAll()
             {
             var result = await _service.GetAllAsync();
@@ -61,7 +63,10 @@ namespace PTJ_API.Controllers
         [HttpGet("by-user/{userId}")]
         public async Task<IActionResult> GetByUser(int userId)
             {
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var currentUserId = int.Parse(sub.Value);
 
             if (!User.IsInRole("Admin") && userId != currentUserId)
                 return Forbid("Bạn không thể xem bài đăng của người khác.");
@@ -77,7 +82,11 @@ namespace PTJ_API.Controllers
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
                 return Forbid("Bạn không thể xem bài đăng của người khác.");
 
@@ -97,7 +106,11 @@ namespace PTJ_API.Controllers
             if (existing == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng để cập nhật." });
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && existing.SeekerName != User.Identity!.Name)
                 return Forbid("Bạn không thể chỉnh sửa bài đăng của người khác.");
 
@@ -115,7 +128,11 @@ namespace PTJ_API.Controllers
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
                 return Forbid("Bạn không thể xóa bài đăng của người khác.");
 
@@ -124,7 +141,7 @@ namespace PTJ_API.Controllers
             }
 
         // =========================================================
-        // AI SUGGESTIONS
+        // REFRESH SUGGESTIONS
         // =========================================================
         [HttpPost("refresh/{postId}")]
         public async Task<IActionResult> Refresh(int postId)
@@ -133,7 +150,11 @@ namespace PTJ_API.Controllers
             if (post == null)
                 return NotFound(new { success = false, message = "Bài đăng không tồn tại." });
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
                 return Forbid("Bạn không thể làm mới bài đăng của người khác.");
 
@@ -142,7 +163,7 @@ namespace PTJ_API.Controllers
             }
 
         // =========================================================
-        // SAVE JOB (Shortlist)
+        // SAVE JOBS (SHORTLIST)
         // =========================================================
         [HttpPost("save-job")]
         public async Task<IActionResult> SaveJob([FromBody] SaveJobDto dto)
@@ -167,7 +188,11 @@ namespace PTJ_API.Controllers
         [HttpGet("saved/{jobSeekerId}")]
         public async Task<IActionResult> GetSavedJobs(int jobSeekerId)
             {
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
                 return Forbid("Bạn không thể xem danh sách việc làm đã lưu của người khác.");
 
@@ -185,7 +210,11 @@ namespace PTJ_API.Controllers
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var currentUserId = int.Parse(sub.Value);
+
             if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
                 return Forbid("Bạn không thể xem gợi ý việc làm của bài đăng người khác.");
 

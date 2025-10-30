@@ -94,14 +94,28 @@ namespace PTJ_API.Controllers
         // =========================================================
         [Authorize(Roles = "JobSeeker,Admin")]
         [HttpGet("by-seeker/{jobSeekerId}")]
-        public async Task<ActionResult<IEnumerable<JobApplicationResultDto>>> GetBySeeker(int jobSeekerId)
+        public async Task<IActionResult> GetBySeeker(int jobSeekerId)
             {
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
-            if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
-                return Forbid("Bạn không thể xem danh sách ứng tuyển của người khác.");
+            // ✅ Lấy userId an toàn từ JWT
+            var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin user." });
 
+            var currentUserId = int.Parse(sub.Value);
+
+            // ✅ Check quyền
+            if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
+                return Forbid("Bạn không thể xem đơn ứng tuyển của người khác.");
+
+            // ✅ Gọi service
             var result = await _service.GetApplicationsBySeekerAsync(jobSeekerId);
-            return Ok(new { success = true, total = result.Count(), data = result });
+
+            return Ok(new
+                {
+                success = true,
+                total = result.Count(),
+                data = result
+                });
             }
 
         // =========================================================
