@@ -17,18 +17,18 @@ namespace PTJ_Service.LocationService
             _http.DefaultRequestHeaders.UserAgent.ParseAdd("JobMatchingAI/1.0 (contact: support@yourdomain.com)");
         }
 
-        // 🧭 Lấy tọa độ từ địa chỉ (có cache DB)
+        //  Lấy tọa độ từ địa chỉ (có cache DB)
         public async Task<(double lat, double lng)?> GetCoordinatesAsync(string address)
         {
             if (string.IsNullOrWhiteSpace(address))
                 return null;
 
-            // ✅ Kiểm tra cache
+            //  Kiểm tra cache
             var cached = _db.LocationCaches.FirstOrDefault(x => x.Address == address);
             if (cached != null)
                 return (cached.Lat, cached.Lng);
 
-            // 🛰️ Gọi OpenStreetMap API
+            //  Gọi OpenStreetMap API
             var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(address)}&format=json&addressdetails=1&limit=1";
             var response = await _http.GetStringAsync(url);
             var json = JsonConvert.DeserializeObject<dynamic>(response);
@@ -39,7 +39,7 @@ namespace PTJ_Service.LocationService
             double lat = double.Parse((string)json[0].lat, CultureInfo.InvariantCulture);
             double lng = double.Parse((string)json[0].lon, CultureInfo.InvariantCulture);
 
-            // 💾 Lưu vào cache
+            //  Lưu vào cache
             var entity = new LocationCache
             {
                 Address = address,
@@ -53,7 +53,7 @@ namespace PTJ_Service.LocationService
             return (lat, lng);
         }
 
-        // 📏 Tính khoảng cách giữa 2 tọa độ (km)
+        //  Tính khoảng cách giữa 2 tọa độ (km)
         public double ComputeDistanceKm(double lat1, double lon1, double lat2, double lon2)
         {
             const double R = 6371; // bán kính Trái Đất km

@@ -17,9 +17,9 @@ namespace PTJ_API.Controllers
             _service = service;
             }
 
-        // =========================================================
+        
         // CREATE
-        // =========================================================
+        
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromBody] JobSeekerPostDto dto)
             {
@@ -27,9 +27,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = "Đăng bài tìm việc thành công.", data = result });
             }
 
-        // =========================================================
+        
         // READ
-        // =========================================================
+        
         [HttpGet("all")]
         public async Task<IActionResult> GetAll()
             {
@@ -53,9 +53,9 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // =========================================================
+        
         // UPDATE
-        // =========================================================
+       
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] JobSeekerPostDto dto)
             {
@@ -65,9 +65,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = "Cập nhật thành công.", data = result });
             }
 
-        // =========================================================
+        
         // DELETE
-        // =========================================================
+       
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
             {
@@ -75,9 +75,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success, message = success ? "Đã xóa bài đăng." : "Không tìm thấy bài đăng." });
             }
 
-        // =========================================================
+        
         // AI SUGGESTIONS
-        // =========================================================
+       
         [HttpPost("refresh/{postId}")]
         public async Task<IActionResult> Refresh(int postId)
             {
@@ -85,9 +85,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = "Đã làm mới đề xuất việc làm.", data = result });
             }
 
-        // =========================================================
+        
         // SHORTLIST
-        // =========================================================
+       
         [HttpPost("save-job")]
         public async Task<IActionResult> SaveJob([FromBody] SaveJobDto dto)
             {
@@ -109,9 +109,9 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // =========================================================
+       
         // AI SUGGESTIONS - GET (đã lưu trong AiMatchSuggestions)
-        // =========================================================
+        
         [HttpGet("{postId:int}/suggestions")]
         public async Task<IActionResult> GetSuggestions(int postId, [FromQuery] int take = 10, [FromQuery] int skip = 0)
             {

@@ -17,9 +17,9 @@ namespace PTJ_API.Controllers
             _service = service;
             }
 
-        // =========================================================
+        
         // ỨNG VIÊN NỘP ĐƠN ỨNG TUYỂN
-        // =========================================================
+       
         [HttpPost("apply")]
         public async Task<IActionResult> Apply([FromBody] JobApplicationCreateDto dto)
             {
@@ -29,9 +29,9 @@ namespace PTJ_API.Controllers
                 : BadRequest(new { message = "Ứng viên đã ứng tuyển hoặc lỗi xảy ra." });
             }
 
-        // =========================================================
+        
         // ỨNG VIÊN RÚT ĐƠN
-        // =========================================================
+      
         [HttpPut("withdraw")]
         public async Task<IActionResult> Withdraw(int jobSeekerId, int employerPostId)
             {
@@ -41,9 +41,9 @@ namespace PTJ_API.Controllers
                 : NotFound(new { message = "Không tìm thấy đơn ứng tuyển." });
             }
 
-        // =========================================================
+        
         // EMPLOYER XEM DANH SÁCH ỨNG VIÊN CỦA BÀI ĐĂNG
-        // =========================================================
+      
         [HttpGet("by-post/{employerPostId}")]
         public async Task<ActionResult<IEnumerable<JobApplicationResultDto>>> GetByPost(int employerPostId)
             {
@@ -51,9 +51,9 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // =========================================================
+        
         // JOBSEEKER XEM DANH SÁCH BÀI ĐÃ ỨNG TUYỂN
-        // =========================================================
+      
         [HttpGet("by-seeker/{jobSeekerId}")]
         public async Task<ActionResult<IEnumerable<JobApplicationResultDto>>> GetBySeeker(int jobSeekerId)
             {
@@ -61,19 +61,17 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // =========================================================
+       
+       
         // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
-        // =========================================================
-        // =========================================================
-        // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
-        // =========================================================
+       
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] JobApplicationUpdateDto dto)
             {
-            // ✅ Danh sách trạng thái hợp lệ
+            //  Danh sách trạng thái hợp lệ
             var validStatuses = new[] { "Accepted", "Rejected" };
 
-            // ✅ Kiểm tra hợp lệ (không phân biệt hoa thường)
+            //  Kiểm tra hợp lệ (không phân biệt hoa thường)
             if (!validStatuses.Contains(dto.Status, StringComparer.OrdinalIgnoreCase))
                 {
                 return BadRequest(new
@@ -88,9 +86,9 @@ namespace PTJ_API.Controllers
 
             return Ok(new { message = $"Cập nhật trạng thái thành công: {dto.Status}" });
             }
-        // =========================================================
+       
         // LẤY DANH SÁCH TRẠNG THÁI HỢP LỆ (cho frontend render dropdown)
-        // =========================================================
+        
         [HttpGet("valid-statuses")]
         public IActionResult GetValidStatuses()
             {

@@ -15,7 +15,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             private readonly JobMatchingDbContext _db;
             public AdminJobPostRepository(JobMatchingDbContext db) => _db = db;
 
-            // ================= Employer Posts =================
+            //  Employer Posts 
 
             public async Task<IEnumerable<AdminEmployerPostDto>> GetEmployerPostsAsync(string status = null, int? categoryId = null, string keyword = null)
             {

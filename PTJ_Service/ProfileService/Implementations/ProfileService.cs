@@ -14,7 +14,7 @@ namespace PTJ_Service.ProfileService.Implementations
             _context = context;
         }
 
-        // ✅ Lấy thông tin hồ sơ
+        //  Lấy thông tin hồ sơ
         public async Task<ProfileDto?> GetProfileAsync(int userId)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
@@ -63,7 +63,7 @@ namespace PTJ_Service.ProfileService.Implementations
             return dto;
         }
 
-        // ✅ Cập nhật thông tin hồ sơ
+        //  Cập nhật thông tin hồ sơ
         public async Task<bool> UpdateProfileAsync(int userId, ProfileDto dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);

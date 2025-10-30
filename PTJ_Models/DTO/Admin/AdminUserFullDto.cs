@@ -19,13 +19,13 @@ namespace PTJ_Models.DTO.Admin
         public string? Address { get; set; }
         public string? PhoneNumber { get; set; }
 
-        // Dữ liệu profile
+        
         public string? FullName { get; set; }
         public string? Gender { get; set; }
         public int? BirthYear { get; set; }
         public string? PreferredLocation { get; set; }
 
-        // Employer profile
+        
         public string? CompanyName { get; set; }
         public string? Website { get; set; }
     }
