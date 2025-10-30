@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Service.EmployerPostService;
@@ -28,7 +29,13 @@ namespace PTJ_API.Controllers
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
 
             // 🧩 Lấy userId từ token (Claim "sub")
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            // ✅ Lấy claim "sub" hoặc "nameidentifier" (tùy mapping)
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin user." });
+
+            var currentUserId = int.Parse(sub.Value);
+
 
             // 🧩 Nếu là Employer thì không cho đăng thay người khác
             if (!User.IsInRole("Admin") && dto.UserID != currentUserId)

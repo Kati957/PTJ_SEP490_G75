@@ -4,6 +4,7 @@ using PTJ_Models.DTO.ApplicationDTO;
 using PTJ_Service.JobApplicationService.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace PTJ_API.Controllers
@@ -36,7 +37,13 @@ namespace PTJ_API.Controllers
                     });
                 }
 
-            var currentUserId = int.Parse(User.FindFirst("sub")!.Value);
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+
+            var currentUserId = int.Parse(sub.Value);
+            dto.JobSeekerId = currentUserId;
+
             if (!User.IsInRole("Admin") && dto.JobSeekerId != currentUserId)
                 return Forbid("Bạn không thể nộp đơn thay người khác.");
 
