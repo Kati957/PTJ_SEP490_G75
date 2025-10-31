@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using PTJ_Models.Models;
-namespace PTJ_Data;
+
+namespace PTJ_Models.Models;
 
 public partial class JobMatchingDbContext : DbContext
 {
@@ -20,8 +20,6 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<AiEmbeddingStatus> AiEmbeddingStatuses { get; set; }
 
     public virtual DbSet<AiMatchSuggestion> AiMatchSuggestions { get; set; }
-
-    public virtual DbSet<AiQueryCache> AiQueryCaches { get; set; }
 
     public virtual DbSet<Category> Categories { get; set; }
 
@@ -78,7 +76,9 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database =JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiContentForEmbedding>(entity =>
@@ -155,22 +155,6 @@ public partial class JobMatchingDbContext : DbContext
                 .HasMaxLength(30)
                 .IsUnicode(false);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
-        });
-
-        modelBuilder.Entity<AiQueryCache>(entity =>
-        {
-            entity.HasKey(e => e.CacheId);
-
-            entity.ToTable("AI_QueryCache");
-
-            entity.Property(e => e.CacheId).HasColumnName("CacheID");
-            entity.Property(e => e.CachedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.EntityId).HasColumnName("EntityID");
-            entity.Property(e => e.Namespace)
-                .HasMaxLength(50)
-                .IsUnicode(false);
         });
 
         modelBuilder.Entity<Category>(entity =>
@@ -496,7 +480,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<LocationCache>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC07FEC7F7FC");
+            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC072FEF26F3");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.LastUpdated).HasColumnType("datetime");
