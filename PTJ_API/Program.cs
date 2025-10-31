@@ -36,6 +36,7 @@ using PTJ_Data.Repositories.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Service.Admin.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
+using PTJ_Models.Models;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -142,20 +143,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // 4️⃣ CẤU HÌNH CORS
 
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowLocalhost", policy =>
+//    {
+//        policy.WithOrigins(
+//            "https://localhost:7100", // Swagger & API cùng port
+//            "http://localhost:5169",  // HTTP fallback
+//            "https://localhost:7025"  // trường hợp FE dev khác port
+//        )
+//        .AllowAnyHeader()
+//        .AllowCredentials()
+//        .AllowAnyMethod();
+//    });
+//});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost", policy =>
     {
         policy.WithOrigins(
-            "https://localhost:7100", // Swagger & API cùng port
-            "http://localhost:5169",  // HTTP fallback
-            "https://localhost:7025"  // trường hợp FE dev khác port
+            "https://localhost:5174", // ✅ frontend thật
+            "http://localhost:5174",  // fallback HTTP
+            "https://localhost:7100"  // swagger backend
         )
         .AllowAnyHeader()
-        .AllowCredentials()
-        .AllowAnyMethod();
+        .AllowAnyMethod()
+        .AllowCredentials();
     });
 });
+
 
 
 // 5️⃣ CONTROLLERS + JSON OPTIONS

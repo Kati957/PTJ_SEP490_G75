@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PTJ_Data\PTJ_Data.csproj" />
+    <ProjectReference Include="..\PTJ_Models\PTJ_Models.csproj" />
   </ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
