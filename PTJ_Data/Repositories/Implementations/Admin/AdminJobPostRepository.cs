@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces.Admin;
+using PTJ_Models;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
 

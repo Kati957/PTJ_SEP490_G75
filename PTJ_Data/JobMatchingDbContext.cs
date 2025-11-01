@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Models.Models;
 
-namespace PTJ_Models.Models;
+namespace PTJ_Models;
 
 public partial class JobMatchingDbContext : DbContext
 {
@@ -281,6 +282,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasIndex(e => e.UserId, "UQ_EmployerProfiles_UserID").IsUnique();
 
             entity.Property(e => e.ProfileId).HasColumnName("ProfileID");
+            entity.Property(e => e.AvatarPublicId).HasMaxLength(255);
             entity.Property(e => e.AvatarUrl).HasMaxLength(255);
             entity.Property(e => e.ContactEmail).HasMaxLength(100);
             entity.Property(e => e.ContactName).HasMaxLength(100);
@@ -406,11 +408,15 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasIndex(e => e.UserId, "UQ_JobSeekerProfiles_UserID").IsUnique();
 
             entity.Property(e => e.ProfileId).HasColumnName("ProfileID");
+            entity.Property(e => e.ContactPhone)
+                .HasMaxLength(20)
+                .IsUnicode(false);
             entity.Property(e => e.FullName).HasMaxLength(100);
             entity.Property(e => e.Gender).HasMaxLength(10);
             entity.Property(e => e.PreferredJobType).HasMaxLength(100);
             entity.Property(e => e.PreferredLocation).HasMaxLength(255);
             entity.Property(e => e.ProfilePicture).HasMaxLength(255);
+            entity.Property(e => e.ProfilePicturePublicId).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");

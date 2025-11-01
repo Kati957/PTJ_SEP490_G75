@@ -10,6 +10,7 @@ using PTJ_Models.Models;
 using Microsoft.AspNetCore.WebUtilities;
 using PTJ_Service.AuthService.Interfaces;
 using PTJ_Data;
+using PTJ_Models;
 
 namespace PTJ_Service.AuthService.Implementations;
 

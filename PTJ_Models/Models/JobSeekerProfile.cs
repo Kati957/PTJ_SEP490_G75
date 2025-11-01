@@ -29,5 +29,11 @@ public partial class JobSeekerProfile
 
     public DateTime UpdatedAt { get; set; }
 
+    public string? ProfilePicturePublicId { get; set; }
+
+    public bool IsPictureHidden { get; set; }
+
+    public string? ContactPhone { get; set; }
+
     public virtual User User { get; set; } = null!;
 }

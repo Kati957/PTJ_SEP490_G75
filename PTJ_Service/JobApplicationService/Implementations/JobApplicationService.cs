@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Data.Repositories.Interfaces;
+using PTJ_Models;
 using PTJ_Models.DTO.ApplicationDTO;
 using PTJ_Models.Models;
 using PTJ_Service.JobApplicationService.Interfaces;

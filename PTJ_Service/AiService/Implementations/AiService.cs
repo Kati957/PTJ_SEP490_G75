@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using PTJ_Data;
-using PTJ_Models.Models;
+using PTJ_Models;
 using PTJ_Service.AiService.Interfaces;
 using System.Net.Http;
 using System.Net.Http.Headers;

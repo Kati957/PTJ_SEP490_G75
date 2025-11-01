@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.Models;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Models;
 
 namespace PTJ_Data.Repositories.Implementations
 {

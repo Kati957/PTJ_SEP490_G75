@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces;
+using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.DTO.SearchDTO;
-using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Implementations
 {

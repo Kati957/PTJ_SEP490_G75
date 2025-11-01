@@ -27,5 +27,9 @@ public partial class EmployerProfile
 
     public DateTime UpdatedAt { get; set; }
 
+    public string? AvatarPublicId { get; set; }
+
+    public bool IsAvatarHidden { get; set; }
+
     public virtual User User { get; set; } = null!;
 }

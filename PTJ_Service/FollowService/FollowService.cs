@@ -2,6 +2,7 @@
 using PTJ_Models.DTO;
 using PTJ_Models.Models;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Models;
 
 namespace PTJ_Service.FollowService
 {

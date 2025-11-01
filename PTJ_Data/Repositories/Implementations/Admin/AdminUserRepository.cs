@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTO.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
-using PTJ_Models.Models;
+using PTJ_Models;
 
 
 namespace PTJ_Data.Repositories.Implementations.Admin

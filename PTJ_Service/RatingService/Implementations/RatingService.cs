@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
+using PTJ_Models;
 using PTJ_Models.DTOs;
 using PTJ_Models.Models;
 using PTJ_Service.RatingService.Interfaces;

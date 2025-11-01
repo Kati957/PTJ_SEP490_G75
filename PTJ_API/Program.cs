@@ -13,7 +13,6 @@ using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
 using PTJ_Service.LocationService;
-using PTJ_Service.ProfileService;
 using PTJ_Service.RatingService;
 using PTJ_Service.SystemReportService;
 using PTJ_Service.AuthService.Implementations;
@@ -36,7 +35,12 @@ using PTJ_Data.Repositories.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Service.Admin.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
-using PTJ_Models.Models;
+using PTJ_Models;
+using PTJ_Services.Implementations;
+using PTJ_Services.Interfaces;
+using PTJ_Data.Repositories.Interfaces;
+using PTJ_Repositories.Implementations;
+using PTJ_Repositories.Interfaces;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -99,7 +103,8 @@ builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
 builder.Services.AddScoped<IEmployerSearchService, EmployerSearchService>();
 builder.Services.AddScoped<IJobSeekerSearchService, JobSeekerSearchService>();
 builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
-
+builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
+builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 
 // Repository
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
@@ -109,8 +114,8 @@ builder.Services.AddScoped<IJobSeekerPostRepository, JobSeekerPostRepository>();
 builder.Services.AddScoped<IJobApplicationRepository, JobApplicationRepository>();
 builder.Services.AddScoped<IEmployerSearchRepository, EmployerSearchRepository>();
 builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository>();
-
-
+builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileRepository>();
+builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -143,34 +148,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // 4️⃣ CẤU HÌNH CORS
 
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowLocalhost", policy =>
-//    {
-//        policy.WithOrigins(
-//            "https://localhost:7100", // Swagger & API cùng port
-//            "http://localhost:5169",  // HTTP fallback
-//            "https://localhost:7025"  // trường hợp FE dev khác port
-//        )
-//        .AllowAnyHeader()
-//        .AllowCredentials()
-//        .AllowAnyMethod();
-//    });
-//});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowLocalhost", policy =>
     {
         policy.WithOrigins(
-            "https://localhost:5174", // ✅ frontend thật
-            "http://localhost:5174",  // fallback HTTP
-            "https://localhost:7100"  // swagger backend
+            "https://localhost:7100", // Swagger & API cùng port
+            "http://localhost:5169",  // HTTP fallback
+            "https://localhost:7025"  // trường hợp FE dev khác port
         )
         .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials();
+        .AllowCredentials()
+        .AllowAnyMethod();
     });
 });
+
 
 
 

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using PTJ_Models.Models;
 using PTJ_Service.AuthService.Interfaces;
 using PTJ_Data;
+using PTJ_Models;
 
 public sealed class TokenService : ITokenService
 {

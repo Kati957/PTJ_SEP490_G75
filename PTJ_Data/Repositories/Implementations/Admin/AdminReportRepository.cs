@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repo.Interface;
+using PTJ_Models;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
 

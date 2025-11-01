@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
-using PTJ_Models.Models;
+using PTJ_Models;
 
 namespace PTJ_Service.Helpers
 {
