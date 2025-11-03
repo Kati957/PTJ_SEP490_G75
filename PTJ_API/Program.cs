@@ -38,7 +38,6 @@ using System.IdentityModel.Tokens.Jwt;
 using PTJ_Models;
 using PTJ_Services.Implementations;
 using PTJ_Services.Interfaces;
-using PTJ_Data.Repositories.Interfaces;
 using PTJ_Repositories.Implementations;
 using PTJ_Repositories.Interfaces;
 using PTJ_Service.SearchService.Services;
