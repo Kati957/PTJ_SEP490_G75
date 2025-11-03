@@ -29,7 +29,7 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<EmployerCandidatesList> EmployerCandidatesLists { get; set; }
 
     public virtual DbSet<EmployerFollower> EmployerFollowers { get; set; }
-
+    public DbSet<Image> Images { get; set; }
     public virtual DbSet<EmployerPost> EmployerPosts { get; set; }
 
     public virtual DbSet<EmployerProfile> EmployerProfiles { get; set; }
@@ -76,10 +76,6 @@ public partial class JobMatchingDbContext : DbContext
 
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database =JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiContentForEmbedding>(entity =>
@@ -102,6 +98,31 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.LastPreparedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<Image>(entity =>
+        {
+            entity.ToTable("Images");
+
+            entity.HasKey(i => i.ImageID);
+
+            entity.Property(i => i.EntityType)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(i => i.Url)
+                .HasMaxLength(500)
+                .IsRequired();
+
+            entity.Property(i => i.PublicId)
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.HasOne(i => i.News)
+                .WithMany(n => n.Images)
+                .HasForeignKey(i => i.EntityID)
+                .HasConstraintName("FK_Images_News")
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AiEmbeddingStatus>(entity =>
@@ -797,13 +818,22 @@ public partial class JobMatchingDbContext : DbContext
 
             entity.ToTable("UserActivityLog");
 
+            entity.HasIndex(e => e.UserId, "IX_UserActivityLog_User");
+
             entity.Property(e => e.LogId).HasColumnName("LogID");
-            entity.Property(e => e.ActivityType).HasMaxLength(50);
-            entity.Property(e => e.DeviceInfo).HasMaxLength(255);
+            entity.Property(e => e.ActivityType)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.DeviceInfo)
+                .HasMaxLength(255)
+                .IsUnicode(false);
             entity.Property(e => e.Ipaddress)
                 .HasMaxLength(50)
+                .IsUnicode(false)
                 .HasColumnName("IPAddress");
-            entity.Property(e => e.Timestamp).HasColumnType("datetime");
+            entity.Property(e => e.Timestamp)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
             entity.Property(e => e.UserId).HasColumnName("UserID");
 
             entity.HasOne(d => d.User).WithMany(p => p.UserActivityLogs)
