@@ -41,6 +41,7 @@ using PTJ_Services.Interfaces;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Repositories.Implementations;
 using PTJ_Repositories.Interfaces;
+using PTJ_Service.SearchService.Services;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -105,6 +106,7 @@ builder.Services.AddScoped<IJobSeekerSearchService, JobSeekerSearchService>();
 builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
 builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // Repository
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
