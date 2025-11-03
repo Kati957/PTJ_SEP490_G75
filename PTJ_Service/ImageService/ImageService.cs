@@ -1,7 +1,7 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
-using PTJ_Models;
+using PTJ_Data;
 using PTJ_Models.Models;
 using System;
 using System.Threading.Tasks;

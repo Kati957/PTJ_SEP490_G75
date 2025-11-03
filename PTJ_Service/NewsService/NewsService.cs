@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using PTJ_Models.DTO.News;
 using PTJ_Models.Models;
-using PTJ_Models;
+using PTJ_Data;
 using PTJ_Service.ImageService;
 using PTJ_Data.Repositories.Interfaces;
 
@@ -51,7 +51,7 @@ namespace PTJ_Service.NewsService
                 var cover = new Image
                 {
                     EntityType = "News",
-                    EntityID = news.NewsId,
+                    EntityId = news.NewsId,
                     Url = url,
                     PublicId = publicId,
                     Format = "jpg"
@@ -68,7 +68,7 @@ namespace PTJ_Service.NewsService
                     var image = new Image
                     {
                         EntityType = "News",
-                        EntityID = news.NewsId,
+                        EntityId = news.NewsId,
                         Url = url,
                         PublicId = publicId,
                         Format = "jpg"
@@ -125,7 +125,7 @@ namespace PTJ_Service.NewsService
                 var image = new Image
                 {
                     EntityType = "News",
-                    EntityID = news.NewsId,
+                    EntityId = news.NewsId,
                     Url = url,
                     PublicId = publicId,
                     Format = "jpg"
@@ -142,7 +142,7 @@ namespace PTJ_Service.NewsService
                     var image = new Image
                     {
                         EntityType = "News",
-                        EntityID = news.NewsId,
+                        EntityId = news.NewsId,
                         Url = url,
                         PublicId = publicId,
                         Format = "jpg"
@@ -163,7 +163,7 @@ namespace PTJ_Service.NewsService
             if (news == null) return false;
 
             // Xóa ảnh trong Cloudinary + DB
-            var images = _context.Images.Where(i => i.EntityType == "News" && i.EntityID == newsId).ToList();
+            var images = _context.Images.Where(i => i.EntityType == "News" && i.EntityId == newsId).ToList();
             foreach (var img in images)
             {
                 await _imageService.DeleteImageAsync(img.PublicId);
