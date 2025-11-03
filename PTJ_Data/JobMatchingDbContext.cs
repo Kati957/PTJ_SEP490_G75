@@ -2,8 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
-
-namespace PTJ_Models;
+namespace PTJ_Data;
 
 public partial class JobMatchingDbContext : DbContext
 {
@@ -39,6 +38,8 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<ExternalLogin> ExternalLogins { get; set; }
 
     public virtual DbSet<FavoritePost> FavoritePosts { get; set; }
+
+    public virtual DbSet<Image> Images { get; set; }
 
     public virtual DbSet<JobSeekerPost> JobSeekerPosts { get; set; }
 
@@ -77,9 +78,7 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database =JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
-
+    { }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiContentForEmbedding>(entity =>
@@ -187,7 +186,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.EmailVerificationTokens)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EmailVeri__UserI__3A4CA8FD");
+                .HasConstraintName("FK__EmailVeri__UserI__3C34F16F");
         });
 
         modelBuilder.Entity<EmployerCandidatesList>(entity =>
@@ -212,12 +211,12 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.EmployerPost).WithMany(p => p.EmployerCandidatesLists)
                 .HasForeignKey(d => d.EmployerPostId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Employer___Emplo__3B40CD36");
+                .HasConstraintName("FK__Employer___Emplo__3D2915A8");
 
             entity.HasOne(d => d.JobSeeker).WithMany(p => p.EmployerCandidatesLists)
                 .HasForeignKey(d => d.JobSeekerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Employer___JobSe__3C34F16F");
+                .HasConstraintName("FK__Employer___JobSe__3E1D39E1");
         });
 
         modelBuilder.Entity<EmployerFollower>(entity =>
@@ -235,12 +234,12 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.Employer).WithMany(p => p.EmployerFollowerEmployers)
                 .HasForeignKey(d => d.EmployerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EmployerF__Emplo__40058253");
+                .HasConstraintName("FK__EmployerF__Emplo__41EDCAC5");
 
             entity.HasOne(d => d.JobSeeker).WithMany(p => p.EmployerFollowerJobSeekers)
                 .HasForeignKey(d => d.JobSeekerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EmployerF__JobSe__40F9A68C");
+                .HasConstraintName("FK__EmployerF__JobSe__42E1EEFE");
         });
 
         modelBuilder.Entity<EmployerPost>(entity =>
@@ -267,12 +266,12 @@ public partial class JobMatchingDbContext : DbContext
 
             entity.HasOne(d => d.Category).WithMany(p => p.EmployerPosts)
                 .HasForeignKey(d => d.CategoryId)
-                .HasConstraintName("FK__EmployerP__Categ__41EDCAC5");
+                .HasConstraintName("FK__EmployerP__Categ__43D61337");
 
             entity.HasOne(d => d.User).WithMany(p => p.EmployerPosts)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EmployerP__UserI__42E1EEFE");
+                .HasConstraintName("FK__EmployerP__UserI__44CA3770");
         });
 
         modelBuilder.Entity<EmployerProfile>(entity =>
@@ -300,7 +299,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithOne(p => p.EmployerProfile)
                 .HasForeignKey<EmployerProfile>(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__EmployerP__UserI__43D61337");
+                .HasConstraintName("FK__EmployerP__UserI__45BE5BA9");
         });
 
         modelBuilder.Entity<EmployerShortlistedCandidate>(entity =>
@@ -320,16 +319,16 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.Employer).WithMany(p => p.EmployerShortlistedCandidateEmployers)
                 .HasForeignKey(d => d.EmployerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Employer___Emplo__3D2915A8");
+                .HasConstraintName("FK__Employer___Emplo__3F115E1A");
 
             entity.HasOne(d => d.EmployerPost).WithMany(p => p.EmployerShortlistedCandidates)
                 .HasForeignKey(d => d.EmployerPostId)
-                .HasConstraintName("FK__Employer___Emplo__3E1D39E1");
+                .HasConstraintName("FK__Employer___Emplo__40058253");
 
             entity.HasOne(d => d.JobSeeker).WithMany(p => p.EmployerShortlistedCandidateJobSeekers)
                 .HasForeignKey(d => d.JobSeekerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Employer___JobSe__3F115E1A");
+                .HasConstraintName("FK__Employer___JobSe__40F9A68C");
         });
 
         modelBuilder.Entity<ExternalLogin>(entity =>
@@ -348,7 +347,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.ExternalLogins)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__ExternalL__UserI__44CA3770");
+                .HasConstraintName("FK__ExternalL__UserI__46B27FE2");
         });
 
         modelBuilder.Entity<FavoritePost>(entity =>
@@ -366,7 +365,27 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.FavoritePosts)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__FavoriteP__UserI__45BE5BA9");
+                .HasConstraintName("FK__FavoriteP__UserI__47A6A41B");
+        });
+
+        modelBuilder.Entity<Image>(entity =>
+        {
+            entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F4EC40191566");
+
+            entity.Property(e => e.ImageId).HasColumnName("ImageID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.EntityId).HasColumnName("EntityID");
+            entity.Property(e => e.EntityType).HasMaxLength(50);
+            entity.Property(e => e.Format).HasMaxLength(20);
+            entity.Property(e => e.PublicId).HasMaxLength(255);
+            entity.Property(e => e.Url).HasMaxLength(500);
+
+            entity.HasOne(d => d.Entity).WithMany(p => p.Images)
+                .HasForeignKey(d => d.EntityId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Images_News");
         });
 
         modelBuilder.Entity<JobSeekerPost>(entity =>
@@ -393,12 +412,12 @@ public partial class JobMatchingDbContext : DbContext
 
             entity.HasOne(d => d.Category).WithMany(p => p.JobSeekerPosts)
                 .HasForeignKey(d => d.CategoryId)
-                .HasConstraintName("FK__JobSeeker__Categ__4A8310C6");
+                .HasConstraintName("FK__JobSeeker__Categ__4D5F7D71");
 
             entity.HasOne(d => d.User).WithMany(p => p.JobSeekerPosts)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__JobSeeker__UserI__4B7734FF");
+                .HasConstraintName("FK__JobSeeker__UserI__4E53A1AA");
         });
 
         modelBuilder.Entity<JobSeekerProfile>(entity =>
@@ -425,7 +444,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithOne(p => p.JobSeekerProfile)
                 .HasForeignKey<JobSeekerProfile>(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__JobSeeker__UserI__4C6B5938");
+                .HasConstraintName("FK__JobSeeker__UserI__4F47C5E3");
         });
 
         modelBuilder.Entity<JobSeekerShortlistedJob>(entity =>
@@ -476,17 +495,17 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.EmployerPost).WithMany(p => p.JobSeekerSubmissions)
                 .HasForeignKey(d => d.EmployerPostId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__JobSeeker__Emplo__489AC854");
+                .HasConstraintName("FK__JobSeeker__Emplo__4B7734FF");
 
             entity.HasOne(d => d.JobSeeker).WithMany(p => p.JobSeekerSubmissions)
                 .HasForeignKey(d => d.JobSeekerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__JobSeeker__JobSe__498EEC8D");
+                .HasConstraintName("FK__JobSeeker__JobSe__4C6B5938");
         });
 
         modelBuilder.Entity<LocationCache>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC072FEF26F3");
+            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC072BB32EFF");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.LastUpdated).HasColumnType("datetime");
@@ -510,7 +529,7 @@ public partial class JobMatchingDbContext : DbContext
 
             entity.HasOne(d => d.User).WithMany(p => p.LoginAttempts)
                 .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK__LoginAtte__UserI__4D5F7D71");
+                .HasConstraintName("FK__LoginAtte__UserI__503BEA1C");
         });
 
         modelBuilder.Entity<News>(entity =>
@@ -533,7 +552,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.Admin).WithMany(p => p.News)
                 .HasForeignKey(d => d.AdminId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__News__AdminID__4E53A1AA");
+                .HasConstraintName("FK__News__AdminID__51300E55");
         });
 
         modelBuilder.Entity<Notification>(entity =>
@@ -553,7 +572,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Notificat__UserI__4F47C5E3");
+                .HasConstraintName("FK__Notificat__UserI__5224328E");
         });
 
         modelBuilder.Entity<PasswordResetToken>(entity =>
@@ -568,7 +587,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.PasswordResetTokens)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PasswordR__UserI__503BEA1C");
+                .HasConstraintName("FK__PasswordR__UserI__531856C7");
         });
 
         modelBuilder.Entity<PostReport>(entity =>
@@ -592,20 +611,20 @@ public partial class JobMatchingDbContext : DbContext
 
             entity.HasOne(d => d.EmployerPost).WithMany(p => p.PostReports)
                 .HasForeignKey(d => d.EmployerPostId)
-                .HasConstraintName("FK__PostRepor__Emplo__55009F39");
+                .HasConstraintName("FK__PostRepor__Emplo__57DD0BE4");
 
             entity.HasOne(d => d.JobSeekerPost).WithMany(p => p.PostReports)
                 .HasForeignKey(d => d.JobSeekerPostId)
-                .HasConstraintName("FK__PostRepor__JobSe__55F4C372");
+                .HasConstraintName("FK__PostRepor__JobSe__58D1301D");
 
             entity.HasOne(d => d.Reporter).WithMany(p => p.PostReportReporters)
                 .HasForeignKey(d => d.ReporterId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PostRepor__Repor__56E8E7AB");
+                .HasConstraintName("FK__PostRepor__Repor__59C55456");
 
             entity.HasOne(d => d.TargetUser).WithMany(p => p.PostReportTargetUsers)
                 .HasForeignKey(d => d.TargetUserId)
-                .HasConstraintName("FK__PostRepor__Targe__57DD0BE4");
+                .HasConstraintName("FK__PostRepor__Targe__5AB9788F");
         });
 
         modelBuilder.Entity<PostReportSolved>(entity =>
@@ -636,20 +655,20 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.Admin).WithMany(p => p.PostReportSolvedAdmins)
                 .HasForeignKey(d => d.AdminId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PostRepor__Admin__51300E55");
+                .HasConstraintName("FK__PostRepor__Admin__540C7B00");
 
             entity.HasOne(d => d.AffectedUser).WithMany(p => p.PostReportSolvedAffectedUsers)
                 .HasForeignKey(d => d.AffectedUserId)
-                .HasConstraintName("FK__PostRepor__Affec__5224328E");
+                .HasConstraintName("FK__PostRepor__Affec__55009F39");
 
             entity.HasOne(d => d.Notification).WithMany(p => p.PostReportSolveds)
                 .HasForeignKey(d => d.NotificationId)
-                .HasConstraintName("FK__PostRepor__Notif__531856C7");
+                .HasConstraintName("FK__PostRepor__Notif__55F4C372");
 
             entity.HasOne(d => d.PostReport).WithOne(p => p.PostReportSolved)
                 .HasForeignKey<PostReportSolved>(d => d.PostReportId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PostRepor__PostR__540C7B00");
+                .HasConstraintName("FK__PostRepor__PostR__56E8E7AB");
         });
 
         modelBuilder.Entity<Rating>(entity =>
@@ -666,16 +685,16 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.Ratee).WithMany(p => p.RatingRatees)
                 .HasForeignKey(d => d.RateeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Ratings__RateeID__58D1301D");
+                .HasConstraintName("FK__Ratings__RateeID__5BAD9CC8");
 
             entity.HasOne(d => d.Rater).WithMany(p => p.RatingRaters)
                 .HasForeignKey(d => d.RaterId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Ratings__RaterID__59C55456");
+                .HasConstraintName("FK__Ratings__RaterID__5CA1C101");
 
             entity.HasOne(d => d.Submission).WithMany(p => p.Ratings)
                 .HasForeignKey(d => d.SubmissionId)
-                .HasConstraintName("FK__Ratings__Submiss__5AB9788F");
+                .HasConstraintName("FK__Ratings__Submiss__5D95E53A");
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>
@@ -700,7 +719,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__RefreshTo__UserI__5BAD9CC8");
+                .HasConstraintName("FK__RefreshTo__UserI__5E8A0973");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -730,7 +749,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.SystemReports)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SystemRep__UserI__5CA1C101");
+                .HasConstraintName("FK__SystemRep__UserI__5F7E2DAC");
         });
 
         modelBuilder.Entity<SystemStatistic>(entity =>
@@ -777,11 +796,11 @@ public partial class JobMatchingDbContext : DbContext
                     r => r.HasOne<Role>().WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__UserRoles__RoleI__5E8A0973"),
+                        .HasConstraintName("FK__UserRoles__RoleI__6166761E"),
                     l => l.HasOne<User>().WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK__UserRoles__UserI__5F7E2DAC"),
+                        .HasConstraintName("FK__UserRoles__UserI__625A9A57"),
                     j =>
                     {
                         j.HasKey("UserId", "RoleId");
@@ -809,7 +828,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserActivityLogs)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__UserActiv__UserI__5D95E53A");
+                .HasConstraintName("FK__UserActiv__UserI__607251E5");
         });
 
         OnModelCreatingPartial(modelBuilder);

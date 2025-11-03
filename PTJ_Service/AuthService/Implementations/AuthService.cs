@@ -114,9 +114,16 @@ public sealed class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            // ❌ Có lỗi → rollback
             await transaction.RollbackAsync();
-            throw new Exception($"Registration failed: {ex.Message}");
+
+            // 👇 In ra lỗi gốc rõ ràng nhất
+            var inner = ex.InnerException?.Message ?? ex.Message;
+            Console.WriteLine("🔥 INNER EXCEPTION: " + inner);
+
+            // hoặc log ra nếu bạn có ILogger
+            _log.LogError(ex, "Registration failed: {Inner}", inner);
+
+            throw new Exception($"Registration failed: {inner}");
         }
     }
 

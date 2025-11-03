@@ -28,4 +28,6 @@ public partial class News
     public string Status { get; set; } = null!;
 
     public virtual User Admin { get; set; } = null!;
+
+    public virtual ICollection<Image> Images { get; set; } = new List<Image>();
 }
