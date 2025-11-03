@@ -41,6 +41,10 @@ using PTJ_Services.Interfaces;
 using PTJ_Repositories.Implementations;
 using PTJ_Repositories.Interfaces;
 using PTJ_Service.SearchService.Services;
+using PTJ_Service.ImageService;
+using PTJ_Service.NewsService;
+using CloudinaryDotNet;
+using dotenv.net;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -54,6 +58,21 @@ builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
+DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+var cloudinaryUrl = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
+if (string.IsNullOrEmpty(cloudinaryUrl))
+{
+    Console.WriteLine(" CLOUDINARY_URL not found in .env");
+}
+else
+{
+    Console.WriteLine(" Cloudinary loaded from .env");
+}
+
+// Đăng ký Cloudinary vào DI container
+var cloudinary = new Cloudinary(cloudinaryUrl);
+cloudinary.Api.Secure = true;
+builder.Services.AddSingleton(cloudinary);
 
 
 // 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
@@ -106,6 +125,9 @@ builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
 builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<INewsService, NewsService>();
+builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 
 // Repository
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
@@ -117,6 +139,8 @@ builder.Services.AddScoped<IEmployerSearchRepository, EmployerSearchRepository>(
 builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository>();
 builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileRepository>();
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
+builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
+builder.Services.AddScoped<INewsRepository,NewsRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -175,7 +199,7 @@ builder.Services.AddControllers()
         opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
-
+builder.Services.AddHttpContextAccessor();
 
 // 6️⃣ BUILD APP
 
