@@ -25,14 +25,6 @@ namespace PTJ_Repositories.Implementations
                 .FirstOrDefaultAsync(p => p.UserId == userId);
             }
 
-        public async Task<IEnumerable<EmployerProfile>> GetAllAsync()
-            {
-            return await _context.EmployerProfiles
-                .Where(p => p.User.IsActive && p.User.IsVerified)
-                .AsNoTracking()
-                .ToListAsync();
-            }
-
         public async Task UpdateAsync(EmployerProfile profile)
             {
             _context.EmployerProfiles.Update(profile);

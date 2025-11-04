@@ -41,6 +41,12 @@ using PTJ_Services.Interfaces;
 using PTJ_Repositories.Implementations;
 using PTJ_Repositories.Interfaces;
 using PTJ_Service.SearchService.Services;
+using PTJ_Service.ImageService;
+using PTJ_Service.NewsService;
+using CloudinaryDotNet;
+using dotenv.net;
+using PTJ_Service.Helpers.Implementations;
+using PTJ_Service.Helpers.Interfaces;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -54,8 +60,6 @@ builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
-
-
 // 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
 
 
@@ -106,6 +110,9 @@ builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
 builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<INewsService, NewsService>();
+builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 
 // Repository
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
@@ -117,11 +124,13 @@ builder.Services.AddScoped<IEmployerSearchRepository, EmployerSearchRepository>(
 builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository>();
 builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileRepository>();
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
+builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
+builder.Services.AddScoped<INewsRepository, NewsRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
-builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -175,7 +184,7 @@ builder.Services.AddControllers()
         opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
     });
-
+builder.Services.AddHttpContextAccessor();
 
 // 6️⃣ BUILD APP
 

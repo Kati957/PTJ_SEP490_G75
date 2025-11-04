@@ -85,16 +85,28 @@ namespace PTJ_API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        [HttpPut("{id}/toggle-status")]
+        public async Task<IActionResult> ToggleStatus(int id)
         {
-            var result = await _newsService.DeleteAsync(id);
+            var news = await _newsService.ToggleStatusAsync(id);
+            if (news == null)
+                return NotFound(new { message = "Không tìm thấy bài viết." });
+
+            return Ok(new
+            {
+                message = $"Đã chuyển trạng thái bài viết thành {(news.Status == "Active" ? "Active" : "Inactive")}.",
+                data = news
+            });
+        }
+
+        [HttpDelete("{id}/hard-delete")]
+        public async Task<IActionResult> HardDelete(int id)
+        {
+            var result = await _newsService.DeleteAsync(id, isHardDelete: true);
             if (!result)
                 return NotFound(new { message = "Không tìm thấy bài viết để xóa." });
 
-            return Ok(new { message = "Xóa bài viết thành công!" });
+            return Ok(new { message = "Đã xóa bài viết vĩnh viễn!" });
         }
     }
 }
