@@ -45,6 +45,8 @@ using PTJ_Service.ImageService;
 using PTJ_Service.NewsService;
 using CloudinaryDotNet;
 using dotenv.net;
+using PTJ_Service.Helpers.Implementations;
+using PTJ_Service.Helpers.Interfaces;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -127,8 +129,8 @@ builder.Services.AddScoped<INewsRepository, NewsRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
-builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
