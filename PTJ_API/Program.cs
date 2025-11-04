@@ -58,23 +58,6 @@ builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
-DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
-var cloudinaryUrl = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
-if (string.IsNullOrEmpty(cloudinaryUrl))
-{
-    Console.WriteLine(" CLOUDINARY_URL not found in .env");
-}
-else
-{
-    Console.WriteLine(" Cloudinary loaded from .env");
-}
-
-// Đăng ký Cloudinary vào DI container
-var cloudinary = new Cloudinary(cloudinaryUrl);
-cloudinary.Api.Secure = true;
-builder.Services.AddSingleton(cloudinary);
-
-
 // 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
 
 
