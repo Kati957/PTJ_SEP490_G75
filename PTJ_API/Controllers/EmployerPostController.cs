@@ -8,7 +8,7 @@ namespace PTJ_API.Controllers
     {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Employer,Admin")]
+    //[Authorize(Roles = "Employer,Admin")]
     public class EmployerPostController : ControllerBase
         {
         private readonly IEmployerPostService _service;
@@ -60,7 +60,7 @@ namespace PTJ_API.Controllers
         // READ
         // =========================================================
         [HttpGet("all")]
-        [Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAll()
             {
             var result = await _service.GetAllAsync();

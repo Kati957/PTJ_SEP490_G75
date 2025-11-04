@@ -21,5 +21,6 @@ namespace PTJ_Models.DTO.PostDTO
         public string? EmployerName { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Status { get; set; } = string.Empty;
+        public string ProfileImgs { get; set; }
     }
 }

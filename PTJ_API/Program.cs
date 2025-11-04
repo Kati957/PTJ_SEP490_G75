@@ -165,7 +165,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "https://localhost:7100", // Swagger & API cùng port
             "http://localhost:5169",  // HTTP fallback
-            "https://localhost:7025"  // trường hợp FE dev khác port
+            "https://localhost:5175"  // trường hợp FE dev khác port
         )
         .AllowAnyHeader()
         .AllowCredentials()

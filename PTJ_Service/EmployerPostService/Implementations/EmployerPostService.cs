@@ -57,87 +57,87 @@ namespace PTJ_Service.EmployerPostService.Implementations
             //  Quan trọng: đảm bảo có ID thật trước khi tạo embedding
             await _db.SaveChangesAsync();
 
-            // Embedding nội dung (không nhồi location)
-            var (vector, hash) = await EnsureEmbeddingAsync(
-                "EmployerPost",
-                post.EmployerPostId,
-                $"{dto.Title}. {dto.Description}. Yêu cầu: {dto.Requirements}. Lương: {dto.Salary}"
-            );
+            //// Embedding nội dung (không nhồi location)
+            //var (vector, hash) = await EnsureEmbeddingAsync(
+            //    "EmployerPost",
+            //    post.EmployerPostId,
+            //    $"{dto.Title}. {dto.Description}. Yêu cầu: {dto.Requirements}. Lương: {dto.Salary}"
+            //);
 
-            await _ai.UpsertVectorAsync(
-                ns: "employer_posts",
-                id: $"EmployerPost:{post.EmployerPostId}",
-                vector: vector,
-                metadata: new
-                    {
-                    title = post.Title ?? "",
-                    location = post.Location ?? "",
-                    salary = post.Salary ?? 0,
-                    categoryId = post.CategoryId ?? 0,
-                    postId = post.EmployerPostId
-                    });
+            //await _ai.UpsertVectorAsync(
+            //    ns: "employer_posts",
+            //    id: $"EmployerPost:{post.EmployerPostId}",
+            //    vector: vector,
+            //    metadata: new
+            //        {
+            //        title = post.Title ?? "",
+            //        location = post.Location ?? "",
+            //        salary = post.Salary ?? 0,
+            //        categoryId = post.CategoryId ?? 0,
+            //        postId = post.EmployerPostId
+            //        });
 
-            // Query rộng để không bỏ sót (topK=100)
-            var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
+            //// Query rộng để không bỏ sót (topK=100)
+            //var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
-            if (!matches.Any())
-                {
-                // Pending nếu chưa có kết quả
-                _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
-                    {
-                    EntityType = "EmployerPost",
-                    EntityId = post.EmployerPostId,
-                    Lang = "vi",
-                    CanonicalText = $"{dto.Title}. {dto.Description}. {dto.Requirements}. {dto.Location}. {dto.Salary}",
-                    Hash = hash,
-                    LastPreparedAt = DateTime.Now
-                    });
-                await _db.SaveChangesAsync();
+            //if (!matches.Any())
+            //    {
+            //    // Pending nếu chưa có kết quả
+            //    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
+            //        {
+            //        EntityType = "EmployerPost",
+            //        EntityId = post.EmployerPostId,
+            //        Lang = "vi",
+            //        CanonicalText = $"{dto.Title}. {dto.Description}. {dto.Requirements}. {dto.Location}. {dto.Salary}",
+            //        Hash = hash,
+            //        LastPreparedAt = DateTime.Now
+            //        });
+            //    await _db.SaveChangesAsync();
 
-                return new EmployerPostResultDto
-                    {
-                    Post = await BuildCleanPostDto(post),
-                    SuggestedCandidates = new List<AIResultDto>()
-                    };
-                }
+            //    return new EmployerPostResultDto
+            //        {
+            //        Post = await BuildCleanPostDto(post),
+            //        SuggestedCandidates = new List<AIResultDto>()
+            //        };
+            //    }
 
-            var scored = await ScoreAndFilterCandidatesAsync(
-                matches,
-                mustMatchCategoryId: post.CategoryId,
-                employerLocation: post.Location ?? "",
-                employerTitle: post.Title ?? ""
-            );
+            //var scored = await ScoreAndFilterCandidatesAsync(
+            //    matches,
+            //    mustMatchCategoryId: post.CategoryId,
+            //    employerLocation: post.Location ?? "",
+            //    employerTitle: post.Title ?? ""
+            //);
 
-            await UpsertSuggestionsAsync("EmployerPost", post.EmployerPostId, "JobSeekerPost", scored, keepTop: 5);
+            //await UpsertSuggestionsAsync("EmployerPost", post.EmployerPostId, "JobSeekerPost", scored, keepTop: 5);
 
-            var savedIds = await _db.EmployerShortlistedCandidates
-                .Where(x => x.EmployerPostId == post.EmployerPostId)
-                .Select(x => x.JobSeekerId)
-                .ToListAsync();
+            //var savedIds = await _db.EmployerShortlistedCandidates
+            //    .Where(x => x.EmployerPostId == post.EmployerPostId)
+            //    .Select(x => x.JobSeekerId)
+            //    .ToListAsync();
 
-            var suggestions = scored
-                .OrderByDescending(x => x.Score)
-                .Take(5)
-                .Select(x => new AIResultDto
-                    {
-                    Id = $"JobSeekerPost:{x.Seeker.JobSeekerPostId}",
-                    Score = Math.Round(x.Score * 100, 2),
-                    ExtraInfo = new
-                        {
-                        x.Seeker.JobSeekerPostId,
-                        x.Seeker.Title,
-                        x.Seeker.PreferredLocation,
-                        x.Seeker.PreferredWorkHours,
-                        SeekerName = x.Seeker.User.Username,
-                        IsSaved = savedIds.Contains(x.Seeker.JobSeekerPostId)
-                        }
-                    })
-                .ToList();
+            //var suggestions = scored
+            //    .OrderByDescending(x => x.Score)
+            //    .Take(5)
+            //    .Select(x => new AIResultDto
+            //        {
+            //        Id = $"JobSeekerPost:{x.Seeker.JobSeekerPostId}",
+            //        Score = Math.Round(x.Score * 100, 2),
+            //        ExtraInfo = new
+            //            {
+            //            x.Seeker.JobSeekerPostId,
+            //            x.Seeker.Title,
+            //            x.Seeker.PreferredLocation,
+            //            x.Seeker.PreferredWorkHours,
+            //            SeekerName = x.Seeker.User.Username,
+            //            IsSaved = savedIds.Contains(x.Seeker.JobSeekerPostId)
+            //            }
+            //        })
+            //    .ToList();
 
             return new EmployerPostResultDto
                 {
                 Post = await BuildCleanPostDto(post),
-                SuggestedCandidates = suggestions
+                //SuggestedCandidates = suggestions
                 };
             }
 
@@ -160,8 +160,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 CategoryName = p.Category?.Name,
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
-                Status = p.Status
-                });
+                Status = p.Status,
+                ProfileImgs = p.User.EmployerProfile != null ? p.User.EmployerProfile.AvatarUrl : string.Empty,
+                EmployerId = p.UserId,
+            });
             }
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)

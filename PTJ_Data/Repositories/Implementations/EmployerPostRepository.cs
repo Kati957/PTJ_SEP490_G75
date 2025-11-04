@@ -17,7 +17,7 @@ namespace PTJ_Data.Repositories.Implementations
         public async Task<IEnumerable<EmployerPost>> GetAllAsync()
             {
             return await _db.EmployerPosts
-                .Include(p => p.User)
+                .Include(p => p.User).ThenInclude(p => p.EmployerProfile)
                 .Include(p => p.Category)
                 .Where(p => p.Status == "Active")
                 .OrderByDescending(p => p.CreatedAt)
