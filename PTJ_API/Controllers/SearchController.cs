@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.SearchDTO;
+using PTJ_Models.Models;
 using PTJ_Service.SearchService.Interfaces;
 using PTJ_Service.SearchService.Services;
 using System.Security.Claims;
@@ -76,14 +77,6 @@ namespace PTJ_API.Controllers
                     "JobSeeker" => 3, // Ứng viên
                     _ => null
                     };
-            }
-
-        // ✅ GET: api/search/categories
-        [HttpGet("categories")]
-        public async Task<IActionResult> GetCategories()
-            {
-            var categories = await _categoryService.GetCategoriesAsync();
-            return Ok(categories);
             }
         }
     }
