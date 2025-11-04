@@ -58,21 +58,26 @@ builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
-DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
-var cloudinaryUrl = Environment.GetEnvironmentVariable("CLOUDINARY_URL");
-if (string.IsNullOrEmpty(cloudinaryUrl))
-{
-    Console.WriteLine(" CLOUDINARY_URL not found in .env");
-}
-else
-{
-    Console.WriteLine(" Cloudinary loaded from .env");
-}
+// 🌥️ CẤU HÌNH CLOUDINARY TỪ appsettings.json
+var cloudinaryConfig = builder.Configuration.GetSection("Cloudinary");
+var cloudName = cloudinaryConfig["CloudName"];
+var apiKey = cloudinaryConfig["ApiKey"];
+var apiSecret = cloudinaryConfig["ApiSecret"];
 
-// Đăng ký Cloudinary vào DI container
-var cloudinary = new Cloudinary(cloudinaryUrl);
-cloudinary.Api.Secure = true;
-builder.Services.AddSingleton(cloudinary);
+if (string.IsNullOrEmpty(cloudName) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
+    {
+    Console.WriteLine("❌ Cloudinary configuration is missing in appsettings.json");
+    }
+else
+    {
+    Console.WriteLine("✅ Cloudinary configuration loaded successfully from appsettings.json");
+    var account = new Account(cloudName, apiKey, apiSecret);
+    var cloudinary = new Cloudinary(account)
+        {
+        Api = { Secure = true }
+        };
+    builder.Services.AddSingleton(cloudinary);
+    }
 
 
 // 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
@@ -140,7 +145,7 @@ builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository
 builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileRepository>();
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
 builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
-builder.Services.AddScoped<INewsRepository,NewsRepository>();
+builder.Services.AddScoped<INewsRepository, NewsRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
