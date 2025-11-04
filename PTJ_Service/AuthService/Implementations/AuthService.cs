@@ -5,12 +5,12 @@ using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PTJ_Models.DTO.Auth;
-using PTJ_Service.Helpers;
 using PTJ_Models.Models;
 using Microsoft.AspNetCore.WebUtilities;
 using PTJ_Service.AuthService.Interfaces;
 using PTJ_Data;
-using PTJ_Models;
+using PTJ_Service.Helpers.Implementations;
+using PTJ_Service.Helpers.Interfaces;
 
 namespace PTJ_Service.AuthService.Implementations;
 
@@ -232,7 +232,7 @@ public sealed class AuthService : IAuthService
             throw new Exception("Account is temporarily locked. Please try again later.");
 
         //  4. Kiểm tra sai mật khẩu hoặc user không tồn tại
-        if (user == null || user.PasswordHash == null || !_hasher.Verify(user.PasswordHash, dto.Password))
+        if (user == null || user.PasswordHash == null || !_hasher.Verify(dto.Password, user.PasswordHash))
         {
             if (user != null)
             {
@@ -323,6 +323,10 @@ public sealed class AuthService : IAuthService
         // 2️⃣ Tìm user theo email
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
 
+        // Nếu user bị khóa
+        if (user != null && !user.IsActive)
+            throw new Exception("Your account has been deactivated by an administrator.");
+
         if (user == null)
         {
             // 2a️⃣ Tạo user mới
@@ -353,17 +357,19 @@ public sealed class AuthService : IAuthService
             // Gán role mặc định: JobSeeker
             await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
 
-            //  Tạo JobSeekerProfile với ảnh Google (nếu có)
+            // Tạo JobSeekerProfile với ảnh Google (nếu có)
             _db.JobSeekerProfiles.Add(new JobSeekerProfile
             {
                 UserId = user.UserId,
                 FullName = name,
                 ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture,
-                ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null, // chỉ lưu publicId nếu dùng ảnh mặc định
+                ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null, // null = ảnh từ Google
                 IsPictureHidden = false,
                 UpdatedAt = DateTime.UtcNow
             });
             await _db.SaveChangesAsync();
+
+            _log.LogInformation("New Google user registered: {Email}", email);
         }
         else
         {
@@ -421,12 +427,20 @@ public sealed class AuthService : IAuthService
                 profile.UpdatedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
             }
+
+            _log.LogInformation("Existing Google user logged in: {Email}", email);
         }
 
-        // 3️⃣ Cấp token đăng nhập
+        // 3️⃣ Cập nhật lần đăng nhập cuối
+        user.LastLogin = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        // 4️⃣ Cấp token đăng nhập
         var response = await _tokens.IssueAsync(user, "google", ip);
         return response;
     }
+
 
 
 
@@ -437,72 +451,83 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResponseDto> UpgradeToEmployerAsync(int userId, RegisterEmployerDto dto, string? ip)
     {
-        // 1️⃣ Lấy thông tin user hiện tại
+        // 1️⃣ Lấy user hiện tại
         var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId)
             ?? throw new Exception("User not found.");
 
-        // 2️⃣ Xác minh email khớp với user hiện tại
+        // 2️⃣ Kiểm tra email đúng tài khoản hiện tại
         if (!string.Equals(user.Email, dto.Email.Trim(), StringComparison.OrdinalIgnoreCase))
             throw new Exception("Email does not match the current account.");
 
-        // 3️⃣ Xác minh password (đảm bảo người thật đang thao tác)
-        if (!_hasher.Verify(dto.Password, user.PasswordHash))
-            throw new Exception("Invalid password.");
+        // 3️⃣ Nếu là user thường (có password local) → xác minh password
+        if (!string.IsNullOrEmpty(user.PasswordHash))
+        {
+            if (!_hasher.Verify(dto.Password, user.PasswordHash))
+                throw new Exception("Invalid password.");
+        }
+        else
+        {
+            _log.LogInformation("Skipping password verification for Google-linked account {Email}", user.Email);
+        }
 
-        // 4️⃣ Gán role duy nhất: Employer
+        // 4️⃣ Bắt buộc đã xác minh email
+        if (!user.IsVerified)
+            throw new Exception("Please verify your email before upgrading to Employer.");
+
+        // 5️⃣ Gán role duy nhất: Employer
         await RoleHelper.SetSingleRoleAsync(_db, userId, "Employer");
 
-        // 5️⃣ Avatar mặc định cho Employer (dùng nếu chưa có)
+        // 6️⃣ Avatar mặc định cho Employer
         const string DefaultEmployerAvatar = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
         const string DefaultPublicId = "default_company_logo";
 
-        // 6️⃣ Kiểm tra EmployerProfile
-        var profile = await _db.EmployerProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
-
-        if (profile == null)
+        // 7️⃣ Xử lý profile
+        var employerProfile = await _db.EmployerProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
+        if (employerProfile == null)
         {
             // Lấy avatar từ JobSeekerProfile nếu có
             var jsProfile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
             string avatarUrl = jsProfile?.ProfilePicture ?? DefaultEmployerAvatar;
             string? avatarPublicId = jsProfile?.ProfilePicturePublicId ?? DefaultPublicId;
 
-            //  Tạo mới EmployerProfile
-            profile = new EmployerProfile
+            // Tạo EmployerProfile
+            employerProfile = new EmployerProfile
             {
                 UserId = userId,
                 DisplayName = dto.DisplayName ?? user.Username,
-                Description = null,
                 AvatarUrl = avatarUrl,
                 AvatarPublicId = avatarPublicId,
                 IsAvatarHidden = false,
-                ContactName = null,
                 ContactPhone = dto.PhoneNumber,
                 ContactEmail = dto.Email,
-                Location = null,
                 Website = dto.Website,
                 UpdatedAt = DateTime.UtcNow
             };
+            _db.EmployerProfiles.Add(employerProfile);
 
-            _db.EmployerProfiles.Add(profile);
-            await _db.SaveChangesAsync();
+            // ✅ Xóa JobSeekerProfile cũ (nếu có)
+            if (jsProfile != null)
+                _db.JobSeekerProfiles.Remove(jsProfile);
         }
         else
         {
-            //  Nếu đã có, chỉ cập nhật thông tin cơ bản
-            profile.DisplayName = dto.DisplayName ?? profile.DisplayName;
-            profile.ContactPhone = dto.PhoneNumber ?? profile.ContactPhone;
-            profile.ContactEmail = dto.Email ?? profile.ContactEmail;
-            profile.Website = dto.Website ?? profile.Website;
-            profile.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            // Đã có → cập nhật cơ bản
+            employerProfile.DisplayName = dto.DisplayName ?? employerProfile.DisplayName;
+            employerProfile.ContactPhone = dto.PhoneNumber ?? employerProfile.ContactPhone;
+            employerProfile.ContactEmail = dto.Email ?? employerProfile.ContactEmail;
+            employerProfile.Website = dto.Website ?? employerProfile.Website;
+            employerProfile.UpdatedAt = DateTime.UtcNow;
         }
 
-        // 7️⃣ Sinh token mới (để claims cập nhật role)
-        var response = await _tokens.IssueAsync(user, "web", ip);
+        // 8️⃣ Cập nhật thời gian người dùng
+        user.UpdatedAt = DateTime.UtcNow;
 
-        // 8️⃣ Trả về kết quả
-        return response;
+        await _db.SaveChangesAsync();
+
+        // 9️⃣ Sinh token mới để claims phản ánh role mới
+        return await _tokens.IssueAsync(user, "web", ip);
     }
+
 
     public async Task RequestPasswordResetAsync(string email)
     {
