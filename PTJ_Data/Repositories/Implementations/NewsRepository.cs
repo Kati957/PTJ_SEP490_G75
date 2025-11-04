@@ -33,7 +33,11 @@ namespace PTJ_Data.Repositories.Interfaces
         public async Task<(List<News> Data, int Total)> GetPagedAsync(
             string? keyword, string? category, int page, int pageSize, string sortBy, bool desc)
         {
-            var query = _db.News.Include(n => n.Images).AsQueryable();
+            var query = _db.News
+                .Include(n => n.Images)
+                .Where(n => n.Status == "Active")
+                .AsQueryable();
+
 
             if (!string.IsNullOrEmpty(keyword))
                 query = query.Where(n => n.Title.Contains(keyword) || n.Content.Contains(keyword));
@@ -43,12 +47,39 @@ namespace PTJ_Data.Repositories.Interfaces
 
             query = sortBy switch
             {
-                "Priority" => desc ? query.OrderByDescending(n => n.Priority) : query.OrderBy(n => n.Priority),
-                _ => desc ? query.OrderByDescending(n => n.CreatedAt) : query.OrderBy(n => n.CreatedAt)
+                "Priority" => desc
+                    ? query.OrderByDescending(n => n.IsFeatured)
+                            .ThenByDescending(n => n.Priority)
+                            .ThenByDescending(n => n.CreatedAt)
+                    : query.OrderByDescending(n => n.IsFeatured)
+                            .ThenBy(n => n.Priority)
+                            .ThenBy(n => n.CreatedAt),
+
+                "CreatedAt" => desc
+                    ? query.OrderByDescending(n => n.IsFeatured)
+                            .ThenByDescending(n => n.CreatedAt)
+                    : query.OrderByDescending(n => n.IsFeatured)
+                            .ThenBy(n => n.CreatedAt),
+
+                "Title" => desc
+                    ? query.OrderByDescending(n => n.IsFeatured)
+                            .ThenByDescending(n => n.Title)
+                            .ThenByDescending(n => n.CreatedAt)
+                    : query.OrderByDescending(n => n.IsFeatured)
+                            .ThenBy(n => n.Title)
+                            .ThenByDescending(n => n.CreatedAt),
+
+                _ => query.OrderByDescending(n => n.IsFeatured)
+                          .ThenByDescending(n => n.Priority)
+                          .ThenByDescending(n => n.CreatedAt)
             };
 
             var total = await query.CountAsync();
-            var data = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+
+            var data = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
 
             return (data, total);
         }

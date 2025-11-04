@@ -23,7 +23,6 @@ namespace PTJ_Service.NewsService
             _context = context;
         }
 
-        // ✅ CREATE
         public async Task<News> CreateAsync(NewsCreateDto dto)
         {
             var news = new News
@@ -39,10 +38,8 @@ namespace PTJ_Service.NewsService
                 Status = "Active"
             };
 
-            // Lưu trước để có NewsID
             await _repo.AddAsync(news);
 
-            // Upload ảnh cover
             if (dto.CoverImage != null)
             {
                 var (url, publicId) = await _imageService.UploadImageAsync(dto.CoverImage, "News");
@@ -59,7 +56,6 @@ namespace PTJ_Service.NewsService
                 _context.Images.Add(cover);
             }
 
-            // Upload gallery ảnh
             if (dto.GalleryImages != null && dto.GalleryImages.Any())
             {
                 foreach (var img in dto.GalleryImages)
@@ -81,7 +77,6 @@ namespace PTJ_Service.NewsService
             return news;
         }
 
-        // ✅ READ (phân trang, lọc, sắp xếp)
         public async Task<(List<NewsReadDto> Data, int Total)> GetPagedAsync(
             string? keyword, string? category, int page, int pageSize, string sortBy, bool desc)
         {
@@ -103,7 +98,6 @@ namespace PTJ_Service.NewsService
             return (result, total);
         }
 
-        // ✅ UPDATE
         public async Task<News?> UpdateAsync(NewsUpdateDto dto)
         {
             var news = await _repo.GetByIdAsync(dto.NewsID);
@@ -116,7 +110,6 @@ namespace PTJ_Service.NewsService
             news.Priority = dto.Priority;
             news.UpdatedAt = DateTime.Now;
 
-            // Cập nhật ảnh cover nếu có
             if (dto.CoverImage != null)
             {
                 var (url, publicId) = await _imageService.UploadImageAsync(dto.CoverImage, "News");
@@ -133,7 +126,6 @@ namespace PTJ_Service.NewsService
                 _context.Images.Add(image);
             }
 
-            // Cập nhật gallery nếu có
             if (dto.GalleryImages != null && dto.GalleryImages.Any())
             {
                 foreach (var img in dto.GalleryImages)
@@ -156,24 +148,45 @@ namespace PTJ_Service.NewsService
             return news;
         }
 
-        // ✅ DELETE
-        public async Task<bool> DeleteAsync(int newsId)
+        public async Task<bool> DeleteAsync(int newsId, bool isHardDelete = false)
         {
             var news = await _repo.GetByIdAsync(newsId);
             if (news == null) return false;
 
-            // Xóa ảnh trong Cloudinary + DB
-            var images = _context.Images.Where(i => i.EntityType == "News" && i.EntityId == newsId).ToList();
-            foreach (var img in images)
+            if (isHardDelete)
             {
-                await _imageService.DeleteImageAsync(img.PublicId);
-                _context.Images.Remove(img);
+                var images = _context.Images.Where(i => i.EntityType == "News" && i.EntityId == newsId).ToList();
+                foreach (var img in images)
+                {
+                    await _imageService.DeleteImageAsync(img.PublicId);
+                    _context.Images.Remove(img);
+                }
+
+                await _repo.DeleteAsync(news);
+            }
+            else
+            {
+                news.Status = "Inactive";
+                news.UpdatedAt = DateTime.Now;
+                await _repo.UpdateAsync(news);
             }
 
-            await _repo.DeleteAsync(news);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<News?> ToggleStatusAsync(int newsId)
+        {
+            var news = await _repo.GetByIdAsync(newsId);
+            if (news == null) return null;
+
+            news.Status = news.Status == "Active" ? "Inactive" : "Active";
+            news.UpdatedAt = DateTime.Now;
+
+            await _repo.UpdateAsync(news);
             await _context.SaveChangesAsync();
 
-            return true;
+            return news;
         }
     }
 }
