@@ -58,28 +58,6 @@ builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
-// 🌥️ CẤU HÌNH CLOUDINARY TỪ appsettings.json
-var cloudinaryConfig = builder.Configuration.GetSection("Cloudinary");
-var cloudName = cloudinaryConfig["CloudName"];
-var apiKey = cloudinaryConfig["ApiKey"];
-var apiSecret = cloudinaryConfig["ApiSecret"];
-
-if (string.IsNullOrEmpty(cloudName) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
-    {
-    Console.WriteLine("❌ Cloudinary configuration is missing in appsettings.json");
-    }
-else
-    {
-    Console.WriteLine("✅ Cloudinary configuration loaded successfully from appsettings.json");
-    var account = new Account(cloudName, apiKey, apiSecret);
-    var cloudinary = new Cloudinary(account)
-        {
-        Api = { Secure = true }
-        };
-    builder.Services.AddSingleton(cloudinary);
-    }
-
-
 // 2️⃣ ĐĂNG KÝ (REGISTER) CÁC SERVICE
 
 

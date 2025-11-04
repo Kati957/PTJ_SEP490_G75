@@ -1,6 +1,7 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using PTJ_Data;
 using PTJ_Models.Models;
 using System;
@@ -13,10 +14,17 @@ namespace PTJ_Service.ImageService
         private readonly Cloudinary _cloudinary;
         private readonly JobMatchingDbContext _context;
 
-        public ImageService(Cloudinary cloudinary, JobMatchingDbContext context)
+        public ImageService(IConfiguration config, JobMatchingDbContext context)
         {
-            _cloudinary = cloudinary;
             _context = context;
+
+            var account = new Account(
+                config["Cloudinary:CloudName"],
+                config["Cloudinary:ApiKey"],
+                config["Cloudinary:ApiSecret"]
+            );
+
+            _cloudinary = new Cloudinary(account);
         }
         public async Task<(string Url, string PublicId)> UploadImageAsync(IFormFile file, string folder)
         {
