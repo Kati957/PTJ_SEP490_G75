@@ -123,7 +123,7 @@ builder.Services.AddScoped<IJobSeekerSearchRepository, JobSeekerSearchRepository
 builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileRepository>();
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
 builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
-builder.Services.AddScoped<INewsRepository,NewsRepository>();
+builder.Services.AddScoped<INewsRepository, NewsRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();

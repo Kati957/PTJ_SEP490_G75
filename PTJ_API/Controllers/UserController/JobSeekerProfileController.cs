@@ -28,14 +28,6 @@ namespace PTJ_API.Controllers
             return Ok(dto);
             }
 
-        [HttpGet("all")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAllProfiles()
-            {
-            var list = await _service.GetAllProfilesAsync();
-            return Ok(list);
-            }
-
         [HttpGet("{userId:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetProfileByUserId(int userId)

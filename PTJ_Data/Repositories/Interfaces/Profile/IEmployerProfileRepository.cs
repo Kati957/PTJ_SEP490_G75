@@ -9,9 +9,6 @@ namespace PTJ_Repositories.Interfaces
         // 🔹 Lấy profile theo userId
         Task<EmployerProfile?> GetByUserIdAsync(int userId);
 
-        // 🔹 Lấy tất cả profile (public)
-        Task<IEnumerable<EmployerProfile>> GetAllAsync();
-
         // 🔹 Cập nhật thông tin + ảnh (service đã xử lý ảnh upload rồi)
         Task UpdateAsync(EmployerProfile profile);
 

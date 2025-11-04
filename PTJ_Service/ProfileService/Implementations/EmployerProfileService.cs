@@ -51,24 +51,6 @@ namespace PTJ_Services.Implementations
                 };
             }
 
-        // 🌐 2️⃣ Lấy danh sách public profiles (mọi người xem được)
-        public async Task<IEnumerable<EmployerProfileDto>> GetAllProfilesAsync()
-            {
-            var list = await _repo.GetAllAsync();
-
-            // Chỉ trả về các trường công khai
-            return list.Select(p => new EmployerProfileDto
-                {
-                DisplayName = p.DisplayName,
-                Description = p.Description,
-                AvatarUrl = p.AvatarUrl,
-                Website = p.Website,
-                ContactPhone = p.ContactPhone,
-                ContactEmail = p.ContactEmail,
-                Location = p.Location
-                });
-            }
-
         // 🌐 3️⃣ Xem chi tiết profile của Employer khác (chỉ public info)
         public async Task<EmployerProfileDto?> GetProfileByUserIdAsync(int targetUserId)
             {
