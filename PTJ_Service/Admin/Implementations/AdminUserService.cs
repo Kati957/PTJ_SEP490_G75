@@ -2,19 +2,17 @@
 using PTJ_Service.Admin.Interfaces;
 using PTJ_Data.Repositories.Interfaces.Admin;
 
-namespace PTJ_Service.Implement
+namespace PTJ_Service.Implementations.Admin
 {
     public class AdminUserService : IAdminUserService
     {
         private readonly IAdminUserRepository _repo;
         public AdminUserService(IAdminUserRepository repo) => _repo = repo;
 
-        public Task<IEnumerable<UserDto>> GetAllUsersAsync(
-            string? role = null,
-            bool? isActive = null,
-            bool? isVerified = null,
-            string? keyword = null)
-            => _repo.GetAllUsersAsync(role, isActive, isVerified, keyword);
+        public Task<PagedResult<UserDto>> GetAllUsersAsync(
+            string? role, bool? isActive, bool? isVerified, string? keyword,
+            int page = 1, int pageSize = 10)
+            => _repo.GetAllUsersAsync(role, isActive, isVerified, keyword, page, pageSize);
 
         public Task<UserDetailDto?> GetUserDetailAsync(int id)
             => _repo.GetUserDetailAsync(id);
@@ -23,8 +21,9 @@ namespace PTJ_Service.Implement
         {
             var ok = await _repo.ToggleUserActiveAsync(id);
             if (!ok)
-                throw new KeyNotFoundException($"Không tìm thấy người dùng có ID = {id}");
+                throw new KeyNotFoundException($"User with ID {id} not found");
         }
+
         public Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync()
             => _repo.GetAllUserFullAsync();
     }

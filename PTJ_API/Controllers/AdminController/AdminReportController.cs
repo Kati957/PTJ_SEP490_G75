@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Service.Interface;
+using PTJ_Service.Implementations.Admin;
 using PTJ_Models.DTO.Admin;
 using System.Security.Claims;
+using PTJ_Service.Interfaces.Admin;
+
 
 namespace PTJ_API.Controllers.Admin
 {

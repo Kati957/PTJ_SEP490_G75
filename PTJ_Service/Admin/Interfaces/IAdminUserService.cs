@@ -9,15 +9,22 @@ namespace PTJ_Service.Admin.Interfaces
 {
     public interface IAdminUserService
     {
-        Task<IEnumerable<UserDto>> GetAllUsersAsync(
-            string role = null,
+        //  Danh sách người dùng (có filter + phân trang)
+        Task<PagedResult<UserDto>> GetAllUsersAsync(
+            string? role = null,
             bool? isActive = null,
             bool? isVerified = null,
-            string keyword = null);
+            string? keyword = null,
+            int page = 1,
+            int pageSize = 10);
 
-        Task<UserDetailDto> GetUserDetailAsync(int id);
+        //  Chi tiết người dùng
+        Task<UserDetailDto?> GetUserDetailAsync(int id);
 
+        //  Khóa / Mở khóa tài khoản
         Task ToggleUserActiveAsync(int id);
+
+        //  Danh sách đầy đủ (Dashboard)
         Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync();
     }
 }

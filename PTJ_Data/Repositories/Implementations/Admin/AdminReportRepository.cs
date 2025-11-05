@@ -1,60 +1,86 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PTJ_Data.Repo.Interface;
-using PTJ_Models;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
+using PTJ_Data.Repositories.Interfaces.Admin;
 
-namespace PTJ_Data.Repo.Implement
+
+namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminReportRepository : IAdminReportRepository
     {
         private readonly JobMatchingDbContext _db;
         public AdminReportRepository(JobMatchingDbContext db) => _db = db;
 
-        public async Task<IEnumerable<object>> GetPendingReportsAsync()
+        //  1️⃣ Lấy danh sách report chưa xử lý (Pending)
+        public async Task<IEnumerable<AdminReportDto>> GetPendingReportsAsync(string? reportType = null, string? keyword = null)
         {
-            return await _db.PostReports
+            var query = _db.PostReports
                 .Include(r => r.Reporter)
                 .Include(r => r.TargetUser)
                 .Where(r => r.Status == "Pending")
-                .Select(r => new
-                {
-                    r.PostReportId,
-                    r.ReportType,
-                    Reporter = new { r.Reporter.UserId, r.Reporter.Email },
-                    TargetUser = r.TargetUser != null ? new { r.TargetUser.UserId, r.TargetUser.Email } : null,
-                    r.Reason,
-                    r.Status,
-                    r.CreatedAt
-                })
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(reportType))
+                query = query.Where(r => r.ReportType == reportType);
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                var kw = keyword.ToLower();
+                query = query.Where(r =>
+                    (r.Reason != null && r.Reason.ToLower().Contains(kw)) ||
+                    r.Reporter.Email.ToLower().Contains(kw) ||
+                    (r.TargetUser != null && r.TargetUser.Email.ToLower().Contains(kw)));
+            }
+
+            var result = await query
                 .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new AdminReportDto
+                {
+                    ReportId = r.PostReportId,
+                    ReportType = r.ReportType,
+                    ReporterEmail = r.Reporter.Email,
+                    TargetUserEmail = r.TargetUser != null ? r.TargetUser.Email : null,
+                    Reason = r.Reason,
+                    Status = r.Status,
+                    CreatedAt = r.CreatedAt
+                })
                 .ToListAsync();
+
+            return result;
         }
 
-        public async Task<IEnumerable<object>> GetSolvedReportsAsync()
+        //  2️⃣ Lấy danh sách report đã xử lý (Resolved)
+        public async Task<IEnumerable<AdminSolvedReportDto>> GetSolvedReportsAsync(string? adminKeyword = null)
         {
-            return await _db.PostReportSolveds
+            var query = _db.PostReportSolveds
                 .Include(s => s.Admin)
                 .Include(s => s.AffectedUser)
                 .Include(s => s.PostReport)
-                .Select(s => new
-                {
-                    s.SolvedPostReportId,
-                    s.PostReportId,
-                    s.ActionTaken,
-                    Admin = new { s.Admin.UserId, s.Admin.Email },
-                    AffectedUser = s.AffectedUser != null ? new { s.AffectedUser.UserId, s.AffectedUser.Email } : null,
-                    Report = new
-                    {
-                        s.PostReport.ReportType,
-                        s.PostReport.Reason,
-                        s.PostReport.CreatedAt
-                    },
-                    s.Reason,
-                    s.SolvedAt
-                })
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(adminKeyword))
+            {
+                var kw = adminKeyword.ToLower();
+                query = query.Where(s => s.Admin.Email.ToLower().Contains(kw));
+            }
+
+            var result = await query
                 .OrderByDescending(s => s.SolvedAt)
+                .Select(s => new AdminSolvedReportDto
+                {
+                    SolvedReportId = s.SolvedPostReportId,
+                    ReportId = s.PostReportId,
+                    ActionTaken = s.ActionTaken,
+                    AdminEmail = s.Admin.Email,
+                    TargetUserEmail = s.AffectedUser != null ? s.AffectedUser.Email : null,
+                    Reason = s.Reason,
+                    SolvedAt = s.SolvedAt,
+                    ReportType = s.PostReport.ReportType,
+                    ReportReason = s.PostReport.Reason
+                })
                 .ToListAsync();
+
+            return result;
         }
 
         public Task<PostReport?> GetReportByIdAsync(int reportId)
@@ -70,13 +96,9 @@ namespace PTJ_Data.Repo.Implement
             => _db.JobSeekerPosts.FirstOrDefaultAsync(p => p.JobSeekerPostId == postId);
 
         public async Task AddSolvedReportAsync(PostReportSolved solvedReport)
-        {
-            await _db.PostReportSolveds.AddAsync(solvedReport);
-        }
+            => await _db.PostReportSolveds.AddAsync(solvedReport);
 
-        public async Task SaveChangesAsync()
-        {
-            await _db.SaveChangesAsync();
-        }
+        public Task SaveChangesAsync()
+            => _db.SaveChangesAsync();
     }
 }

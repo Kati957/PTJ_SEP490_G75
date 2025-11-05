@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTO.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
-using PTJ_Models;
 
 
 namespace PTJ_Data.Repositories.Implementations.Admin
@@ -11,12 +10,14 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminUserRepository(JobMatchingDbContext db) => _db = db;
 
-        // ============= Danh sách người dùng =============
-        public async Task<IEnumerable<UserDto>> GetAllUsersAsync(
+        //Danh sách người dùng (có phân trang) 
+        public async Task<PagedResult<UserDto>> GetAllUsersAsync(
             string? role = null,
             bool? isActive = null,
             bool? isVerified = null,
-            string? keyword = null)
+            string? keyword = null,
+            int page = 1,
+            int pageSize = 10)
         {
             var query = _db.Users
                 .Include(u => u.Roles)
@@ -34,10 +35,18 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 query = query.Where(u =>
                     u.Email.ToLower().Contains(kw) ||
                     u.Username.ToLower().Contains(kw) ||
-                    u.Address != null && u.Address.ToLower().Contains(kw));
+                    (u.Address != null && u.Address.ToLower().Contains(kw)));
             }
 
-            var list = await query
+            if (!string.IsNullOrEmpty(role))
+                query = query.Where(u => u.Roles.Any(r => r.RoleName == role));
+
+            var total = await query.CountAsync();
+
+            var data = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(u => new UserDto
                 {
                     Id = u.UserId,
@@ -51,15 +60,10 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 })
                 .ToListAsync();
 
-            if (!string.IsNullOrEmpty(role))
-                list = list
-                    .Where(x => x.Role.Equals(role, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-            return list.OrderByDescending(x => x.CreatedAt);
+            return new PagedResult<UserDto>(data, total, page, pageSize);
         }
 
-        // ============= Chi tiết người dùng =============
+        //  Chi tiết người dùng 
         public async Task<UserDetailDto?> GetUserDetailAsync(int id)
         {
             var user = await _db.Users
@@ -79,38 +83,41 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 CreatedAt = user.CreatedAt,
                 LastLogin = user.LastLogin,
                 Address = user.Address ?? "",
-                PhoneNumber = user.PhoneNumber?.ToString() ?? "",
+                PhoneNumber = user.PhoneNumber?.ToString() ?? ""
             };
 
-            if (dto.Role == "JobSeeker")
+            // Lấy profile theo role
+            switch (dto.Role)
             {
-                var profile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == id);
-                if (profile != null)
-                {
-                    dto.FullName = profile.FullName;
-                    dto.Gender = profile.Gender;
-                    dto.BirthYear = profile.BirthYear;
-                    dto.PreferredLocation = profile.PreferredLocation;
-                }
-            }
-            else if (dto.Role == "Employer")
-            {
-                var profile = await _db.EmployerProfiles.FirstOrDefaultAsync(p => p.UserId == id);
-                if (profile != null)
-                {
-                    dto.FullName = profile.DisplayName;
-                    dto.Address = profile.Location ?? dto.Address;
-                    dto.PhoneNumber = profile.ContactPhone?.ToString() ?? dto.PhoneNumber;
-                    dto.PreferredLocation = profile.Website;
-                }
+                case "JobSeeker":
+                    var js = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == id);
+                    if (js != null)
+                    {
+                        dto.FullName = js.FullName;
+                        dto.Gender = js.Gender;
+                        dto.BirthYear = js.BirthYear;
+                        dto.PreferredLocation = js.PreferredLocation;
+                    }
+                    break;
+
+                case "Employer":
+                    var ep = await _db.EmployerProfiles.FirstOrDefaultAsync(p => p.UserId == id);
+                    if (ep != null)
+                    {
+                        dto.FullName = ep.DisplayName;
+                        dto.Address = ep.Location ?? dto.Address;
+                        dto.PhoneNumber = ep.ContactPhone?.ToString() ?? dto.PhoneNumber;
+                        dto.PreferredLocation = ep.Website;
+                    }
+                    break;
             }
 
             return dto;
         }
-        // ============ Chi tiết người dùng đầy đủ (Admin) =============
+
+        //  Danh sách đầy đủ (dashboard tổng hợp) 
         public async Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync()
         {
-            // 1) Query lấy dữ liệu thô (KHÔNG gọi .ToString() trong Select)
             var rows = await _db.Users
                 .Include(u => u.Roles)
                 .Include(u => u.JobSeekerProfile)
@@ -126,15 +133,14 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     u.CreatedAt,
                     u.LastLogin,
                     u.Address,
-                    Phone = u.PhoneNumber,                       // giữ nguyên kiểu gốc (int?)
+                    u.PhoneNumber,
                     JS = u.JobSeekerProfile,
                     EP = u.EmployerProfile
                 })
                 .OrderByDescending(x => x.CreatedAt)
-                .ToListAsync(); // 2) Materialize tại đây
+                .ToListAsync();
 
-            // 3) Map sang DTO và lúc này mới .ToString()
-            var result = rows.Select(x => new AdminUserFullDto
+            return rows.Select(x => new AdminUserFullDto
             {
                 UserId = x.UserId,
                 Username = x.Username,
@@ -145,31 +151,26 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 CreatedAt = x.CreatedAt,
                 LastLogin = x.LastLogin,
                 Address = x.Address,
-                PhoneNumber = x.Phone?.ToString(),             // OK: chạy trên bộ nhớ, không còn translate SQL
-
-                // Job Seeker
+                PhoneNumber = x.PhoneNumber?.ToString(),
                 FullName = x.JS?.FullName,
                 Gender = x.JS?.Gender,
                 BirthYear = x.JS?.BirthYear,
                 PreferredLocation = x.JS?.PreferredLocation,
-
-                // Employer
                 CompanyName = x.EP?.DisplayName,
                 Website = x.EP?.Website
             });
-
-            return result;
         }
 
-
-        // ============= Khóa / Mở khóa =============
+        //  Khóa / Mở khóa 
         public async Task<bool> ToggleUserActiveAsync(int id)
         {
             var user = await _db.Users.FirstOrDefaultAsync(x => x.UserId == id);
             if (user == null) return false;
 
             user.IsActive = !user.IsActive;
+            user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+
             return true;
         }
     }

@@ -27,10 +27,6 @@ using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Service.AiService.Implementations;
 using PTJ_Service.AiService.Interfaces;
 using PTJ_Data;
-using PTJ_Data.Repo.Implement;
-using PTJ_Data.Repo.Interface;
-using PTJ_Service.Implement;
-using PTJ_Service.Interface;
 using PTJ_Data.Repositories.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Service.Admin.Interfaces;
@@ -47,12 +43,15 @@ using CloudinaryDotNet;
 using dotenv.net;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
+using PTJ_Service.Implementations.Admin;
+using PTJ_Service.Interfaces.Admin;
+
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAuthorization();
-// =============================================
+
 
 // 1️⃣ CONFIG DATABASE (EF CORE)
 

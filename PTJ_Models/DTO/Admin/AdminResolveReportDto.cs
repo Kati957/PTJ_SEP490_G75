@@ -8,14 +8,13 @@ namespace PTJ_Models.DTO.Admin
 {
     public class AdminResolveReportDto
     {
-       
         public int? AffectedUserId { get; set; }
 
         public int? AffectedPostId { get; set; }
 
-        public string? AffectedPostType { get; set; }
+        public string? AffectedPostType { get; set; }  
 
-        public string ActionTaken { get; set; } = null!;
+        public string ActionTaken { get; set; } = string.Empty;  
 
         public string? Reason { get; set; }
     }
