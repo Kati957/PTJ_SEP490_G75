@@ -4,14 +4,14 @@ namespace PTJ_Service.Admin.Interfaces
 {
     public interface IAdminJobPostService
     {
-        // Employer
+        // Employer Posts
         Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsAsync(string? status, int? categoryId, string? keyword, int page, int pageSize);
         Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id);
-        Task<string> ToggleEmployerPostBlockedAsync(int id);
+        Task ToggleEmployerPostBlockedAsync(int id);
 
-        // JobSeeker
+        // JobSeeker Posts
         Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsAsync(string? status, int? categoryId, string? keyword, int page, int pageSize);
         Task<AdminJobSeekerPostDetailDto?> GetJobSeekerPostDetailAsync(int id);
-        Task<string> ToggleJobSeekerPostArchivedAsync(int id);
+        Task ToggleJobSeekerPostArchivedAsync(int id);
     }
 }

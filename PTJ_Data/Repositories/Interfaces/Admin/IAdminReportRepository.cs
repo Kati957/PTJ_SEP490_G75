@@ -7,17 +7,24 @@ namespace PTJ_Data.Repositories.Interfaces.Admin
 {
     public interface IAdminReportRepository
     {
-        //  Lấy danh sách report
-        Task<IEnumerable<AdminReportDto>> GetPendingReportsAsync(string? reportType = null, string? keyword = null);
-        Task<IEnumerable<AdminSolvedReportDto>> GetSolvedReportsAsync(string? adminKeyword = null);
+        Task<PagedResult<AdminReportDto>> GetPendingReportsPagedAsync(
+            string? reportType = null,
+            string? keyword = null,
+            int page = 1,
+            int pageSize = 10);
 
-        //  Chi tiết report + liên quan
+        Task<PagedResult<AdminSolvedReportDto>> GetSolvedReportsPagedAsync(
+            string? adminEmail = null,
+            string? reportType = null,
+            int page = 1,
+            int pageSize = 10);
+
+        Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId);
+
         Task<PostReport?> GetReportByIdAsync(int reportId);
         Task<User?> GetUserByIdAsync(int userId);
         Task<EmployerPost?> GetEmployerPostByIdAsync(int postId);
         Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int postId);
-
-        //  Thao tác xử lý
         Task AddSolvedReportAsync(PostReportSolved solvedReport);
         Task SaveChangesAsync();
     }

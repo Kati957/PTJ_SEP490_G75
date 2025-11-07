@@ -4,12 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using PTJ_Models.DTO.Admin;
+using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Interfaces.Admin
 {
     public interface IAdminUserRepository
     {
-        Task<PagedResult<UserDto>> GetAllUsersAsync(
+        Task<PagedResult<AdminUserDto>> GetUsersPagedAsync(
             string? role = null,
             bool? isActive = null,
             bool? isVerified = null,
@@ -17,10 +18,8 @@ namespace PTJ_Data.Repositories.Interfaces.Admin
             int page = 1,
             int pageSize = 10);
 
-        Task<UserDetailDto?> GetUserDetailAsync(int id);
-
-        Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync();
-
-        Task<bool> ToggleUserActiveAsync(int id);
+        Task<AdminUserDetailDto?> GetUserDetailAsync(int id);
+        Task<User?> GetUserEntityAsync(int id);
+        Task SaveChangesAsync();
     }
 }

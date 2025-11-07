@@ -1,26 +1,29 @@
 ﻿using System.Threading.Tasks;
 using PTJ_Models.DTO.Admin;
-using PTJ_Models.DTO; 
+using PTJ_Models.DTO;
 
 namespace PTJ_Service.Interfaces.Admin
 {
     public interface IAdminReportService
     {
-        // 1️⃣ Danh sách report chưa xử lý (Pending)
+        // 1) Danh sách report chưa xử lý (Pending)
         Task<PagedResult<AdminReportDto>> GetPendingReportsAsync(
             string? reportType = null,
             string? keyword = null,
             int page = 1,
             int pageSize = 10);
 
-        // 2️⃣ Danh sách report đã xử lý (Solved)
+        // 2) Danh sách report đã xử lý (Solved)
         Task<PagedResult<AdminSolvedReportDto>> GetSolvedReportsAsync(
             string? adminEmail = null,
             string? reportType = null,
             int page = 1,
             int pageSize = 10);
 
-        // 3️⃣ Xử lý report (BanUser / DeletePost / Warn / Ignore)
+        // 3) Chi tiết 1 report (dùng cho View Report Detail)
+        Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId);
+
+        // 4) Xử lý report (BanUser / DeletePost / Warn / Ignore)
         Task<AdminSolvedReportDto> ResolveReportAsync(int reportId, AdminResolveReportDto dto, int adminId);
     }
 }

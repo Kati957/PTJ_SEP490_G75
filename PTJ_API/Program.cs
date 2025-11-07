@@ -45,6 +45,7 @@ using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Service.Implementations.Admin;
 using PTJ_Service.Interfaces.Admin;
+using PTJ_Service.Admin.Implementations;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -98,6 +99,9 @@ builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IAdminNewsService, AdminNewsService>();
+builder.Services.AddScoped<IAdminJobPostService, AdminJobPostService>();
+builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminReportService, AdminReportService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
@@ -111,9 +115,12 @@ builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<INewsService, NewsService>();
-builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
+
 
 // Repository
+builder.Services.AddScoped<IAdminNewsRepository, AdminNewsRepository>();
+builder.Services.AddScoped<IAdminJobPostRepository, AdminJobPostRepository>();
+builder.Services.AddScoped<IAdminCategoryRepository, AdminCategoryRepository>();
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 builder.Services.AddScoped<IAdminReportRepository, AdminReportRepository>();
 builder.Services.AddScoped<IEmployerPostRepository, EmployerPostRepository>();

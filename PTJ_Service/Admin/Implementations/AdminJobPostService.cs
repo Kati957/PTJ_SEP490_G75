@@ -9,46 +9,28 @@ namespace PTJ_Service.Admin.Implementations
         private readonly IAdminJobPostRepository _repo;
         public AdminJobPostService(IAdminJobPostRepository repo) => _repo = repo;
 
-        //  Employer Posts 
-
-        public Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsAsync(
-            string? status = null,
-            int? categoryId = null,
-            string? keyword = null,
-            int page = 1,
-            int pageSize = 10)
-            => _repo.GetEmployerPostsAsync(status, categoryId, keyword, page, pageSize);
+        public Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsAsync(string? status, int? categoryId, string? keyword, int page, int pageSize)
+            => _repo.GetEmployerPostsPagedAsync(status, categoryId, keyword, page, pageSize);
 
         public Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id)
             => _repo.GetEmployerPostDetailAsync(id);
 
-        public async Task<string> ToggleEmployerPostBlockedAsync(int id)
+        public async Task ToggleEmployerPostBlockedAsync(int id)
         {
-            var status = await _repo.ToggleEmployerPostBlockedAsync(id);
-            if (status == null)
-                throw new KeyNotFoundException($"Employer post with ID {id} not found.");
-            return status;
+            var ok = await _repo.ToggleEmployerPostBlockedAsync(id);
+            if (!ok) throw new KeyNotFoundException("Employer post not found.");
         }
 
-        //  JobSeeker Posts 
-
-        public Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsAsync(
-            string? status = null,
-            int? categoryId = null,
-            string? keyword = null,
-            int page = 1,
-            int pageSize = 10)
-            => _repo.GetJobSeekerPostsAsync(status, categoryId, keyword, page, pageSize);
+        public Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsAsync(string? status, int? categoryId, string? keyword, int page, int pageSize)
+            => _repo.GetJobSeekerPostsPagedAsync(status, categoryId, keyword, page, pageSize);
 
         public Task<AdminJobSeekerPostDetailDto?> GetJobSeekerPostDetailAsync(int id)
             => _repo.GetJobSeekerPostDetailAsync(id);
 
-        public async Task<string> ToggleJobSeekerPostArchivedAsync(int id)
+        public async Task ToggleJobSeekerPostArchivedAsync(int id)
         {
-            var status = await _repo.ToggleJobSeekerPostArchivedAsync(id);
-            if (status == null)
-                throw new KeyNotFoundException($"JobSeeker post with ID {id} not found.");
-            return status;
+            var ok = await _repo.ToggleJobSeekerPostArchivedAsync(id);
+            if (!ok) throw new KeyNotFoundException("JobSeeker post not found.");
         }
     }
 }
