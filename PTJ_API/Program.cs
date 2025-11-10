@@ -58,7 +58,8 @@ using PTJ_Service.SystemReportService.Implementations;
 using PTJ_Service.RatingService.Interfaces;
 using PTJ_Service.RatingService.Implementations;
 using PTJ_Service.FollowService;
-
+using PTJ_Service.Interfaces;
+using PTJ_Service.Implementations;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -111,6 +112,8 @@ builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IReportService, ReportService>();    
 builder.Services.AddScoped<IRatingService, RatingService>();
 builder.Services.AddScoped<ISystemReportService, SystemReportService>();
 builder.Services.AddScoped<IAdminNewsService, AdminNewsService>();
@@ -133,6 +136,8 @@ builder.Services.AddScoped<IFollowService, FollowService>();
 
 
 // Repository
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IAdminSystemReportRepository, AdminSystemReportRepository>();
 builder.Services.AddScoped<IAdminNewsRepository, AdminNewsRepository>();
 builder.Services.AddScoped<IAdminJobPostRepository, AdminJobPostRepository>();
