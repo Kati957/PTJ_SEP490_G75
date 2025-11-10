@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace PTJ_Data.Repositories.Interfaces.Users
+namespace PTJ_Data.Repositories.Interfaces
 {
     public interface IJobApplicationRepository
     {

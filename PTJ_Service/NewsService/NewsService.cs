@@ -6,7 +6,7 @@ using PTJ_Models.DTO.News;
 using PTJ_Models.Models;
 using PTJ_Data;
 using PTJ_Service.ImageService;
-using PTJ_Data.Repositories.Interfaces.News;
+using PTJ_Data.Repositories.Interfaces.NewsPost;
 
 namespace PTJ_Service.NewsService
 {

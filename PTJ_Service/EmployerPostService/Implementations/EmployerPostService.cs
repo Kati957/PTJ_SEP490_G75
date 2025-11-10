@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using PTJ_Data;
-using PTJ_Data.Repositories.Interfaces.EmployerPost;
+using PTJ_Data.Repositories.Interfaces.EPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
