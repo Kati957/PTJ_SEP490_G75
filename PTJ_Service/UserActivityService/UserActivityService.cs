@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using PTJ_Data.Repositories.Interfaces;
+using PTJ_Data.Repositories.Interfaces.Users;
 using PTJ_Models.Models;
 
 namespace PTJ_Service.UserActivityService

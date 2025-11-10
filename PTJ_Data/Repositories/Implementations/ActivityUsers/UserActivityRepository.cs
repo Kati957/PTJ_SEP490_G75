@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.Models;
 using PTJ_Models;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Data.Repositories.Interfaces.ActivityUsers;
 
-namespace PTJ_Data.Repositories.Implementations
+namespace PTJ_Data.Repositories.Implementations.ActivityUsers
+
 {
     public class UserActivityRepository : IUserActivityRepository
     {

@@ -4,7 +4,7 @@ using PTJ_Models.DTO.Auth;
 using PTJ_Service.AuthService.Interfaces;
 using System.Security.Claims;
 
-namespace PTJ_API.Controllers.UserController
+namespace PTJ_API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]

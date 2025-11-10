@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using PTJ_Models.Models;
 
-namespace PTJ_Data.Repositories.Interfaces
+namespace PTJ_Data.Repositories.Interfaces.NewsPost
 {
     public interface INewsRepository
     {

@@ -1,23 +1,23 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PTJ_Data.Repositories.Interfaces;
+using PTJ_Data.Repositories.Interfaces.JPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.DTO.SearchDTO;
 
 
-namespace PTJ_Data.Repositories.Implementations
+namespace PTJ_Data.Repositories.Implementations.JPost
 {
     public class JobSeekerSearchRepository : IJobSeekerSearchRepository
-        {
+    {
         private readonly JobMatchingDbContext _db;
 
         public JobSeekerSearchRepository(JobMatchingDbContext db)
-            {
+        {
             _db = db;
-            }
+        }
 
         public async Task<IEnumerable<EmployerPostDtoOut>> SearchEmployerPostsAsync(JobSeekerSearchFilterDto filter)
-            {
+        {
             var query = _db.EmployerPosts
                 .Include(p => p.Category)
                 .Include(p => p.User)
@@ -26,13 +26,13 @@ namespace PTJ_Data.Repositories.Implementations
 
             //  Keyword
             if (!string.IsNullOrEmpty(filter.Keyword))
-                {
+            {
                 var key = filter.Keyword.ToLower();
                 query = query.Where(p =>
-                    (p.Title != null && p.Title.ToLower().Contains(key)) ||
-                    (p.Description != null && p.Description.ToLower().Contains(key)) ||
-                    (p.Requirements != null && p.Requirements.ToLower().Contains(key)));
-                }
+                    p.Title != null && p.Title.ToLower().Contains(key) ||
+                    p.Description != null && p.Description.ToLower().Contains(key) ||
+                    p.Requirements != null && p.Requirements.ToLower().Contains(key));
+            }
 
             //  Category
             if (filter.CategoryID.HasValue)
@@ -57,7 +57,7 @@ namespace PTJ_Data.Repositories.Implementations
             return await query
                 .OrderByDescending(p => p.CreatedAt)
                 .Select(p => new EmployerPostDtoOut
-                    {
+                {
                     EmployerPostId = p.EmployerPostId,
                     Title = p.Title,
                     Description = p.Description,
@@ -70,8 +70,8 @@ namespace PTJ_Data.Repositories.Implementations
                     EmployerName = p.User != null ? p.User.Username : null,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status
-                    })
+                })
                 .ToListAsync();
-            }
         }
     }
+}
