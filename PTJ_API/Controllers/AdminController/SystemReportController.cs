@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PTJ_Models.DTOs;
+using PTJ_Models.DTO.ReportDTO;
 using PTJ_Service.SystemReportService.Interfaces;
 
 namespace PTJ_API.Controllers.AdminController

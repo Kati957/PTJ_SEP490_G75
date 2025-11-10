@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PTJ_Data.Repositories.Interfaces.EmployerPost;
+using PTJ_Data.Repositories.Interfaces.EPost;
 using PTJ_Models;
 using PTJ_Models.Models;
 
-namespace PTJ_Data.Repositories.Implementations.EmployerPost
+namespace PTJ_Data.Repositories.Implementations.EPost
 {
     public class EmployerPostRepository : IEmployerPostRepository
     {
