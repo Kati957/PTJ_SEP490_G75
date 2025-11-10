@@ -1,38 +1,58 @@
-﻿using PTJ_Data.Repo.Interface;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
+using PTJ_Models.DTO;
 using PTJ_Models.Models;
-using PTJ_Service.Interface;
+using PTJ_Service.Interfaces.Admin;
 
-namespace PTJ_Service.Implement
+namespace PTJ_Service.Implementations.Admin
 {
     public class AdminReportService : IAdminReportService
     {
         private readonly IAdminReportRepository _repo;
         public AdminReportService(IAdminReportRepository repo) => _repo = repo;
 
-        public Task<IEnumerable<object>> GetPendingReportsAsync() => _repo.GetPendingReportsAsync();
-        public Task<IEnumerable<object>> GetSolvedReportsAsync() => _repo.GetSolvedReportsAsync();
+        // 1️⃣ Danh sách report chưa xử lý
+        public Task<PagedResult<AdminReportDto>> GetPendingReportsAsync(
+            string? reportType = null, string? keyword = null, int page = 1, int pageSize = 10)
+            => _repo.GetPendingReportsPagedAsync(reportType, keyword, page, pageSize);
 
-        public async Task ResolveReportAsync(int reportId, AdminResolveReportDto dto, int adminId)
+        // 2️⃣ Danh sách report đã xử lý
+        public Task<PagedResult<AdminSolvedReportDto>> GetSolvedReportsAsync(
+            string? adminEmail = null, string? reportType = null, int page = 1, int pageSize = 10)
+            => _repo.GetSolvedReportsPagedAsync(adminEmail, reportType, page, pageSize);
+
+        // 3️⃣ Chi tiết report (View Report Detail)
+        public Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId)
+            => _repo.GetReportDetailAsync(reportId);
+
+        // 4️⃣ Xử lý report
+        public async Task<AdminSolvedReportDto> ResolveReportAsync(int reportId, AdminResolveReportDto dto, int adminId)
         {
-            var report = await _repo.GetReportByIdAsync(reportId);
-            if (report == null) throw new KeyNotFoundException("Report not found");
-            if (report.Status != "Pending") throw new InvalidOperationException("Report already processed");
+            var report = await _repo.GetReportByIdAsync(reportId)
+                ?? throw new KeyNotFoundException("Report not found.");
+
+            if (report.Status != "Pending")
+                throw new InvalidOperationException("Report has already been processed.");
 
             switch (dto.ActionTaken)
             {
                 case "BanUser":
-                    if (report.TargetUserId == null) throw new InvalidOperationException("No target user to ban.");
-                    var userBan = await _repo.GetUserByIdAsync(report.TargetUserId.Value);
-                    if (userBan == null) throw new KeyNotFoundException("User not found.");
+                    if (report.TargetUserId == null)
+                        throw new InvalidOperationException("No target user to ban.");
+                    var userBan = await _repo.GetUserByIdAsync(report.TargetUserId.Value)
+                        ?? throw new KeyNotFoundException("User not found.");
                     userBan.IsActive = false;
                     userBan.UpdatedAt = DateTime.UtcNow;
                     break;
 
                 case "UnbanUser":
-                    if (report.TargetUserId == null) throw new InvalidOperationException("No target user to unban.");
-                    var userUnban = await _repo.GetUserByIdAsync(report.TargetUserId.Value);
-                    if (userUnban == null) throw new KeyNotFoundException("User not found.");
+                    if (report.TargetUserId == null)
+                        throw new InvalidOperationException("No target user to unban.");
+                    var userUnban = await _repo.GetUserByIdAsync(report.TargetUserId.Value)
+                        ?? throw new KeyNotFoundException("User not found.");
                     userUnban.IsActive = true;
                     userUnban.UpdatedAt = DateTime.UtcNow;
                     break;
@@ -40,6 +60,7 @@ namespace PTJ_Service.Implement
                 case "DeletePost":
                     if (dto.AffectedPostId == null || string.IsNullOrEmpty(dto.AffectedPostType))
                         throw new InvalidOperationException("Missing post information.");
+
                     if (dto.AffectedPostType == "EmployerPost")
                     {
                         var ep = await _repo.GetEmployerPostByIdAsync(dto.AffectedPostId.Value);
@@ -63,15 +84,17 @@ namespace PTJ_Service.Implement
 
                 case "Warn":
                 case "Ignore":
-                    // Không thay đổi dữ liệu, chỉ log
+                    // Không thay đổi dữ liệu, chỉ ghi log xử lý
                     break;
 
                 default:
-                    throw new InvalidOperationException("Invalid action.");
+                    throw new InvalidOperationException("Invalid action type.");
             }
 
+            // Cập nhật trạng thái report
             report.Status = "Resolved";
 
+            // Ghi log xử lý vào PostReportSolved
             var solved = new PostReportSolved
             {
                 PostReportId = report.PostReportId,
@@ -86,6 +109,15 @@ namespace PTJ_Service.Implement
 
             await _repo.AddSolvedReportAsync(solved);
             await _repo.SaveChangesAsync();
+
+            return new AdminSolvedReportDto
+            {
+                SolvedReportId = solved.SolvedPostReportId,
+                ReportId = solved.PostReportId,
+                ActionTaken = solved.ActionTaken,
+                Reason = solved.Reason,
+                SolvedAt = solved.SolvedAt
+            };
         }
     }
 }

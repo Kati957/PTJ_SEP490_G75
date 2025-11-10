@@ -98,17 +98,17 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto dto)
         => Ok(await _svc.LoginAsync(dto, IP));
 
-   
+
     // 6️⃣ Refresh Token
-    
     [HttpPost("refresh")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshDto dto)
-        => Ok(await _svc.RefreshAsync(dto.RefreshToken, dto.DeviceInfo, IP));
-
-    
+    {
+        var result = await _svc.RefreshAsync(dto.RefreshToken, dto.DeviceInfo, IP);
+        return Ok(result);
+    }
     // 7️⃣ Logout
-   
+
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout([FromBody] RefreshDto dto)
@@ -117,9 +117,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logged out successfully." });
     }
 
-   
+
     // 8️⃣ Lấy thông tin user hiện tại
-    
+
     [Authorize]
     [HttpGet("me")]
     public IActionResult Me()
@@ -145,7 +145,7 @@ public class AuthController : ControllerBase
     }
 
   
-    // 🔟 Quên mật khẩu
+    //  Quên mật khẩu
     
     [HttpPost("forgot-password")]
     [AllowAnonymous]

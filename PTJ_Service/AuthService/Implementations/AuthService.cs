@@ -280,7 +280,7 @@ public sealed class AuthService : IAuthService
         });
         await _db.SaveChangesAsync();
 
-        // 🧩 7️⃣ Đảm bảo có avatar hợp lệ
+        //  7️⃣ Đảm bảo có avatar hợp lệ
         const string DefaultAvatarUrl = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
         const string DefaultPublicId = "avtDefaut_huflze";
 
@@ -505,7 +505,7 @@ public sealed class AuthService : IAuthService
             };
             _db.EmployerProfiles.Add(employerProfile);
 
-            // ✅ Xóa JobSeekerProfile cũ (nếu có)
+            //  Xóa JobSeekerProfile cũ (nếu có)
             if (jsProfile != null)
                 _db.JobSeekerProfiles.Remove(jsProfile);
         }

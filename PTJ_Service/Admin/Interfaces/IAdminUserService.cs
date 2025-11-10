@@ -9,15 +9,15 @@ namespace PTJ_Service.Admin.Interfaces
 {
     public interface IAdminUserService
     {
-        Task<IEnumerable<UserDto>> GetAllUsersAsync(
-            string role = null,
+        Task<PagedResult<AdminUserDto>> GetUsersAsync(
+            string? role = null,
             bool? isActive = null,
             bool? isVerified = null,
-            string keyword = null);
+            string? keyword = null,
+            int page = 1,
+            int pageSize = 10);
 
-        Task<UserDetailDto> GetUserDetailAsync(int id);
-
-        Task ToggleUserActiveAsync(int id);
-        Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync();
+        Task<AdminUserDetailDto?> GetUserDetailAsync(int id);
+        Task ToggleActiveAsync(int id);
     }
 }
