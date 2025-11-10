@@ -1,6 +1,6 @@
 ﻿using PTJ_Models.Models;
 
-namespace PTJ_Data.Repositories.Interfaces
+namespace PTJ_Data.Repositories.Interfaces.JPost
     {
     public interface IJobSeekerPostRepository
         {

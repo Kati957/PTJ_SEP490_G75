@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using PTJ_Data.Repositories.Implementations;
 using PTJ_Models.Models;
 using PTJ_Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace PTJ_Data.Repositories.Interfaces
+namespace PTJ_Data.Repositories.Interfaces.NewsPost
 {
     public class NewsRepository : INewsRepository
     {

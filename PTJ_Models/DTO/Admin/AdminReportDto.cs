@@ -10,7 +10,7 @@ namespace PTJ_Models.DTO.Admin
     public class AdminReportDto
     {
         public int ReportId { get; set; }
-        public string ReportType { get; set; } = string.Empty;  // User / EmployerPost / JobSeekerPost
+        public string ReportType { get; set; } = string.Empty;  // EmployerPost / JobSeekerPost
         public string ReporterEmail { get; set; } = string.Empty;
         public string? TargetUserEmail { get; set; }
         public string? Reason { get; set; }
@@ -38,7 +38,7 @@ namespace PTJ_Models.DTO.Admin
         public int? AffectedUserId { get; set; }
         public int? AffectedPostId { get; set; }
         public string? AffectedPostType { get; set; } // EmployerPost / JobSeekerPost
-        public string ActionTaken { get; set; } = string.Empty; // BanUser / UnbanUser / DeletePost / Warn / Ignore
+        public string ActionTaken { get; set; } = string.Empty;  // DeletePost / Warn / Ignore
         public string? Reason { get; set; }
     }
     public class AdminReportDetailDto

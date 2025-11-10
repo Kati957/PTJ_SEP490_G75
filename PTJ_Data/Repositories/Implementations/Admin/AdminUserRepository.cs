@@ -10,13 +10,15 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminUserRepository(JobMatchingDbContext db) => _db = db;
 
-        // 1️⃣ Danh sách user có phân trang
+        // 1️⃣ Danh sách user (phân trang)
         public async Task<PagedResult<AdminUserDto>> GetUsersPagedAsync(
             string? role = null, bool? isActive = null, bool? isVerified = null,
             string? keyword = null, int page = 1, int pageSize = 10)
         {
             var query = _db.Users
                 .Include(u => u.Roles)
+                .Include(u => u.JobSeekerProfile)
+                .Include(u => u.EmployerProfile)
                 .AsQueryable();
 
             if (isActive.HasValue)
@@ -34,7 +36,6 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     (u.Address != null && u.Address.ToLower().Contains(kw)));
             }
 
-            // Nếu lọc theo Role
             if (!string.IsNullOrEmpty(role))
                 query = query.Where(u => u.Roles.Any(r => r.RoleName == role));
 
@@ -53,14 +54,19 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     IsActive = u.IsActive,
                     IsVerified = u.IsVerified,
                     CreatedAt = u.CreatedAt,
-                    LastLogin = u.LastLogin
+                    LastLogin = u.LastLogin,
+                    AvatarUrl = u.JobSeekerProfile != null
+                        ? u.JobSeekerProfile.ProfilePicture
+                        : u.EmployerProfile != null
+                            ? u.EmployerProfile.AvatarUrl
+                            : null
                 })
                 .ToListAsync();
 
             return new PagedResult<AdminUserDto>(items, total, page, pageSize);
         }
 
-        // 2️⃣ Chi tiết 1 user
+        // 2️⃣ Chi tiết người dùng
         public async Task<AdminUserDetailDto?> GetUserDetailAsync(int id)
         {
             var user = await _db.Users
@@ -84,29 +90,31 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 CreatedAt = user.CreatedAt,
                 LastLogin = user.LastLogin,
                 Address = user.Address,
-                PhoneNumber = user.PhoneNumber?.ToString()
+                PhoneNumber = user.PhoneNumber?.ToString(),
             };
 
+            // JobSeeker
             if (role == "JobSeeker" && user.JobSeekerProfile != null)
             {
                 dto.FullName = user.JobSeekerProfile.FullName;
                 dto.Gender = user.JobSeekerProfile.Gender;
                 dto.BirthYear = user.JobSeekerProfile.BirthYear;
                 dto.PreferredLocation = user.JobSeekerProfile.PreferredLocation;
+                dto.AvatarUrl = user.JobSeekerProfile.ProfilePicture;
             }
+            // Employer
             else if (role == "Employer" && user.EmployerProfile != null)
             {
-                dto.CompanyName = user.EmployerProfile.DisplayName;
+                dto.CompanyName = user.EmployerProfile.DisplayName ?? user.Username;
                 dto.Website = user.EmployerProfile.Website;
-
                 dto.Address ??= user.EmployerProfile.Location;
-                dto.PhoneNumber ??= user.EmployerProfile.ContactPhone?.ToString();
+                dto.PhoneNumber ??= user.EmployerProfile.ContactPhone;
+                dto.AvatarUrl = user.EmployerProfile.AvatarUrl;
             }
 
             return dto;
         }
 
-        // 3️⃣ Hàm tiện ích
         public Task<User?> GetUserEntityAsync(int id)
             => _db.Users.FirstOrDefaultAsync(x => x.UserId == id);
 

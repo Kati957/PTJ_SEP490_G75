@@ -13,6 +13,7 @@ namespace PTJ_Models.DTO.Admin
         public bool IsVerified { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLogin { get; set; }
+        public string? AvatarUrl { get; set; }
     }
 
     public class AdminUserDetailDto : AdminUserDto
