@@ -1,10 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using PTJ_Data.Repositories.Interfaces.EPost;
+using PTJ_Data.Repositories.Interfaces.EmployerPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.DTO.SearchDTO;
 
-namespace PTJ_Data.Repositories.Implementations.EPost
+namespace PTJ_Data.Repositories.Implementations.EmployerPost
 {
     public class EmployerSearchRepository : IEmployerSearchRepository
     {

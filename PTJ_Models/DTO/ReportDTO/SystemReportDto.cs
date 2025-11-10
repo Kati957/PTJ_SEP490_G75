@@ -1,4 +1,4 @@
-﻿namespace PTJ_Models.DTO.ReportDTO
+﻿namespace PTJ_Models.DTOs
 {
     public class SystemReportCreateDto
     {

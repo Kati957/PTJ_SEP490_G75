@@ -1,7 +1,7 @@
 ﻿using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.DTO.SearchDTO;
 
-namespace PTJ_Data.Repositories.Interfaces.EPost
+namespace PTJ_Data.Repositories.Interfaces.EmployerPost
 {
     public interface IEmployerSearchRepository
     {
