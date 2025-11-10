@@ -2,8 +2,7 @@
 
 namespace PTJ_Models.DTO.Admin
 {
-
-    // Thông tin người dùng cơ bản (dùng cho danh sách)
+    // 1️⃣ Thông tin người dùng cơ bản (dùng cho danh sách)
     public class AdminUserDto
     {
         public int UserId { get; set; }
@@ -16,14 +15,18 @@ namespace PTJ_Models.DTO.Admin
         public DateTime? LastLogin { get; set; }
     }
 
-    // Thông tin chi tiết
     public class AdminUserDetailDto : AdminUserDto
     {
+        // Thông tin cá nhân chung
         public string? FullName { get; set; }
         public string? Gender { get; set; }
         public int? BirthYear { get; set; }
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
         public string? PreferredLocation { get; set; }
+
+        // Thông tin Employer (nếu là Employer)
+        public string? CompanyName { get; set; }
+        public string? Website { get; set; }
     }
 }

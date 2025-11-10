@@ -3,7 +3,6 @@ using PTJ_Models.DTO.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.Models;
 
-
 namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminUserRepository : IAdminUserRepository
@@ -11,14 +10,20 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminUserRepository(JobMatchingDbContext db) => _db = db;
 
+        // 1️⃣ Danh sách user có phân trang
         public async Task<PagedResult<AdminUserDto>> GetUsersPagedAsync(
-            string? role = null, bool? isActive = null, bool? isVerified = null, string? keyword = null,
-            int page = 1, int pageSize = 10)
+            string? role = null, bool? isActive = null, bool? isVerified = null,
+            string? keyword = null, int page = 1, int pageSize = 10)
         {
-            var query = _db.Users.Include(u => u.Roles).AsQueryable();
+            var query = _db.Users
+                .Include(u => u.Roles)
+                .AsQueryable();
 
-            if (isActive.HasValue) query = query.Where(u => u.IsActive == isActive.Value);
-            if (isVerified.HasValue) query = query.Where(u => u.IsVerified == isVerified.Value);
+            if (isActive.HasValue)
+                query = query.Where(u => u.IsActive == isActive.Value);
+
+            if (isVerified.HasValue)
+                query = query.Where(u => u.IsVerified == isVerified.Value);
 
             if (!string.IsNullOrEmpty(keyword))
             {
@@ -28,6 +33,10 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     u.Username.ToLower().Contains(kw) ||
                     (u.Address != null && u.Address.ToLower().Contains(kw)));
             }
+
+            // Nếu lọc theo Role
+            if (!string.IsNullOrEmpty(role))
+                query = query.Where(u => u.Roles.Any(r => r.RoleName == role));
 
             var total = await query.CountAsync();
 
@@ -51,6 +60,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return new PagedResult<AdminUserDto>(items, total, page, pageSize);
         }
 
+        // 2️⃣ Chi tiết 1 user
         public async Task<AdminUserDetailDto?> GetUserDetailAsync(int id)
         {
             var user = await _db.Users
@@ -61,12 +71,14 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
             if (user == null) return null;
 
+            var role = user.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown";
+
             var dto = new AdminUserDetailDto
             {
                 UserId = user.UserId,
                 Username = user.Username,
                 Email = user.Email,
-                Role = user.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
+                Role = role,
                 IsActive = user.IsActive,
                 IsVerified = user.IsVerified,
                 CreatedAt = user.CreatedAt,
@@ -75,23 +87,26 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 PhoneNumber = user.PhoneNumber?.ToString()
             };
 
-            if (dto.Role == "JobSeeker" && user.JobSeekerProfile != null)
+            if (role == "JobSeeker" && user.JobSeekerProfile != null)
             {
                 dto.FullName = user.JobSeekerProfile.FullName;
                 dto.Gender = user.JobSeekerProfile.Gender;
                 dto.BirthYear = user.JobSeekerProfile.BirthYear;
                 dto.PreferredLocation = user.JobSeekerProfile.PreferredLocation;
             }
-            else if (dto.Role == "Employer" && user.EmployerProfile != null)
+            else if (role == "Employer" && user.EmployerProfile != null)
             {
-                dto.FullName = user.EmployerProfile.DisplayName;
-                dto.Address = user.EmployerProfile.Location ?? dto.Address;
-                dto.PhoneNumber = user.EmployerProfile.ContactPhone;
+                dto.CompanyName = user.EmployerProfile.DisplayName;
+                dto.Website = user.EmployerProfile.Website;
+
+                dto.Address ??= user.EmployerProfile.Location;
+                dto.PhoneNumber ??= user.EmployerProfile.ContactPhone?.ToString();
             }
 
             return dto;
         }
 
+        // 3️⃣ Hàm tiện ích
         public Task<User?> GetUserEntityAsync(int id)
             => _db.Users.FirstOrDefaultAsync(x => x.UserId == id);
 
