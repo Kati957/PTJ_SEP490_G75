@@ -1,16 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PTJ_Models.DTO.Admin
 {
-    // Report chưa xử lý
+    // 1️⃣ Report chưa xử lý (Pending)
     public class AdminReportDto
     {
         public int ReportId { get; set; }
-        public string ReportType { get; set; } = string.Empty;  // EmployerPost / JobSeekerPost
+        public string ReportType { get; set; } = string.Empty; 
         public string ReporterEmail { get; set; } = string.Empty;
         public string? TargetUserEmail { get; set; }
         public string? Reason { get; set; }
@@ -18,12 +14,12 @@ namespace PTJ_Models.DTO.Admin
         public DateTime CreatedAt { get; set; }
     }
 
-    // Report đã xử lý
+    // 2️⃣ Report đã xử lý (Solved)
     public class AdminSolvedReportDto
     {
         public int SolvedReportId { get; set; }
         public int ReportId { get; set; }
-        public string ActionTaken { get; set; } = string.Empty;
+        public string ActionTaken { get; set; } = string.Empty; 
         public string AdminEmail { get; set; } = string.Empty;
         public string? TargetUserEmail { get; set; }
         public string? ReportType { get; set; }
@@ -32,15 +28,16 @@ namespace PTJ_Models.DTO.Admin
         public DateTime SolvedAt { get; set; }
     }
 
-    // DTO xử lý report (input từ FE)
+    // 3️⃣ DTO khi admin xử lý report 
     public class AdminResolveReportDto
     {
-        public int? AffectedUserId { get; set; }
         public int? AffectedPostId { get; set; }
-        public string? AffectedPostType { get; set; } // EmployerPost / JobSeekerPost
-        public string ActionTaken { get; set; } = string.Empty;  // DeletePost / Warn / Ignore
-        public string? Reason { get; set; }
+        public string? AffectedPostType { get; set; } 
+        public string ActionTaken { get; set; } = string.Empty; 
+        public string? Reason { get; set; } 
     }
+
+    // 4️⃣ Chi tiết report
     public class AdminReportDetailDto
     {
         public int ReportId { get; set; }
@@ -51,6 +48,7 @@ namespace PTJ_Models.DTO.Admin
         public string? Reason { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+
         public int? EmployerPostId { get; set; }
         public string? EmployerPostTitle { get; set; }
         public int? JobSeekerPostId { get; set; }
