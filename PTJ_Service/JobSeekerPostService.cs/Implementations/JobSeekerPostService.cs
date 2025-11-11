@@ -10,6 +10,7 @@ using PTJ_Service.JobSeekerPostService.cs.Interfaces;
 using PTJ_Service.LocationService;
 using System.Security.Cryptography;
 using System.Text;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
 
 namespace PTJ_Service.JobSeekerPostService.cs.Implementations
@@ -24,12 +25,12 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
         public JobSeekerPostService(
             IJobSeekerPostRepository repo,
             JobMatchingDbContext db,
-            IAIService ai,
+            //IAIService ai,
             OpenMapService map)
             {
             _repo = repo;
             _db = db;
-            _ai = ai;
+            //_ai = ai;
             _map = map;
             }
 
@@ -82,7 +83,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             ////  Truy vấn gợi ý việc làm tương tự
             //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
 
-            ////  Nếu chưa có job nào để match (DB còn trống)
+            //  Nếu chưa có job nào để match (DB còn trống)
             //if (!matches.Any())
             //    {
             //    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
@@ -103,7 +104,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             //        };
             //    }
 
-            ////  Tính điểm hybrid và lọc theo category
+            //  Tính điểm hybrid và lọc theo category
             //var scored = await ScoreAndFilterJobsAsync(
             //    matches,
             //    dto.CategoryID,
@@ -111,16 +112,16 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             //    dto.Title ?? ""
             //);
 
-            ////  Lưu gợi ý top 5 vào bảng AiMatchSuggestions
+            //  Lưu gợi ý top 5 vào bảng AiMatchSuggestions
             //await UpsertSuggestionsAsync("JobSeekerPost", post.JobSeekerPostId, "EmployerPost", scored, keepTop: 5);
 
-            ////  Lấy danh sách job mà seeker đã lưu
+            //  Lấy danh sách job mà seeker đã lưu
             //var savedIds = await _db.JobSeekerShortlistedJobs
             //    .Where(x => x.JobSeekerId == post.UserId)
             //    .Select(x => x.EmployerPostId)
             //    .ToListAsync();
 
-            ////  Chuẩn hóa danh sách gợi ý trả ra client
+            //  Chuẩn hóa danh sách gợi ý trả ra client
             //var suggestions = scored
             //    .OrderByDescending(x => x.Score)
             //    .Take(5)
@@ -199,12 +200,16 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 UserID = post.UserId,
                 Title = post.Title,
                 Description = post.Description,
+                Age = post.Age,
+                Gender = post.Gender,
+                PreferredWorkHours = post.PreferredWorkHours,
                 PreferredLocation = post.PreferredLocation,
                 CategoryName = post.Category?.Name,
                 SeekerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
-                Status = post.Status
-                };
+                Status = post.Status,
+                PhoneContact = post.PhoneContact
+            };
             }
 
 
@@ -229,23 +234,23 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             await _repo.UpdateAsync(post);
 
             // Cập nhật embedding
-            var (vector, _) = await EnsureEmbeddingAsync(
-                "JobSeekerPost",
-                post.JobSeekerPostId,
-                $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}."
-            );
+            //var (vector, _) = await EnsureEmbeddingAsync(
+            //    "JobSeekerPost",
+            //    post.JobSeekerPostId,
+            //    $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}."
+            //);
 
-            await _ai.UpsertVectorAsync(
-                ns: "job_seeker_posts",
-                id: $"JobSeekerPost:{post.JobSeekerPostId}",
-                vector: vector,
-                metadata: new
-                    {
-                    title = post.Title ?? "",
-                    location = post.PreferredLocation ?? "",
-                    categoryId = post.CategoryId ?? 0,
-                    postId = post.JobSeekerPostId
-                    });
+            //await _ai.UpsertVectorAsync(
+            //    ns: "job_seeker_posts",
+            //    id: $"JobSeekerPost:{post.JobSeekerPostId}",
+            //    vector: vector,
+            //    metadata: new
+            //        {
+            //        title = post.Title ?? "",
+            //        location = post.PreferredLocation ?? "",
+            //        categoryId = post.CategoryId ?? 0,
+            //        postId = post.JobSeekerPostId
+            //        });
 
             return await BuildCleanPostDto(post);
             }
@@ -626,7 +631,11 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 JobSeekerPostId = post.JobSeekerPostId,
                 Title = post.Title,
                 Description = post.Description,
+                Age = post.Age,
+                Gender = post.Gender,
+                PreferredWorkHours = post.PreferredWorkHours,
                 PreferredLocation = post.PreferredLocation,
+                PhoneContact = post.PhoneContact,
                 CategoryName = category?.Name,
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,

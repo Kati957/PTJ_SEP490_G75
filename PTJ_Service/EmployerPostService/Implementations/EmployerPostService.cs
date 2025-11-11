@@ -23,12 +23,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
         public EmployerPostService(
             IEmployerPostRepository repo,
             JobMatchingDbContext db,
-            IAIService ai,
+            //IAIService ai,
             OpenMapService map)
             {
             _repo = repo;
             _db = db;
-            _ai = ai;
+            //_ai = ai;
             _map = map;
             }
 

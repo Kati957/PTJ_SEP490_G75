@@ -84,6 +84,7 @@ namespace PTJ_API.Controllers
             }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
             {
             var post = await _service.GetByIdAsync(id);
@@ -91,12 +92,12 @@ namespace PTJ_API.Controllers
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
             var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            //if (sub == null)
+            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
-                return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
+            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
 
             return Ok(new { success = true, data = post });
             }

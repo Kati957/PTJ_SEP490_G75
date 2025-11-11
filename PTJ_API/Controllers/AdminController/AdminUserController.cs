@@ -13,6 +13,7 @@ namespace PTJ_API.Controllers.Admin
         public AdminUserController(IAdminUserService svc) => _svc = svc;
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAllUsers(
             [FromQuery] string? role = null,
             [FromQuery] bool? isActive = null,

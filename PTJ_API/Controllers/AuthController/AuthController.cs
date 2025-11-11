@@ -136,7 +136,7 @@ public class AuthController : ControllerBase
    
     // 9️⃣ Nâng cấp Employer
     
-    [Authorize]
+    //[Authorize]
     [HttpPost("register/employer")]
     public async Task<ActionResult<AuthResponseDto>> UpgradeToEmployer(RegisterEmployerDto dto)
     {

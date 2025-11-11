@@ -64,6 +64,7 @@ namespace PTJ_API.Controllers
         // =========================================================
         [HttpGet("all")]
         [Authorize(Roles = "Admin")]
+        //[AllowAnonymous]
         public async Task<IActionResult> GetAll()
             {
             var result = await _service.GetAllAsync();
@@ -96,9 +97,9 @@ namespace PTJ_API.Controllers
             if (sub == null)
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
-                return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") || post.SeekerName != User.Identity!.Name)
+            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
 
             return Ok(new { success = true, data = post });
             }
@@ -120,9 +121,9 @@ namespace PTJ_API.Controllers
             if (sub == null)
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && existing.SeekerName != User.Identity!.Name)
-                return Forbidden("Bạn không thể chỉnh sửa bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && existing.SeekerName != User.Identity!.Name)
+            //    return Forbidden("Bạn không thể chỉnh sửa bài đăng của người khác.");
 
             var result = await _service.UpdateAsync(id, dto);
             return Ok(new { success = true, message = "Cập nhật thành công.", data = result });
@@ -142,9 +143,9 @@ namespace PTJ_API.Controllers
             if (sub == null)
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
-                return Forbidden("Bạn không thể xóa bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
+            //    return Forbidden("Bạn không thể xóa bài đăng của người khác.");
 
             var success = await _service.DeleteAsync(id);
             return Ok(new { success, message = success ? "Đã xóa bài đăng." : "Không thể xóa bài đăng." });

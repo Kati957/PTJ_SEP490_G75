@@ -22,12 +22,12 @@ namespace PTJ_Services.Implementations
         public JobSeekerProfileService(IJobSeekerProfileRepository repo, IConfiguration config)
             {
             _repo = repo;
-            var account = new Account(
-                config["Cloudinary:CloudName"],
-                config["Cloudinary:ApiKey"],
-                config["Cloudinary:ApiSecret"]
-            );
-            _cloudinary = new Cloudinary(account);
+            //var account = new Account(
+            //    config["Cloudinary:CloudName"],
+            //    config["Cloudinary:ApiKey"],
+            //    config["Cloudinary:ApiSecret"]
+            //);
+            //_cloudinary = new Cloudinary(account);
             }
 
         // 🟢 1️⃣ Lấy profile của chính user đăng nhập (đầy đủ thông tin)
