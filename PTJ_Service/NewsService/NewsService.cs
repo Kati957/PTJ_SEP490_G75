@@ -7,183 +7,63 @@ using PTJ_Models.Models;
 using PTJ_Data;
 using PTJ_Service.ImageService;
 using PTJ_Data.Repositories.Interfaces.NewsPost;
+using Microsoft.EntityFrameworkCore;
 
 namespace PTJ_Service.NewsService
 {
     public class NewsService : INewsService
     {
-        private readonly INewsRepository _repo;
-        private readonly IImageService _imageService;
-        private readonly JobMatchingDbContext _context;
-
-        public NewsService(INewsRepository repo, IImageService imageService, JobMatchingDbContext context)
-        {
-            _repo = repo;
-            _imageService = imageService;
-            _context = context;
-        }
-
-        public async Task<News> CreateAsync(NewsCreateDto dto)
-        {
-            var news = new News
-            {
-                AdminId = dto.AdminID,
-                Title = dto.Title,
-                Content = dto.Content,
-                Category = dto.Category,
-                IsFeatured = dto.IsFeatured,
-                Priority = dto.Priority,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now,
-            };
-
-            await _repo.AddAsync(news);
-
-            if (dto.CoverImage != null)
-            {
-                var (url, publicId) = await _imageService.UploadImageAsync(dto.CoverImage, "News");
-                news.ImageUrl = url;
-
-                var cover = new Image
-                {
-                    EntityType = "News",
-                    EntityId = news.NewsId,
-                    Url = url,
-                    PublicId = publicId,
-                    Format = "jpg"
-                };
-                _context.Images.Add(cover);
-            }
-
-            if (dto.GalleryImages != null && dto.GalleryImages.Any())
-            {
-                foreach (var img in dto.GalleryImages)
-                {
-                    var (url, publicId) = await _imageService.UploadImageAsync(img, "News");
-                    var image = new Image
-                    {
-                        EntityType = "News",
-                        EntityId = news.NewsId,
-                        Url = url,
-                        PublicId = publicId,
-                        Format = "jpg"
-                    };
-                    _context.Images.Add(image);
-                }
-            }
-
-            await _context.SaveChangesAsync();
-            return news;
-        }
+        private readonly JobMatchingDbContext _db;
+        public NewsService(JobMatchingDbContext db) => _db = db;
 
         public async Task<(List<NewsReadDto> Data, int Total)> GetPagedAsync(
             string? keyword, string? category, int page, int pageSize, string sortBy, bool desc)
         {
-            var (data, total) = await _repo.GetPagedAsync(keyword, category, page, pageSize, sortBy, desc);
+            var q = _db.News.Include(n => n.Images)
+                            .Where(n => n.IsPublished && !n.IsDeleted);
 
-            var result = data.Select(n => new NewsReadDto
-            {
-                NewsID = n.NewsId,
-                Title = n.Title,
-                Content = n.Content,
-                ImageUrl = n.ImageUrl,
-                GalleryUrls = n.Images?.Select(i => i.Url).ToList(),
-                Category = n.Category,
-                IsFeatured = n.IsFeatured,
-                Priority = n.Priority,
-                CreatedAt = n.CreatedAt
-            }).ToList();
+            if (!string.IsNullOrWhiteSpace(keyword))
+                q = q.Where(n => n.Title.Contains(keyword) || n.Content.Contains(keyword));
 
-            return (result, total);
+            if (!string.IsNullOrWhiteSpace(category))
+                q = q.Where(n => n.Category == category);
+
+            q = desc ? q.OrderByDescending(n => n.CreatedAt) : q.OrderBy(n => n.CreatedAt);
+
+            var total = await q.CountAsync();
+            var data = await q.Skip((page - 1) * pageSize).Take(pageSize)
+                              .Select(n => new NewsReadDto
+                              {
+                                  NewsID = n.NewsId,
+                                  Title = n.Title,
+                                  Content = n.Content,
+                                  ImageUrl = n.ImageUrl,
+                                  GalleryUrls = n.Images.Select(i => i.Url).ToList(),
+                                  Category = n.Category,
+                                  IsFeatured = n.IsFeatured,
+                                  Priority = n.Priority,
+                                  CreatedAt = n.CreatedAt
+                              })
+                              .ToListAsync();
+
+            return (data, total);
         }
 
-        public async Task<News?> UpdateAsync(NewsUpdateDto dto)
+        public async Task<NewsReadDto?> GetDetailAsync(int id)
         {
-            var news = await _repo.GetByIdAsync(dto.NewsID);
-            if (news == null) return null;
-
-            news.Title = dto.Title;
-            news.Content = dto.Content;
-            news.Category = dto.Category;
-            news.IsFeatured = dto.IsFeatured;
-            news.Priority = dto.Priority;
-            news.UpdatedAt = DateTime.Now;
-
-            if (dto.CoverImage != null)
-            {
-                var (url, publicId) = await _imageService.UploadImageAsync(dto.CoverImage, "News");
-                news.ImageUrl = url;
-
-                var image = new Image
+            return await _db.News.Include(n => n.Images)
+                .Where(n => n.NewsId == id && n.IsPublished && !n.IsDeleted)
+                .Select(n => new NewsReadDto
                 {
-                    EntityType = "News",
-                    EntityId = news.NewsId,
-                    Url = url,
-                    PublicId = publicId,
-                    Format = "jpg"
-                };
-                _context.Images.Add(image);
-            }
-
-            if (dto.GalleryImages != null && dto.GalleryImages.Any())
-            {
-                foreach (var img in dto.GalleryImages)
-                {
-                    var (url, publicId) = await _imageService.UploadImageAsync(img, "News");
-                    var image = new Image
-                    {
-                        EntityType = "News",
-                        EntityId = news.NewsId,
-                        Url = url,
-                        PublicId = publicId,
-                        Format = "jpg"
-                    };
-                    _context.Images.Add(image);
-                }
-            }
-
-            await _repo.UpdateAsync(news);
-            await _context.SaveChangesAsync();
-            return news;
-        }
-
-        public async Task<bool> DeleteAsync(int newsId, bool isHardDelete = false)
-        {
-            var news = await _repo.GetByIdAsync(newsId);
-            if (news == null) return false;
-
-            if (isHardDelete)
-            {
-                var images = _context.Images.Where(i => i.EntityType == "News" && i.EntityId == newsId).ToList();
-                foreach (var img in images)
-                {
-                    await _imageService.DeleteImageAsync(img.PublicId);
-                    _context.Images.Remove(img);
-                }
-
-                await _repo.DeleteAsync(news);
-            }
-            else
-            {
-                news.UpdatedAt = DateTime.Now;
-                await _repo.UpdateAsync(news);
-            }
-
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<News?> ToggleStatusAsync(int newsId)
-        {
-            var news = await _repo.GetByIdAsync(newsId);
-            if (news == null) return null;
-
-            news.UpdatedAt = DateTime.Now;
-
-            await _repo.UpdateAsync(news);
-            await _context.SaveChangesAsync();
-
-            return news;
+                    NewsID = n.NewsId,
+                    Title = n.Title,
+                    Content = n.Content,
+                    ImageUrl = n.ImageUrl,
+                    GalleryUrls = n.Images.Select(i => i.Url).ToList(),
+                    Category = n.Category,
+                    CreatedAt = n.CreatedAt
+                })
+                .FirstOrDefaultAsync();
         }
     }
 }

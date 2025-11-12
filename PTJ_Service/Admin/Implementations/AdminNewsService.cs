@@ -1,55 +1,100 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using PTJ_Data.Repositories.Interfaces.Admin;
+﻿using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
 using PTJ_Service.Admin.Interfaces;
+using PTJ_Service.ImageService;
 
 namespace PTJ_Service.Admin.Implementations
 {
     public class AdminNewsService : IAdminNewsService
     {
         private readonly IAdminNewsRepository _repo;
-        public AdminNewsService(IAdminNewsRepository repo) => _repo = repo;
+        private readonly IImageService _img;
 
-        public Task<IEnumerable<AdminNewsDto>> GetAllNewsAsync(string? status = null, string? keyword = null)
-            => _repo.GetAllNewsAsync(status, keyword);
+        public AdminNewsService(IAdminNewsRepository repo, IImageService img)
+        {
+            _repo = repo;
+            _img = img;
+        }
 
+        //  Danh sách
+        public Task<IEnumerable<AdminNewsDto>> GetAllNewsAsync(bool? isPublished, string? keyword)
+            => _repo.GetAllNewsAsync(isPublished, keyword);
+
+        //  Chi tiết
         public Task<AdminNewsDetailDto?> GetNewsDetailAsync(int id)
             => _repo.GetNewsDetailAsync(id);
 
+        //  Tạo mới
         public async Task<int> CreateAsync(int adminId, AdminCreateNewsDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Title))
-                throw new ArgumentException("Title is required.");
-
             var entity = new News
             {
-                Title = dto.Title.Trim(),
-                Content = dto.Content,
-                ImageUrl = dto.ImageUrl,
-                Category = dto.Category,
                 AdminId = adminId,
+                Title = dto.Title,
+                Content = dto.Content,
+                Category = dto.Category,
+                IsFeatured = dto.IsFeatured,
+                Priority = dto.Priority,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                IsPublished = dto.IsPublished,
+                IsDeleted = false
             };
+
+            //  Upload ảnh (nếu có)
+            if (dto.CoverImage != null)
+            {
+                var (url, _) = await _img.UploadImageAsync(dto.CoverImage, "News");
+                entity.ImageUrl = url;
+            }
 
             return await _repo.CreateAsync(entity);
         }
 
-        public async Task UpdateAsync(int id, AdminUpdateNewsDto dto)
+        //  Cập nhật
+        public async Task UpdateAsync(AdminUpdateNewsDto dto)
         {
-            var ok = await _repo.UpdateAsync(id, dto);
-            if (!ok) throw new KeyNotFoundException("News not found.");
+            var detail = await _repo.GetNewsDetailAsync(dto.NewsId)
+                ?? throw new KeyNotFoundException("News not found.");
+
+            var entity = new News
+            {
+                NewsId = dto.NewsId,
+                Title = dto.Title,
+                Content = dto.Content,
+                Category = dto.Category,
+                IsFeatured = dto.IsFeatured,
+                Priority = dto.Priority,
+                ImageUrl = detail.ImageUrl,
+                UpdatedAt = DateTime.UtcNow,
+                IsPublished = dto.IsPublished ?? detail.IsPublished,
+                IsDeleted = false
+            };
+
+            if (dto.CoverImage != null)
+            {
+                var (url, _) = await _img.UploadImageAsync(dto.CoverImage, "News");
+                entity.ImageUrl = url;
+            }
+
+            await _repo.UpdateAsync(entity);
         }
 
-        public async Task ToggleActiveAsync(int id)
+        //  Publish / Unpublish
+        public async Task TogglePublishStatusAsync(int id)
         {
-            var ok = await _repo.ToggleActiveAsync(id);
-            if (!ok) throw new KeyNotFoundException("News not found.");
+            var success = await _repo.TogglePublishStatusAsync(id);
+            if (!success)
+                throw new KeyNotFoundException("News not found or deleted.");
+        }
+
+        //  Xóa mềm
+        public async Task DeleteAsync(int id)
+        {
+            var success = await _repo.SoftDeleteAsync(id);
+            if (!success)
+                throw new KeyNotFoundException("News not found or already deleted.");
         }
     }
 }

@@ -65,6 +65,9 @@ using PTJ_Data.Repositories.Implementations.Ratings;
 using PTJ_Data.Repositories.Interfaces.Ratings;
 using PTJ_Service.RatingService.Implementations;
 using PTJ_Service.RatingService.Interfaces;
+using PTJ_Service.Interfaces;
+using PTJ_Service.Implementations;
+using PTJ_Data.Repositories.Implementations.NewsPost;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -116,6 +119,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReportService, ReportService>();    
 builder.Services.AddScoped<IRatingService, RatingService>();
@@ -135,7 +139,6 @@ builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
 builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
-builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
 
