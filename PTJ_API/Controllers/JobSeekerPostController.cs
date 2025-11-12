@@ -97,7 +97,7 @@ namespace PTJ_API.Controllers
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
             var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
+            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
                 return Forbidden("Bạn không thể xem bài đăng của người khác.");
 
             return Ok(new { success = true, data = post });
@@ -121,7 +121,7 @@ namespace PTJ_API.Controllers
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
             var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && existing.SeekerName != User.Identity!.Name)
+            if (!User.IsInRole("Admin") && existing.UserID != currentUserId)
                 return Forbidden("Bạn không thể chỉnh sửa bài đăng của người khác.");
 
             var result = await _service.UpdateAsync(id, dto);
@@ -143,7 +143,7 @@ namespace PTJ_API.Controllers
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
             var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
+            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
                 return Forbidden("Bạn không thể xóa bài đăng của người khác.");
 
             var success = await _service.DeleteAsync(id);
@@ -165,7 +165,7 @@ namespace PTJ_API.Controllers
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
             var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
+            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
                 return Forbidden("Bạn không thể làm mới bài đăng của người khác.");
 
             var result = await _service.RefreshSuggestionsAsync(postId);
@@ -225,7 +225,7 @@ namespace PTJ_API.Controllers
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
             var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.SeekerName != User.Identity!.Name)
+            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
                 return Forbidden("Bạn không thể xem gợi ý việc làm của bài đăng người khác.");
 
             var items = await _service.GetSuggestionsByPostAsync(postId, take, skip);

@@ -5,7 +5,7 @@ using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
-using PTJ_Service.AiService.Interfaces;
+using PTJ_Service.AiService;
 using PTJ_Service.LocationService;
 using System.Security.Cryptography;
 using System.Text;
@@ -36,6 +36,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
         public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto)
             {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto), "Dữ liệu không hợp lệ.");
+
+            if (dto.UserID <= 0)
+                throw new Exception("Thiếu thông tin UserID khi tạo bài đăng tuyển dụng.");
+
+            // 🧱 Tạo bài đăng mới
             var post = new EmployerPostModel
                 {
                 UserId = dto.UserID,
@@ -52,43 +59,52 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Status = "Active"
                 };
 
+            // ✅ Lưu DB để lấy ID thật
             await _repo.AddAsync(post);
-
-            //  Quan trọng: đảm bảo có ID thật trước khi tạo embedding
             await _db.SaveChangesAsync();
 
-            // Embedding nội dung (không nhồi location)
+            // ✅ Load lại entity đầy đủ (có User và Category)
+            var freshPost = await _db.EmployerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.EmployerPostId == post.EmployerPostId);
+
+            if (freshPost == null)
+                throw new Exception("Không thể load lại bài đăng vừa tạo.");
+
+            // 🧠 Tạo embedding vector
             var (vector, hash) = await EnsureEmbeddingAsync(
                 "EmployerPost",
-                post.EmployerPostId,
-                $"{dto.Title}. {dto.Description}. Yêu cầu: {dto.Requirements}. Lương: {dto.Salary}"
+                freshPost.EmployerPostId,
+                $"{freshPost.Title}. {freshPost.Description}. Yêu cầu: {freshPost.Requirements}. Lương: {freshPost.Salary}"
             );
 
+            // 📤 Upsert vector vào Pinecone
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
-                id: $"EmployerPost:{post.EmployerPostId}",
+                id: $"EmployerPost:{freshPost.EmployerPostId}",
                 vector: vector,
                 metadata: new
                     {
-                    title = post.Title ?? "",
-                    location = post.Location ?? "",
-                    salary = post.Salary ?? 0,
-                    categoryId = post.CategoryId ?? 0,
-                    postId = post.EmployerPostId
+                    title = freshPost.Title ?? "",
+                    location = freshPost.Location ?? "",
+                    salary = freshPost.Salary ?? 0,
+                    categoryId = freshPost.CategoryId ?? 0,
+                    postId = freshPost.EmployerPostId
                     });
 
-            // Query rộng để không bỏ sót (topK=100)
+            // 🔍 Truy vấn ứng viên tương tự (top 100)
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
             if (!matches.Any())
                 {
-                // Pending nếu chưa có kết quả
                 _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
                     {
                     EntityType = "EmployerPost",
-                    EntityId = post.EmployerPostId,
+                    EntityId = freshPost.EmployerPostId,
                     Lang = "vi",
-                    CanonicalText = $"{dto.Title}. {dto.Description}. {dto.Requirements}. {dto.Location}. {dto.Salary}",
+                    CanonicalText = $"{freshPost.Title}. {freshPost.Description}. {freshPost.Requirements}. {freshPost.Location}. {freshPost.Salary}",
                     Hash = hash,
                     LastPreparedAt = DateTime.Now
                     });
@@ -96,25 +112,29 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 return new EmployerPostResultDto
                     {
-                    Post = await BuildCleanPostDto(post),
+                    Post = await BuildCleanPostDto(freshPost),
                     SuggestedCandidates = new List<AIResultDto>()
                     };
                 }
 
+            // 🔢 Tính điểm và lọc ứng viên
             var scored = await ScoreAndFilterCandidatesAsync(
                 matches,
-                mustMatchCategoryId: post.CategoryId,
-                employerLocation: post.Location ?? "",
-                employerTitle: post.Title ?? ""
+                mustMatchCategoryId: freshPost.CategoryId,
+                employerLocation: freshPost.Location ?? "",
+                employerTitle: freshPost.Title ?? ""
             );
 
-            await UpsertSuggestionsAsync("EmployerPost", post.EmployerPostId, "JobSeekerPost", scored, keepTop: 5);
+            // 💾 Lưu gợi ý top 5
+            await UpsertSuggestionsAsync("EmployerPost", freshPost.EmployerPostId, "JobSeekerPost", scored, keepTop: 5);
 
+            // 🧾 Lấy danh sách ứng viên đã được shortlist
             var savedIds = await _db.EmployerShortlistedCandidates
-                .Where(x => x.EmployerPostId == post.EmployerPostId)
+                .Where(x => x.EmployerPostId == freshPost.EmployerPostId)
                 .Select(x => x.JobSeekerId)
                 .ToListAsync();
 
+            // 🎯 Chuẩn hóa danh sách ứng viên trả về
             var suggestions = scored
                 .OrderByDescending(x => x.Score)
                 .Take(5)
@@ -134,12 +154,14 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     })
                 .ToList();
 
+            // ✅ Trả kết quả cuối cùng
             return new EmployerPostResultDto
                 {
-                Post = await BuildCleanPostDto(post),
+                Post = await BuildCleanPostDto(freshPost),
                 SuggestedCandidates = suggestions
                 };
             }
+
 
 
         // READ
@@ -343,6 +365,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
         // SCORING
 
+        // ================================================
+        // ⚙️ SCORING LOGIC (Category filter + Distance ≤100km + Hybrid score)
+        // ================================================
         private async Task<List<(JobSeekerPost Seeker, double Score)>> ScoreAndFilterCandidatesAsync(
             List<(string Id, double Score)> matches,
             int? mustMatchCategoryId,
@@ -366,12 +391,44 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 if (seeker == null)
                     continue;
 
+                // 1️⃣ Lọc theo Category
                 if (mustMatchCategoryId.HasValue && seeker.CategoryId != mustMatchCategoryId)
                     continue;
 
-                double score = await ComputeHybridScoreAsync(
-     m.Score, employerLocation, seeker.PreferredLocation);
+                // 2️⃣ Lọc theo vị trí (nếu >100km thì loại bỏ)
+                bool hasEmployerLoc = !string.IsNullOrWhiteSpace(employerLocation);
+                bool hasSeekerLoc = !string.IsNullOrWhiteSpace(seeker.PreferredLocation);
+                bool skipByDistance = false;
 
+                if (hasEmployerLoc && hasSeekerLoc)
+                    {
+                    try
+                        {
+                        var employerCoord = await _map.GetCoordinatesAsync(employerLocation);
+                        var seekerCoord = await _map.GetCoordinatesAsync(seeker.PreferredLocation);
+
+                        if (employerCoord != null && seekerCoord != null)
+                            {
+                            double distanceKm = _map.ComputeDistanceKm(
+                                employerCoord.Value.lat, employerCoord.Value.lng,
+                                seekerCoord.Value.lat, seekerCoord.Value.lng);
+
+                            if (distanceKm > 100.0)
+                                skipByDistance = true;
+                            }
+                        }
+                    catch
+                        {
+                        // nếu API lỗi thì bỏ qua kiểm tra khoảng cách
+                        }
+                    }
+
+                if (skipByDistance)
+                    continue; // ngoài 100km → không đề xuất
+
+                // 3️⃣ Tính điểm hybrid (giữ nguyên logic của bạn)
+                double score = await ComputeHybridScoreAsync(
+                    m.Score, employerLocation, seeker.PreferredLocation);
 
                 result.Add((seeker, score));
                 }
@@ -380,15 +437,15 @@ namespace PTJ_Service.EmployerPostService.Implementations
             }
 
         private async Task<double> ComputeHybridScoreAsync(
-    double contentMatchScore,
-    string employerLocation,
-    string? seekerLocation)
+            double contentMatchScore,
+            string employerLocation,
+            string? seekerLocation)
             {
             // === Trọng số ảnh hưởng ===
             const double WEIGHT_CONTENT_MATCH = 0.7;      // mức độ phù hợp nội dung
             const double WEIGHT_DISTANCE_FACTOR = 0.3;    // mức độ gần về vị trí
 
-            double locationMatchScore = 0.5; // giá trị trung lập nếu không xác định được
+            double locationMatchScore = 0.5; // trung lập nếu không xác định được
 
             try
                 {
@@ -404,7 +461,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
                             seekerCoord.Value.lat, seekerCoord.Value.lng);
 
                         // === Điểm vị trí càng gần càng cao ===
-                        // 0 km → 1.0, 30 km → 0.6, 100 km → 0.0
                         if (distanceKm <= 2)
                             locationMatchScore = 1.0;
                         else if (distanceKm <= 10)
@@ -416,7 +472,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                         else if (distanceKm <= 100)
                             locationMatchScore = 0.1;
                         else
-                            locationMatchScore = 0.0; // quá xa → loại
+                            locationMatchScore = 0.0;
                         }
                     }
                 }
@@ -425,14 +481,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 locationMatchScore = 0.5; // fallback nếu API lỗi
                 }
 
-            // === Tính điểm tổng hợp ===
+            // === Tổng điểm hybrid ===
             double totalMatchScore =
                 (contentMatchScore * WEIGHT_CONTENT_MATCH) +
                 (locationMatchScore * WEIGHT_DISTANCE_FACTOR);
 
             return Math.Clamp(totalMatchScore, 0, 1);
             }
-
 
 
         // SHORTLIST
@@ -609,6 +664,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return new EmployerPostDtoOut
                 {
                 EmployerPostId = post.EmployerPostId,
+                EmployerId = post.UserId, // ✅ THÊM DÒNG NÀY
                 Title = post.Title,
                 Description = post.Description,
                 Salary = post.Salary,
@@ -622,6 +678,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Status = post.Status
                 };
             }
+
 
         private async Task UpsertSuggestionsAsync(
             string sourceType, int sourceId, string targetType,

@@ -25,7 +25,7 @@ using PTJ_Service.JobApplicationService.Interfaces;
 using PTJ_Service.JobApplicationService.Implementations;
 using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Service.AiService.Implementations;
-using PTJ_Service.AiService.Interfaces;
+using PTJ_Service.AiService;
 using PTJ_Data;
 using PTJ_Data.Repo.Implement;
 using PTJ_Data.Repo.Interface;
@@ -44,9 +44,11 @@ using PTJ_Service.SearchService.Services;
 using PTJ_Service.ImageService;
 using PTJ_Service.NewsService;
 using CloudinaryDotNet;
-using dotenv.net;
+//using dotenv.net;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
+using PTJ_Models.Models;
+using PTJ_Service.AiService;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -94,8 +96,6 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // AI Services
-builder.Services.AddHttpClient<OpenAIService>();
-builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
