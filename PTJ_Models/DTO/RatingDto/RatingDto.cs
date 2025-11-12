@@ -1,13 +1,19 @@
-﻿namespace PTJ_Models.DTOs
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace PTJ_Models.DTO.RatingDto
 {
     public class RatingCreateDto
     {
-        public int RaterId { get; set; }       // Người đánh giá
-        public int RateeId { get; set; }       // Người được đánh giá
-        public int? SubmissionId { get; set; } // Liên quan đến job nào
-        public decimal RatingValue { get; set; } // 0–5
+        public int RateeId { get; set; }
+        public int SubmissionId { get; set; }
+        public decimal RatingValue { get; set; }
         public string? Comment { get; set; }
     }
+
 
     public class RatingViewDto
     {
