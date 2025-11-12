@@ -19,8 +19,8 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         {
             var q = _db.News.Include(n => n.Admin).AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(status))
-                q = q.Where(n => n.Status == status);
+            //if (!string.IsNullOrWhiteSpace(status))
+            //    q = q.Where(n => n.Status == status);
 
             if (!string.IsNullOrWhiteSpace(keyword))
             {
@@ -37,7 +37,6 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     NewsId = n.NewsId,
                     Title = n.Title,
                     Category = n.Category,
-                    Status = n.Status,
                     CreatedAt = n.CreatedAt,
                     UpdatedAt = n.UpdatedAt
                 })
@@ -56,7 +55,6 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     Content = n.Content,
                     ImageUrl = n.ImageUrl,
                     Category = n.Category,
-                    Status = n.Status,
                     CreatedAt = n.CreatedAt,
                     UpdatedAt = n.UpdatedAt,
                     AdminId = n.AdminId,
@@ -81,7 +79,6 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             news.Content = dto.Content;
             news.ImageUrl = dto.ImageUrl;
             news.Category = dto.Category;
-            news.Status = dto.Status ?? news.Status;
             news.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -93,7 +90,6 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             var news = await _db.News.FirstOrDefaultAsync(n => n.NewsId == id);
             if (news == null) return false;
 
-            news.Status = news.Status == "Active" ? "Hidden" : "Active";
             news.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             return true;

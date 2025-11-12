@@ -34,7 +34,6 @@ namespace PTJ_Data.Repositories.Interfaces.NewsPost
         {
             var query = _db.News
                 .Include(n => n.Images)
-                .Where(n => n.Status == "Active")
                 .AsQueryable();
 
 

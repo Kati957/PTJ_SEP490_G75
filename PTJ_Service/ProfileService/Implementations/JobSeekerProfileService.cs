@@ -44,10 +44,6 @@ namespace PTJ_Services.Implementations
                 Gender = p.Gender,
                 BirthYear = p.BirthYear,
                 ProfilePicture = p.ProfilePicture,
-                Skills = p.Skills,
-                Experience = p.Experience,
-                Education = p.Education,
-                PreferredJobType = p.PreferredJobType,
                 PreferredLocation = p.PreferredLocation,
                 ContactPhone = p.ContactPhone
                 };
@@ -66,10 +62,6 @@ namespace PTJ_Services.Implementations
                 Gender = p.Gender,
                 BirthYear = p.BirthYear,
                 ProfilePicture = p.ProfilePicture,
-                Skills = p.Skills,
-                Experience = p.Experience,
-                Education = p.Education,
-                PreferredJobType = p.PreferredJobType,
                 PreferredLocation = p.PreferredLocation,
                 ContactPhone = p.ContactPhone
                 };
@@ -84,10 +76,6 @@ namespace PTJ_Services.Implementations
             existing.FullName = dto.FullName;
             existing.Gender = dto.Gender;
             existing.BirthYear = dto.BirthYear;
-            existing.Skills = dto.Skills;
-            existing.Experience = dto.Experience;
-            existing.Education = dto.Education;
-            existing.PreferredJobType = dto.PreferredJobType;
             existing.PreferredLocation = dto.PreferredLocation;
             existing.ContactPhone = dto.ContactPhone;
 

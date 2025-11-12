@@ -35,7 +35,6 @@ namespace PTJ_Service.NewsService
                 Priority = dto.Priority,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
-                Status = "Active"
             };
 
             await _repo.AddAsync(news);
@@ -166,7 +165,6 @@ namespace PTJ_Service.NewsService
             }
             else
             {
-                news.Status = "Inactive";
                 news.UpdatedAt = DateTime.Now;
                 await _repo.UpdateAsync(news);
             }
@@ -180,7 +178,6 @@ namespace PTJ_Service.NewsService
             var news = await _repo.GetByIdAsync(newsId);
             if (news == null) return null;
 
-            news.Status = news.Status == "Active" ? "Inactive" : "Active";
             news.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(news);

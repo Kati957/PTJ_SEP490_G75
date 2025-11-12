@@ -62,6 +62,8 @@ using PTJ_Service.RatingService.Implementations;
 using PTJ_Service.FollowService;
 using PTJ_Service.Interfaces;
 using PTJ_Service.Implementations;
+using PTJ_Service.JobSeekerCvService.Implementations;
+using PTJ_Service.JobSeekerCvService.Interfaces;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
@@ -133,6 +135,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
+builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
 
 
 // Repository
@@ -153,7 +156,7 @@ builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileReposito
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
 builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
-
+builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();

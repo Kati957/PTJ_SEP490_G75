@@ -94,7 +94,6 @@ namespace PTJ_API.Controllers
 
             return Ok(new
             {
-                message = $"Đã chuyển trạng thái bài viết thành {(news.Status == "Active" ? "Active" : "Inactive")}.",
                 data = news
             });
         }

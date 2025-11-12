@@ -19,6 +19,10 @@ public partial class JobSeekerSubmission
 
     public DateTime UpdatedAt { get; set; }
 
+    public int? Cvid { get; set; }
+
+    public virtual JobSeekerCv? Cv { get; set; }
+
     public virtual EmployerPost EmployerPost { get; set; } = null!;
 
     public virtual User JobSeeker { get; set; } = null!;

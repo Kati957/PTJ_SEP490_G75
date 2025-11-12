@@ -32,7 +32,6 @@ namespace PTJ_Service.Admin.Implementations
                 Content = dto.Content,
                 ImageUrl = dto.ImageUrl,
                 Category = dto.Category,
-                Status = "Active",
                 AdminId = adminId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

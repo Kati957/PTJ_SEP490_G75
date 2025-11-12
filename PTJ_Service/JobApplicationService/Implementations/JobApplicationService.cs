@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PTJ_Service.JobApplicationService.Implementations
-{
+    {
     public class JobApplicationService : IJobApplicationService
         {
         private readonly IJobApplicationRepository _repo;
@@ -26,7 +26,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
         // =========================================================
         // ỨNG VIÊN NỘP ĐƠN (có validation)
         // =========================================================
-        public async Task<(bool success, string? error)> ApplyAsync(int jobSeekerId, int employerPostId, string? note)
+        public async Task<(bool success, string? error)> ApplyAsync(int jobSeekerId, int employerPostId, string? note, int? cvid = null)
             {
             // 1️⃣ Kiểm tra user hợp lệ
             var seeker = await _db.Users.FirstOrDefaultAsync(u => u.UserId == jobSeekerId);
@@ -40,7 +40,15 @@ namespace PTJ_Service.JobApplicationService.Implementations
             if (post.Status == "Deleted" || post.Status == "Closed")
                 return (false, "Bài đăng đã đóng tuyển.");
 
-            // 3️⃣ Kiểm tra đã ứng tuyển chưa
+            // 3️⃣ Kiểm tra CV hợp lệ (nếu có)
+            if (cvid.HasValue)
+                {
+                var cv = await _db.JobSeekerCvs.FirstOrDefaultAsync(c => c.Cvid == cvid && c.JobSeekerId == jobSeekerId);
+                if (cv == null)
+                    return (false, "CV không hợp lệ hoặc không thuộc về bạn.");
+                }
+
+            // 4️⃣ Kiểm tra đã ứng tuyển chưa
             var existing = await _repo.GetAsync(jobSeekerId, employerPostId);
             if (existing != null)
                 {
@@ -48,6 +56,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     {
                     existing.Status = "Pending";
                     existing.Notes = note;
+                    existing.Cvid = cvid;
                     existing.UpdatedAt = DateTime.Now;
                     await _repo.UpdateAsync(existing);
                     return (true, null);
@@ -55,7 +64,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 return (false, "Bạn đã ứng tuyển bài này trước đó.");
                 }
 
-            // 4️⃣ Tạo đơn ứng tuyển mới
+            // 5️⃣ Tạo đơn ứng tuyển mới
             var submission = new JobSeekerSubmission
                 {
                 JobSeekerId = jobSeekerId,
@@ -63,12 +72,14 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 AppliedAt = DateTime.Now,
                 Status = "Pending",
                 Notes = note,
+                Cvid = cvid,
                 UpdatedAt = DateTime.Now
                 };
 
             await _repo.AddAsync(submission);
             return (true, null);
             }
+
 
         // =========================================================
         // RÚT ĐƠN
@@ -96,28 +107,30 @@ namespace PTJ_Service.JobApplicationService.Implementations
 
             return list.Select(x =>
             {
-                var profile = x.JobSeeker.JobSeekerProfile;
+                var cv = x.Cv;  // ✅ Lấy thông tin CV
+                var seeker = x.JobSeeker;
 
                 return new JobApplicationResultDto
                     {
                     CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
-                    Username = x.JobSeeker.Username,
-                    FullName = profile?.FullName,
-                    Gender = profile?.Gender,
-                    BirthYear = profile?.BirthYear,
-                    ProfilePicture = profile?.ProfilePicture,
-                    Skills = profile?.Skills,
-                    Experience = profile?.Experience,
-                    Education = profile?.Education,
-                    PreferredJobType = profile?.PreferredJobType,
-                    PreferredLocation = profile?.PreferredLocation,
+                    Username = seeker.Username,
                     Status = x.Status,
                     ApplicationDate = x.AppliedAt,
-                    Notes = x.Notes
+                    Notes = x.Notes,
+
+                    // ✅ CV chi tiết
+                    CvId = cv?.Cvid,
+                    CvTitle = cv?.Cvtitle,
+                    SkillSummary = cv?.SkillSummary,
+                    Skills = cv?.Skills,
+                    PreferredJobType = cv?.PreferredJobType,
+                    PreferredLocation = cv?.PreferredLocation,
+                    ContactPhone = cv?.ContactPhone
                     };
             }).ToList();
             }
+
 
         // =========================================================
         // JOBSEEKER XEM CÁC BÀI ĐÃ ỨNG TUYỂN
@@ -131,6 +144,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 var post = x.EmployerPost;
                 var category = post?.Category;
                 var employer = post?.User;
+                var cv = x.Cv; // ✅ Thêm dòng này
 
                 return new JobApplicationResultDto
                     {
@@ -140,6 +154,8 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Status = x.Status,
                     ApplicationDate = x.AppliedAt,
                     Notes = x.Notes,
+
+                    // Thông tin bài đăng
                     EmployerPostId = post?.EmployerPostId ?? 0,
                     PostTitle = post?.Title,
                     CategoryName = category?.Name,
@@ -147,10 +163,20 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Location = post?.Location,
                     Salary = post?.Salary,
                     WorkHours = post?.WorkHours,
-                    PhoneContact = post?.PhoneContact
+                    PhoneContact = post?.PhoneContact,
+
+                    // ✅ Thông tin CV đã dùng
+                    CvId = cv?.Cvid,
+                    CvTitle = cv?.Cvtitle,
+                    SkillSummary = cv?.SkillSummary,
+                    Skills = cv?.Skills,
+                    PreferredJobType = cv?.PreferredJobType,
+                    PreferredLocation = cv?.PreferredLocation,
+                    ContactPhone = cv?.ContactPhone
                     };
             }).ToList();
             }
+
 
         // =========================================================
         // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN

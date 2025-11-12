@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PTJ_Data.Repositories.Implementations
-{
+    {
     public class JobApplicationRepository : IJobApplicationRepository
         {
         private readonly JobMatchingDbContext _db;
@@ -43,16 +43,18 @@ namespace PTJ_Data.Repositories.Implementations
         public async Task<IEnumerable<JobSeekerSubmission>> GetByEmployerPostWithDetailAsync(int employerPostId)
             {
             return await _db.JobSeekerSubmissions
+                .Include(x => x.Cv)                // ✅ Thêm dòng này để lấy CV
                 .Include(x => x.JobSeeker)
-                    .ThenInclude(u => u.JobSeekerProfile)
                 .Where(x => x.EmployerPostId == employerPostId)
                 .OrderByDescending(x => x.AppliedAt)
                 .ToListAsync();
             }
 
+
         public async Task<IEnumerable<JobSeekerSubmission>> GetByJobSeekerWithPostDetailAsync(int jobSeekerId)
             {
             return await _db.JobSeekerSubmissions
+                .Include(x => x.Cv)
                 .Include(x => x.JobSeeker)               // 🔥 Thêm dòng này
                 .Include(x => x.EmployerPost)
                     .ThenInclude(p => p.User)

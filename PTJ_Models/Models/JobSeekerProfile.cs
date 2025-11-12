@@ -17,14 +17,6 @@ public partial class JobSeekerProfile
 
     public string? ProfilePicture { get; set; }
 
-    public string? Skills { get; set; }
-
-    public string? Experience { get; set; }
-
-    public string? Education { get; set; }
-
-    public string? PreferredJobType { get; set; }
-
     public string? PreferredLocation { get; set; }
 
     public DateTime UpdatedAt { get; set; }

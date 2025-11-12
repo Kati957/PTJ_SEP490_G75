@@ -2,6 +2,7 @@
 using PTJ_Data;
 using PTJ_Models;
 using PTJ_Models.DTO.Auth;
+using PTJ_Models.Models;
 using PTJ_Service.AuthService.Interfaces;
 
 namespace PTJ_Service.AuthService.Implementations
