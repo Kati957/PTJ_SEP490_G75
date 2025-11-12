@@ -10,8 +10,8 @@ namespace PTJ_API.Controllers
     [AllowAnonymous]
     public class NewsController : ControllerBase
     {
-        private readonly INewsPublicService _svc;
-        public NewsController(INewsPublicService svc) => _svc = svc;
+        private readonly INewsService _svc;
+        public NewsController(INewsService svc) => _svc = svc;
 
         // Danh sách public
         [HttpGet]
