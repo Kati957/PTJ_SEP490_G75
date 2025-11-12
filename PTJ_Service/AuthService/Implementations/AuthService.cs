@@ -24,21 +24,32 @@ public sealed class AuthService : IAuthService
     private readonly ILogger<AuthService> _log;
 
     public AuthService(JobMatchingDbContext db, IPasswordHasher hasher, ITokenService tokens, IEmailSender email, IConfiguration cfg, ILogger<AuthService> log)
-    { _db = db; _hasher = hasher; _tokens = tokens; _email = email; _cfg = cfg; _log = log; }
+    {
+        _db = db;
+        _hasher = hasher;
+        _tokens = tokens;
+        _email = email;
+        _cfg = cfg;
+        _log = log;
+    }
 
+    
+    // 1️⃣ Đăng ký JobSeeker
     public async Task<AuthResponseDto> RegisterJobSeekerAsync(RegisterJobSeekerDto dto)
     {
         var email = dto.Email.Trim().ToLowerInvariant();
 
-        // 1️⃣ Kiểm tra email trùng
-        if (await _db.Users.AnyAsync(x => x.Email == email))
-            throw new Exception("Email already exists.");
+        // Kiểm tra email đã tồn tại
+        var existing = await _db.Users.Include(u => u.Roles).FirstOrDefaultAsync(x => x.Email == email);
+        if (existing != null)
+        {
+            var role = existing.Roles.FirstOrDefault()?.RoleName ?? "User";
+            throw new Exception($"This email is already used for a {role} account.");
+        }
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
-
+        using var tran = await _db.Database.BeginTransactionAsync();
         try
         {
-            // 2️⃣ Tạo user mới
             var user = new User
             {
                 Email = email,
@@ -52,33 +63,25 @@ public sealed class AuthService : IAuthService
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            // 3️⃣ Gán role JobSeeker
             await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
 
-            // 4️⃣ Avatar mặc định
-            const string DefaultAvatarUrl = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
+            // Avatar mặc định
+            const string DefaultAvatar = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
             const string DefaultPublicId = "avtDefaut_huflze";
 
-            // 5️⃣ Tạo JobSeekerProfile (luôn có avatar mặc định)
-            if (!await _db.JobSeekerProfiles.AnyAsync(p => p.UserId == user.UserId))
+            _db.JobSeekerProfiles.Add(new JobSeekerProfile
             {
-                var profile = new JobSeekerProfile
-                {
-                    UserId = user.UserId,
-                    FullName = dto.FullName,
-                    ProfilePicture = DefaultAvatarUrl,
-                    ProfilePicturePublicId = DefaultPublicId,
-                    IsPictureHidden = false,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                _db.JobSeekerProfiles.Add(profile);
-                await _db.SaveChangesAsync();
-            }
+                UserId = user.UserId,
+                FullName = dto.FullName,
+                ProfilePicture = DefaultAvatar,
+                ProfilePicturePublicId = DefaultPublicId,
+                IsPictureHidden = false,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await _db.SaveChangesAsync();
 
-            // 6️⃣ Tạo token xác thực email
-            var tokenBytes = RandomNumberGenerator.GetBytes(48);
-            var token = WebEncoders.Base64UrlEncode(tokenBytes);
-
+            // Token xác thực email
+            var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
             _db.EmailVerificationTokens.Add(new EmailVerificationToken
             {
                 UserId = user.UserId,
@@ -87,28 +90,19 @@ public sealed class AuthService : IAuthService
             });
             await _db.SaveChangesAsync();
 
-            //  Commit transaction
-            await transaction.CommitAsync();
+            await tran.CommitAsync();
 
-            // 7️⃣ Gửi email xác thực (ngoài transaction)
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    var baseUrlApi = _cfg["App:BaseUrl"] ?? "https://localhost:7100";
-                    var verifyUrl = $"{baseUrlApi}/api/Auth/verify-email?token={token}";
-
+                    var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
                     var body = $@"
-                    <h2>Welcome to PTJ!</h2>
-                    <p>Hi <b>{WebUtility.HtmlEncode(user.Username)}</b>,</p>
-                    <p>Please verify your email:</p>
-                    <a href='{verifyUrl}' 
-                       style='background:#007bff;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;'>
-                       Verify Email
-                    </a>
-                    <p>This link will expire in 30 minutes.</p>";
-
-                    await _email.SendEmailAsync(user.Email, "Xác thực tài khoản PTJ", body);
+                        <h2>Welcome to PTJ!</h2>
+                        <p>Hello <b>{user.Username}</b>, please verify your email:</p>
+                        <a href='{verifyUrl}' style='background:#007bff;color:#fff;padding:10px 20px;border-radius:4px;'>Verify</a>
+                        <p>This link expires in 30 minutes.</p>";
+                    await _email.SendEmailAsync(user.Email, "Verify your PTJ account", body);
                 }
                 catch (Exception ex)
                 {
@@ -116,141 +110,394 @@ public sealed class AuthService : IAuthService
                 }
             });
 
-            // 8️⃣ Sinh token đăng nhập (cho phép login ngay nhưng warning nếu chưa verify)
-            var response = await _tokens.IssueAsync(user, deviceInfo: null, ip: null);
-            if (!user.IsVerified)
-                response.Warning = "Your email is not verified. Please check your inbox.";
-
+            var response = await _tokens.IssueAsync(user, null, null);
+            response.Warning = "Your email is not verified yet. Please check your inbox.";
             return response;
         }
         catch (Exception ex)
         {
-            await transaction.RollbackAsync();
-            var inner = ex.InnerException?.Message ?? ex.Message;
-            _log.LogError(ex, "Registration failed: {Inner}", inner);
-            throw new Exception($"Registration failed: {inner}");
+            await tran.RollbackAsync();
+            throw new Exception($"Registration failed: {ex.Message}");
         }
     }
 
-
-
-
-
-    public async Task VerifyEmailAsync(string token)
+    // 2️⃣ Đăng ký Employer
+    public async Task<AuthResponseDto> RegisterEmployerAsync(RegisterEmployerDto dto)
     {
-        var decoded = WebUtility.UrlDecode(token);
-
-        // Tìm token hợp lệ trong DB
-        var ev = await _db.EmailVerificationTokens
-            .Include(x => x.User)
-            .FirstOrDefaultAsync(x => x.Token == decoded && x.UsedAt == null);
-
-        if (ev == null)
-            throw new Exception("Token not found or already used.");
-
-        if (ev.ExpiresAt < DateTime.UtcNow)
-            throw new Exception("Token has expired.");
-
-        // Đánh dấu token đã sử dụng
-        ev.UsedAt = DateTime.UtcNow;
-        ev.User.IsVerified = true;
-        ev.User.UpdatedAt = DateTime.UtcNow;
-
-        //  Xóa hoặc đánh dấu token cũ chưa dùng của user để tránh rác DB
-        var oldTokens = _db.EmailVerificationTokens
-            .Where(x => x.UserId == ev.UserId && x.UsedAt == null && x.Token != decoded);
-        foreach (var t in oldTokens)
-            t.UsedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-
-        _log.LogInformation("Email verified successfully for user {Email}", ev.User.Email);
-    }
-
-    public async Task ResendVerificationAsync(string email)
-    {
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
-        if (user == null || user.IsVerified) return;
-
-        // Thu hồi tất cả token cũ chưa dùng
-        var oldTokens = _db.EmailVerificationTokens
-            .Where(x => x.UserId == user.UserId && x.UsedAt == null);
-        foreach (var t in oldTokens)
-            t.UsedAt = DateTime.UtcNow;
-
-        // Tạo token mới (Base64UrlEncode)
-        var tokenBytes = RandomNumberGenerator.GetBytes(48);
-        var token = WebEncoders.Base64UrlEncode(tokenBytes);
-
-        _db.EmailVerificationTokens.Add(new EmailVerificationToken
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var existing = await _db.Users.Include(u => u.Roles).FirstOrDefaultAsync(x => x.Email == email);
+        if (existing != null)
         {
-            UserId = user.UserId,
-            Token = token,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-        });
-        await _db.SaveChangesAsync();
+            var role = existing.Roles.FirstOrDefault()?.RoleName ?? "User";
+            throw new Exception($"This email is already used for a {role} account.");
+        }
 
-        // Tạo link verify TRỎ VỀ API (đồng nhất với flow)
-        var baseUrlApi = _cfg["App:BaseUrl"] ?? "https://localhost:7100";
-        var verifyUrl = $"{baseUrlApi}/api/Auth/verify-email?token={token}";
-
+        using var tran = await _db.Database.BeginTransactionAsync();
         try
         {
-            var body = $@"
-            <p>Xin chào <b>{WebUtility.HtmlEncode(user.Username)}</b>,</p>
-            <p>Nhấn vào link bên dưới để xác thực email của bạn:</p>
-            <a href='{verifyUrl}' 
-               style='background:#28a745;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;'>Xác thực ngay</a>
-            <p>Liên kết này có hiệu lực 30 phút.</p>";
+            var user = new User
+            {
+                Email = email,
+                Username = email.Split('@')[0],
+                PasswordHash = _hasher.Hash(dto.Password),
+                IsActive = true,
+                IsVerified = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
 
-            await _email.SendEmailAsync(user.Email, "Gửi lại email xác thực PTJ", body);
+            await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "Employer");
+
+            const string DefaultAvatar = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
+            const string DefaultPublicId = "avtDefaut_huflze";
+
+            _db.EmployerProfiles.Add(new EmployerProfile
+            {
+                UserId = user.UserId,
+                DisplayName = dto.DisplayName ?? user.Username,
+                AvatarUrl = DefaultAvatar,
+                AvatarPublicId = DefaultPublicId,
+                ContactPhone = dto.PhoneNumber,
+                ContactEmail = dto.Email,
+                Website = dto.Website,
+                IsAvatarHidden = false,
+                UpdatedAt = DateTime.UtcNow
+            });
+            await _db.SaveChangesAsync();
+
+            var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
+            _db.EmailVerificationTokens.Add(new EmailVerificationToken
+            {
+                UserId = user.UserId,
+                Token = token,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+            });
+            await _db.SaveChangesAsync();
+
+            await tran.CommitAsync();
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+                    var body = $@"
+                        <h2>Welcome to PTJ!</h2>
+                        <p>Hello <b>{user.Username}</b>, please verify your employer account:</p>
+                        <a href='{verifyUrl}' style='background:#007bff;color:#fff;padding:10px 20px;border-radius:4px;'>Verify</a>
+                        <p>This link expires in 30 minutes.</p>";
+                    await _email.SendEmailAsync(user.Email, "Verify your Employer account", body);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogError(ex, "Send verification email failed for {Email}", user.Email);
+                }
+            });
+
+            var response = await _tokens.IssueAsync(user, null, null);
+            response.Warning = "Your email is not verified yet. Please check your inbox.";
+            return response;
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "Resend verification email failed for {Email}", user.Email);
+            await tran.RollbackAsync();
+            throw new Exception($" Registration failed: {ex.Message}");
         }
     }
 
+
+    //public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, string? ip)
+    //{
+    //    // 1️⃣ Xác thực IdToken với Google
+    //    var payload = await GoogleJsonWebSignature.ValidateAsync(
+    //        dto.IdToken,
+    //        new GoogleJsonWebSignature.ValidationSettings
+    //        {
+    //            Audience = new[] { _cfg["Google:ClientId"] }
+    //        });
+
+    //    var email = payload.Email.Trim().ToLowerInvariant();
+    //    var name = payload.Name ?? email.Split('@')[0];
+    //    var picture = payload.Picture; // Ảnh từ Google (có thể null)
+
+    //    // Ảnh mặc định (nếu Google không có avatar)
+    //    const string DefaultAvatarUrl = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
+    //    const string DefaultPublicId = "avtDefaut_huflze";
+
+    //    // 2️⃣ Tìm user theo email
+    //    var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
+
+    //    // Nếu user bị khóa
+    //    if (user != null && !user.IsActive)
+    //        throw new Exception("Your account has been deactivated by an administrator.");
+
+    //    if (user == null)
+    //    {
+    //        // 2a️⃣ Tạo user mới
+    //        user = new User
+    //        {
+    //            Email = email,
+    //            Username = email.Split('@')[0],
+    //            PasswordHash = null, // đăng nhập Google không có password local
+    //            IsActive = true,
+    //            IsVerified = payload.EmailVerified,
+    //            CreatedAt = DateTime.UtcNow,
+    //            UpdatedAt = DateTime.UtcNow
+    //        };
+    //        _db.Users.Add(user);
+    //        await _db.SaveChangesAsync();
+
+    //        // Liên kết external login
+    //        _db.ExternalLogins.Add(new ExternalLogin
+    //        {
+    //            UserId = user.UserId,
+    //            Provider = "Google",
+    //            ProviderKey = payload.Subject,
+    //            Email = email,
+    //            EmailVerified = payload.EmailVerified
+    //        });
+    //        await _db.SaveChangesAsync();
+
+    //        // Gán role mặc định: JobSeeker
+    //        await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
+
+    //        // Tạo JobSeekerProfile với ảnh Google (nếu có)
+    //        _db.JobSeekerProfiles.Add(new JobSeekerProfile
+    //        {
+    //            UserId = user.UserId,
+    //            FullName = name,
+    //            ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture,
+    //            ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null, // null = ảnh từ Google
+    //            IsPictureHidden = false,
+    //            UpdatedAt = DateTime.UtcNow
+    //        });
+    //        await _db.SaveChangesAsync();
+
+    //        _log.LogInformation("New Google user registered: {Email}", email);
+    //    }
+    //    else
+    //    {
+    //        // 2b️⃣ User đã tồn tại
+    //        var linked = await _db.ExternalLogins.AnyAsync(x =>
+    //            x.UserId == user.UserId &&
+    //            x.Provider == "Google" &&
+    //            x.ProviderKey == payload.Subject);
+
+    //        if (!linked)
+    //        {
+    //            _db.ExternalLogins.Add(new ExternalLogin
+    //            {
+    //                UserId = user.UserId,
+    //                Provider = "Google",
+    //                ProviderKey = payload.Subject,
+    //                Email = email,
+    //                EmailVerified = payload.EmailVerified
+    //            });
+    //            await _db.SaveChangesAsync();
+    //        }
+
+    //        // Nếu Google xác nhận verified mà user chưa verify → cập nhật
+    //        if (payload.EmailVerified && !user.IsVerified)
+    //        {
+    //            user.IsVerified = true;
+    //            user.UpdatedAt = DateTime.UtcNow;
+    //            await _db.SaveChangesAsync();
+    //        }
+
+    //        // Đảm bảo có role JobSeeker
+    //        await RoleHelper.EnsureRoleIfMissingAsync(_db, user.UserId, "JobSeeker");
+
+    //        //  Cập nhật avatar nếu profile rỗng hoặc chưa có ảnh
+    //        var profile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == user.UserId);
+    //        if (profile == null)
+    //        {
+    //            // Tạo mới nếu chưa có
+    //            _db.JobSeekerProfiles.Add(new JobSeekerProfile
+    //            {
+    //                UserId = user.UserId,
+    //                FullName = name,
+    //                ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture,
+    //                ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null,
+    //                IsPictureHidden = false,
+    //                UpdatedAt = DateTime.UtcNow
+    //            });
+    //            await _db.SaveChangesAsync();
+    //        }
+    //        else if (string.IsNullOrEmpty(profile.ProfilePicture))
+    //        {
+    //            // Nếu có profile nhưng chưa có ảnh → cập nhật ảnh Google
+    //            profile.ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture;
+    //            profile.ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null;
+    //            profile.UpdatedAt = DateTime.UtcNow;
+    //            await _db.SaveChangesAsync();
+    //        }
+
+    //        _log.LogInformation("Existing Google user logged in: {Email}", email);
+    //    }
+
+    //    //  Cập nhật lần đăng nhập cuối
+    //    user.LastLogin = DateTime.UtcNow;
+    //    user.UpdatedAt = DateTime.UtcNow;
+    //    await _db.SaveChangesAsync();
+
+    //    //  Cấp token đăng nhập
+    //    var response = await _tokens.IssueAsync(user, "google", ip);
+    //    return response;
+    //}
+
+    // =================================================
+    //   Hai bước đăng nhập với Google: Prepare + Complete
+    public async Task<object> GooglePrepareAsync(GoogleLoginDto dto)
+    {
+        var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken,
+            new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _cfg["Google:ClientId"] }
+            });
+
+        var email = payload.Email.Trim().ToLowerInvariant();
+        var existing = await _db.Users.Include(u => u.Roles)
+                                      .FirstOrDefaultAsync(x => x.Email == email);
+
+        //  Nếu user đã tồn tại → đăng nhập luôn
+        if (existing != null)
+        {
+            if (!existing.IsActive)
+                throw new Exception("This account has been deactivated.");
+            return await _tokens.IssueAsync(existing, "google", null);
+        }
+
+        //  Nếu user chưa tồn tại → FE cần cho user chọn role
+        return new
+        {
+            needRoleSelection = true,
+            email = payload.Email,
+            name = payload.Name,
+            picture = payload.Picture,
+            availableRoles = new[] { "JobSeeker", "Employer" }
+        };
+    }
+
+    public async Task<AuthResponseDto> GoogleCompleteAsync(GoogleCompleteDto dto, string? ip)
+    {
+        var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken,
+            new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _cfg["Google:ClientId"] }
+            });
+
+        var email = payload.Email.Trim().ToLowerInvariant();
+        var name = payload.Name ?? email.Split('@')[0];
+        var picture = payload.Picture;
+
+        // Ngăn tạo trùng email
+        if (await _db.Users.AnyAsync(x => x.Email == email))
+            throw new Exception("This Google account already exists.");
+
+        var user = new User
+        {
+            Email = email,
+            Username = email.Split('@')[0],
+            IsActive = true,
+            IsVerified = payload.EmailVerified,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        // Gán role dựa trên lựa chọn
+        var role = dto.Role.Equals("Employer", StringComparison.OrdinalIgnoreCase)
+            ? "Employer" : "JobSeeker";
+        await RoleHelper.SetSingleRoleAsync(_db, user.UserId, role);
+
+        if (role == "Employer")
+        {
+            const string Default = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
+            _db.EmployerProfiles.Add(new EmployerProfile
+            {
+                UserId = user.UserId,
+                DisplayName = name,
+                AvatarUrl = picture ?? Default,
+                ContactEmail = email,
+                IsAvatarHidden = false,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            const string Default = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
+            _db.JobSeekerProfiles.Add(new JobSeekerProfile
+            {
+                UserId = user.UserId,
+                FullName = name,
+                ProfilePicture = picture ?? Default,
+                ProfilePicturePublicId = null,
+                IsPictureHidden = false,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+
+        // Liên kết ExternalLogin
+        _db.ExternalLogins.Add(new ExternalLogin
+        {
+            UserId = user.UserId,
+            Provider = "Google",
+            ProviderKey = payload.Subject,
+            Email = email,
+            EmailVerified = payload.EmailVerified
+        });
+        await _db.SaveChangesAsync();
+
+        user.LastLogin = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return await _tokens.IssueAsync(user, "google", ip);
+    }
+
+    // 3️⃣ Đăng nhập với email + password
+
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ip)
     {
-        //  1. Kiểm tra dữ liệu đầu vào (tránh login rỗng)
+        //  Kiểm tra input
         if (string.IsNullOrWhiteSpace(dto.UsernameOrEmail) || string.IsNullOrWhiteSpace(dto.Password))
-            throw new Exception("Username/email and password are required.");
+            throw new Exception("Email and password are required.");
 
         var key = dto.UsernameOrEmail.Trim().ToLowerInvariant();
 
-        //  2. Tìm user theo email hoặc username (không phân biệt hoa thường)
-        var user = await _db.Users.FirstOrDefaultAsync(x =>
-            x.Email.ToLower() == key || x.Username.ToLower() == key);
+        //  Tìm user (JobSeeker hoặc Employer)
+        var user = await _db.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(x =>
+                x.Email.ToLower() == key || x.Username.ToLower() == key)
+            ?? throw new Exception("Invalid credentials.");
 
-        //  2.1 Kiểm tra tài khoản có bị khóa (IsActive = false) không
-        if (user != null && !user.IsActive)
+        //  Kiểm tra trạng thái tài khoản
+        if (!user.IsActive)
             throw new Exception("Your account has been deactivated by an administrator.");
 
-        //  3. Kiểm tra tình trạng khóa tài khoản (lockout)
-        if (user != null && user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+        if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
             throw new Exception("Account is temporarily locked. Please try again later.");
 
-        //  4. Kiểm tra sai mật khẩu hoặc user không tồn tại
-        if (user == null || user.PasswordHash == null || !_hasher.Verify(dto.Password, user.PasswordHash))
+        //  Kiểm tra mật khẩu
+        if (user.PasswordHash == null || !_hasher.Verify(dto.Password, user.PasswordHash))
         {
-            if (user != null)
+            user.FailedLoginCount++;
+            if (user.FailedLoginCount >= 5)
             {
-                user.FailedLoginCount++;
-
-                // Nếu sai >= 5 lần → khóa tạm 10 phút
-                if (user.FailedLoginCount >= 5)
-                {
-                    user.LockoutEnd = DateTime.UtcNow.AddMinutes(10);
-                    user.FailedLoginCount = 0;
-                }
-
-                await _db.SaveChangesAsync();
+                user.LockoutEnd = DateTime.UtcNow.AddMinutes(10);
+                user.FailedLoginCount = 0;
             }
+            await _db.SaveChangesAsync();
 
             _db.LoginAttempts.Add(new LoginAttempt
             {
-                UserId = user?.UserId,
+                UserId = user.UserId,
                 UsernameOrEmail = dto.UsernameOrEmail,
                 IsSuccess = false,
                 Message = "Invalid credentials",
@@ -259,16 +506,16 @@ public sealed class AuthService : IAuthService
             });
             await _db.SaveChangesAsync();
 
-            throw new Exception("Invalid username/email or password.");
+            throw new Exception("Invalid email or password.");
         }
 
-        // 5️⃣ Nếu đăng nhập đúng → reset bộ đếm lỗi
+        //  Reset login count nếu đúng mật khẩu
         user.FailedLoginCount = 0;
         user.LockoutEnd = null;
         user.LastLogin = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        // 6️⃣ Ghi lại log đăng nhập thành công
+        //  Lưu log đăng nhập thành công
         _db.LoginAttempts.Add(new LoginAttempt
         {
             UserId = user.UserId,
@@ -280,254 +527,86 @@ public sealed class AuthService : IAuthService
         });
         await _db.SaveChangesAsync();
 
-        // 🧩 7️⃣ Đảm bảo có avatar hợp lệ
-        const string DefaultAvatarUrl = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
-        const string DefaultPublicId = "avtDefaut_huflze";
+        //  Xác định role hiện tại của user
+        var role = user.Roles.FirstOrDefault()?.RoleName ?? "JobSeeker";
 
-        var profile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == user.UserId);
-        if (profile != null && string.IsNullOrEmpty(profile.ProfilePicture))
+        //  Đảm bảo profile hợp lệ theo role
+        if (role.Equals("JobSeeker", StringComparison.OrdinalIgnoreCase))
         {
-            profile.ProfilePicture = DefaultAvatarUrl;
-            profile.ProfilePicturePublicId = DefaultPublicId;
-            await _db.SaveChangesAsync();
-        }
-
-        // 8️⃣ Sinh token đăng nhập
-        var response = await _tokens.IssueAsync(user, dto.DeviceInfo, ip);
-
-        // 9️⃣ Nếu user chưa xác thực email → cảnh báo
-        if (!user.IsVerified)
-            response.Warning = "Your email is not verified. Please check your inbox to verify your account.";
-
-        return response;
-    }
-
-    public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, string? ip)
-    {
-        // 1️⃣ Xác thực IdToken với Google
-        var payload = await GoogleJsonWebSignature.ValidateAsync(
-            dto.IdToken,
-            new GoogleJsonWebSignature.ValidationSettings
-            {
-                Audience = new[] { _cfg["Google:ClientId"] }
-            });
-
-        var email = payload.Email.Trim().ToLowerInvariant();
-        var name = payload.Name ?? email.Split('@')[0];
-        var picture = payload.Picture; // Ảnh từ Google (có thể null)
-
-        // Ảnh mặc định (nếu Google không có avatar)
-        const string DefaultAvatarUrl = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
-        const string DefaultPublicId = "avtDefaut_huflze";
-
-        // 2️⃣ Tìm user theo email
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
-
-        // Nếu user bị khóa
-        if (user != null && !user.IsActive)
-            throw new Exception("Your account has been deactivated by an administrator.");
-
-        if (user == null)
-        {
-            // 2a️⃣ Tạo user mới
-            user = new User
-            {
-                Email = email,
-                Username = email.Split('@')[0],
-                PasswordHash = null, // đăng nhập Google không có password local
-                IsActive = true,
-                IsVerified = payload.EmailVerified,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
-
-            // Liên kết external login
-            _db.ExternalLogins.Add(new ExternalLogin
-            {
-                UserId = user.UserId,
-                Provider = "Google",
-                ProviderKey = payload.Subject,
-                Email = email,
-                EmailVerified = payload.EmailVerified
-            });
-            await _db.SaveChangesAsync();
-
-            // Gán role mặc định: JobSeeker
-            await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
-
-            // Tạo JobSeekerProfile với ảnh Google (nếu có)
-            _db.JobSeekerProfiles.Add(new JobSeekerProfile
-            {
-                UserId = user.UserId,
-                FullName = name,
-                ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture,
-                ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null, // null = ảnh từ Google
-                IsPictureHidden = false,
-                UpdatedAt = DateTime.UtcNow
-            });
-            await _db.SaveChangesAsync();
-
-            _log.LogInformation("New Google user registered: {Email}", email);
-        }
-        else
-        {
-            // 2b️⃣ User đã tồn tại
-            var linked = await _db.ExternalLogins.AnyAsync(x =>
-                x.UserId == user.UserId &&
-                x.Provider == "Google" &&
-                x.ProviderKey == payload.Subject);
-
-            if (!linked)
-            {
-                _db.ExternalLogins.Add(new ExternalLogin
-                {
-                    UserId = user.UserId,
-                    Provider = "Google",
-                    ProviderKey = payload.Subject,
-                    Email = email,
-                    EmailVerified = payload.EmailVerified
-                });
-                await _db.SaveChangesAsync();
-            }
-
-            // Nếu Google xác nhận verified mà user chưa verify → cập nhật
-            if (payload.EmailVerified && !user.IsVerified)
-            {
-                user.IsVerified = true;
-                user.UpdatedAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
-            }
-
-            // Đảm bảo có role JobSeeker
-            await RoleHelper.EnsureRoleIfMissingAsync(_db, user.UserId, "JobSeeker");
-
-            //  Cập nhật avatar nếu profile rỗng hoặc chưa có ảnh
+            const string DefaultAvatar = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
             var profile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == user.UserId);
-            if (profile == null)
+            if (profile != null && string.IsNullOrEmpty(profile.ProfilePicture))
             {
-                // Tạo mới nếu chưa có
-                _db.JobSeekerProfiles.Add(new JobSeekerProfile
-                {
-                    UserId = user.UserId,
-                    FullName = name,
-                    ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture,
-                    ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null,
-                    IsPictureHidden = false,
-                    UpdatedAt = DateTime.UtcNow
-                });
-                await _db.SaveChangesAsync();
-            }
-            else if (string.IsNullOrEmpty(profile.ProfilePicture))
-            {
-                // Nếu có profile nhưng chưa có ảnh → cập nhật ảnh Google
-                profile.ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture;
-                profile.ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null;
+                profile.ProfilePicture = DefaultAvatar;
                 profile.UpdatedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
             }
-
-            _log.LogInformation("Existing Google user logged in: {Email}", email);
+        }
+        else if (role.Equals("Employer", StringComparison.OrdinalIgnoreCase))
+        {
+            const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
+            var profile = await _db.EmployerProfiles.FirstOrDefaultAsync(p => p.UserId == user.UserId);
+            if (profile != null && string.IsNullOrEmpty(profile.AvatarUrl))
+            {
+                profile.AvatarUrl = DefaultLogo;
+                profile.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
         }
 
-        // 3️⃣ Cập nhật lần đăng nhập cuối
-        user.LastLogin = DateTime.UtcNow;
-        user.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        // Sinh token
+        var response = await _tokens.IssueAsync(user, dto.DeviceInfo, ip);
 
-        // 4️⃣ Cấp token đăng nhập
-        var response = await _tokens.IssueAsync(user, "google", ip);
+        //  Cảnh báo nếu chưa verify email
+        if (!user.IsVerified)
+            response.Warning = "Your email is not verified. Please check your inbox.";
+
+        //  Gửi role để FE định tuyến
+        response.Role = role;
         return response;
     }
 
 
+    // 5️⃣ Verify / Resend / Refresh / Logout / Password Reset
 
+    public async Task VerifyEmailAsync(string token)
+    {
+        var decoded = WebUtility.UrlDecode(token);
+        var ev = await _db.EmailVerificationTokens.Include(x => x.User)
+            .FirstOrDefaultAsync(x => x.Token == decoded && x.UsedAt == null);
+        if (ev == null || ev.ExpiresAt < DateTime.UtcNow)
+            throw new Exception("Invalid or expired token.");
+
+        ev.UsedAt = DateTime.UtcNow;
+        ev.User.IsVerified = true;
+        ev.User.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task ResendVerificationAsync(string email)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
+        if (user == null || user.IsVerified) return;
+
+        var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
+        _db.EmailVerificationTokens.Add(new EmailVerificationToken
+        {
+            UserId = user.UserId,
+            Token = token,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+        });
+        await _db.SaveChangesAsync();
+
+        var link = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+        await _email.SendEmailAsync(user.Email, "PTJ - Verify your email",
+            $"<p>Click <a href='{link}'>here</a> to verify your email. (Valid 30 minutes)</p>");
+    }
 
     public Task<AuthResponseDto> RefreshAsync(string refreshToken, string? deviceInfo, string? ip)
         => _tokens.RefreshAsync(refreshToken, deviceInfo, ip);
 
-    public Task LogoutAsync(string refreshToken) => _tokens.RevokeAsync(refreshToken);
-
-    public async Task<AuthResponseDto> UpgradeToEmployerAsync(int userId, RegisterEmployerDto dto, string? ip)
-    {
-        // 1️⃣ Lấy user hiện tại
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId)
-            ?? throw new Exception("User not found.");
-
-        // 2️⃣ Kiểm tra email đúng tài khoản hiện tại
-        if (!string.Equals(user.Email, dto.Email.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new Exception("Email does not match the current account.");
-
-        // 3️⃣ Nếu là user thường (có password local) → xác minh password
-        if (!string.IsNullOrEmpty(user.PasswordHash))
-        {
-            if (!_hasher.Verify(dto.Password, user.PasswordHash))
-                throw new Exception("Invalid password.");
-        }
-        else
-        {
-            _log.LogInformation("Skipping password verification for Google-linked account {Email}", user.Email);
-        }
-
-        // 4️⃣ Bắt buộc đã xác minh email
-        if (!user.IsVerified)
-            throw new Exception("Please verify your email before upgrading to Employer.");
-
-        // 5️⃣ Gán role duy nhất: Employer
-        await RoleHelper.SetSingleRoleAsync(_db, userId, "Employer");
-
-        // 6️⃣ Avatar mặc định cho Employer
-        const string DefaultEmployerAvatar = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
-        const string DefaultPublicId = "default_company_logo";
-
-        // 7️⃣ Xử lý profile
-        var employerProfile = await _db.EmployerProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
-        if (employerProfile == null)
-        {
-            // Lấy avatar từ JobSeekerProfile nếu có
-            var jsProfile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
-            string avatarUrl = jsProfile?.ProfilePicture ?? DefaultEmployerAvatar;
-            string? avatarPublicId = jsProfile?.ProfilePicturePublicId ?? DefaultPublicId;
-
-            // Tạo EmployerProfile
-            employerProfile = new EmployerProfile
-            {
-                UserId = userId,
-                DisplayName = dto.DisplayName ?? user.Username,
-                AvatarUrl = avatarUrl,
-                AvatarPublicId = avatarPublicId,
-                IsAvatarHidden = false,
-                ContactPhone = dto.PhoneNumber,
-                ContactEmail = dto.Email,
-                Website = dto.Website,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _db.EmployerProfiles.Add(employerProfile);
-
-            // ✅ Xóa JobSeekerProfile cũ (nếu có)
-            if (jsProfile != null)
-                _db.JobSeekerProfiles.Remove(jsProfile);
-        }
-        else
-        {
-            // Đã có → cập nhật cơ bản
-            employerProfile.DisplayName = dto.DisplayName ?? employerProfile.DisplayName;
-            employerProfile.ContactPhone = dto.PhoneNumber ?? employerProfile.ContactPhone;
-            employerProfile.ContactEmail = dto.Email ?? employerProfile.ContactEmail;
-            employerProfile.Website = dto.Website ?? employerProfile.Website;
-            employerProfile.UpdatedAt = DateTime.UtcNow;
-        }
-
-        // 8️⃣ Cập nhật thời gian người dùng
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-
-        // 9️⃣ Sinh token mới để claims phản ánh role mới
-        return await _tokens.IssueAsync(user, "web", ip);
-    }
-
+    public Task LogoutAsync(string refreshToken)
+        => _tokens.RevokeAsync(refreshToken);
 
     public async Task RequestPasswordResetAsync(string email)
     {
@@ -545,21 +624,21 @@ public sealed class AuthService : IAuthService
         await _db.SaveChangesAsync();
 
         var link = $"{_cfg["Frontend:BaseUrl"]}/reset-password?token={WebUtility.UrlEncode(token)}";
-        try { await _email.SendEmailAsync(user.Email, "Đặt lại mật khẩu", $"Nhấn <a href=\"{link}\">đây</a> để đặt lại mật khẩu (30’)."); }
-        catch (Exception ex) { _log.LogWarning(ex, "Send reset email failed"); }
+        await _email.SendEmailAsync(user.Email, "Reset your PTJ password",
+            $"Click <a href='{link}'>here</a> to reset your password (valid for 30 minutes).");
     }
 
     public async Task ResetPasswordAsync(ResetPasswordDto dto)
     {
-        var prt = await _db.PasswordResetTokens.Include(x => x.User)
+        var token = await _db.PasswordResetTokens.Include(x => x.User)
             .FirstOrDefaultAsync(x => x.Token == dto.Token && !x.IsUsed);
-        if (prt == null || prt.Expiration < DateTime.UtcNow) throw new Exception("Invalid/expired token.");
+        if (token == null || token.Expiration < DateTime.UtcNow)
+            throw new Exception("Invalid or expired token.");
 
-        prt.IsUsed = true;
-        prt.User.PasswordHash = _hasher.Hash(dto.NewPassword);
-        prt.User.UpdatedAt = DateTime.UtcNow;
+        token.IsUsed = true;
+        token.User.PasswordHash = _hasher.Hash(dto.NewPassword);
+        token.User.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
-
 
 }

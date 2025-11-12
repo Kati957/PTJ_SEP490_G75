@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Service.Admin.Interfaces;
+using PTJ_Models.DTO.Admin;
 
 namespace PTJ_API.Controllers.Admin
 {
@@ -13,15 +14,14 @@ namespace PTJ_API.Controllers.Admin
         public AdminUserController(IAdminUserService svc) => _svc = svc;
 
         [HttpGet]
-        public async Task<IActionResult> GetAllUsers(
+        public async Task<IActionResult> GetUsers(
             [FromQuery] string? role = null,
             [FromQuery] bool? isActive = null,
             [FromQuery] bool? isVerified = null,
-            [FromQuery] string? keyword = null)
-        {
-            var data = await _svc.GetAllUsersAsync(role, isActive, isVerified, keyword);
-            return Ok(data);
-        }
+            [FromQuery] string? keyword = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+            => Ok(await _svc.GetUsersAsync(role, isActive, isVerified, keyword, page, pageSize));
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetUserDetail(int id)
@@ -33,14 +33,8 @@ namespace PTJ_API.Controllers.Admin
         [HttpPost("{id:int}/toggle-active")]
         public async Task<IActionResult> ToggleActive(int id)
         {
-            await _svc.ToggleUserActiveAsync(id);
+            await _svc.ToggleActiveAsync(id);
             return Ok(new { message = "User active toggled successfully." });
-        }
-        [HttpGet("full")]
-        public async Task<IActionResult> GetAllUserFull()
-        {
-            var data = await _svc.GetAllUserFullAsync();
-            return Ok(data);
         }
     }
 }

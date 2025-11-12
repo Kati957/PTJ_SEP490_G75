@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using PTJ_Data;
-using PTJ_Data.Repositories.Interfaces;
+using PTJ_Data.Repositories.Interfaces.EPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
@@ -12,7 +12,7 @@ using System.Text;
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
 
 namespace PTJ_Service.EmployerPostService.Implementations
-    {
+{
     public class EmployerPostService : IEmployerPostService
         {
         private readonly IEmployerPostRepository _repo;

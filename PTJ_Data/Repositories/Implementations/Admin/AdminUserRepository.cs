@@ -1,8 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTO.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
-using PTJ_Models;
-
+using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Implementations.Admin
 {
@@ -11,15 +10,15 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminUserRepository(JobMatchingDbContext db) => _db = db;
 
-        // ============= Danh sách người dùng =============
-        public async Task<IEnumerable<UserDto>> GetAllUsersAsync(
-            string? role = null,
-            bool? isActive = null,
-            bool? isVerified = null,
-            string? keyword = null)
+        // 1️⃣ Danh sách user (phân trang)
+        public async Task<PagedResult<AdminUserDto>> GetUsersPagedAsync(
+            string? role = null, bool? isActive = null, bool? isVerified = null,
+            string? keyword = null, int page = 1, int pageSize = 10)
         {
             var query = _db.Users
                 .Include(u => u.Roles)
+                .Include(u => u.JobSeekerProfile)
+                .Include(u => u.EmployerProfile)
                 .AsQueryable();
 
             if (isActive.HasValue)
@@ -34,143 +33,91 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 query = query.Where(u =>
                     u.Email.ToLower().Contains(kw) ||
                     u.Username.ToLower().Contains(kw) ||
-                    u.Address != null && u.Address.ToLower().Contains(kw));
+                    (u.Address != null && u.Address.ToLower().Contains(kw)));
             }
 
-            var list = await query
-                .Select(u => new UserDto
+            if (!string.IsNullOrEmpty(role))
+                query = query.Where(u => u.Roles.Any(r => r.RoleName == role));
+
+            var total = await query.CountAsync();
+
+            var items = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(u => new AdminUserDto
                 {
-                    Id = u.UserId,
+                    UserId = u.UserId,
                     Username = u.Username,
                     Email = u.Email,
                     Role = u.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
                     IsActive = u.IsActive,
                     IsVerified = u.IsVerified,
                     CreatedAt = u.CreatedAt,
-                    LastLogin = u.LastLogin
+                    LastLogin = u.LastLogin,
+                    AvatarUrl = u.JobSeekerProfile != null
+                        ? u.JobSeekerProfile.ProfilePicture
+                        : u.EmployerProfile != null
+                            ? u.EmployerProfile.AvatarUrl
+                            : null
                 })
                 .ToListAsync();
 
-            if (!string.IsNullOrEmpty(role))
-                list = list
-                    .Where(x => x.Role.Equals(role, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-            return list.OrderByDescending(x => x.CreatedAt);
+            return new PagedResult<AdminUserDto>(items, total, page, pageSize);
         }
 
-        // ============= Chi tiết người dùng =============
-        public async Task<UserDetailDto?> GetUserDetailAsync(int id)
+        // 2️⃣ Chi tiết người dùng
+        public async Task<AdminUserDetailDto?> GetUserDetailAsync(int id)
         {
             var user = await _db.Users
                 .Include(u => u.Roles)
+                .Include(u => u.JobSeekerProfile)
+                .Include(u => u.EmployerProfile)
                 .FirstOrDefaultAsync(u => u.UserId == id);
 
             if (user == null) return null;
 
-            var dto = new UserDetailDto
+            var role = user.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown";
+
+            var dto = new AdminUserDetailDto
             {
-                Id = user.UserId,
+                UserId = user.UserId,
                 Username = user.Username,
                 Email = user.Email,
-                Role = user.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
+                Role = role,
                 IsActive = user.IsActive,
                 IsVerified = user.IsVerified,
                 CreatedAt = user.CreatedAt,
                 LastLogin = user.LastLogin,
-                Address = user.Address ?? "",
-                PhoneNumber = user.PhoneNumber?.ToString() ?? "",
+                Address = user.Address,
+                PhoneNumber = user.PhoneNumber?.ToString(),
             };
 
-            if (dto.Role == "JobSeeker")
+            // JobSeeker
+            if (role == "JobSeeker" && user.JobSeekerProfile != null)
             {
-                var profile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == id);
-                if (profile != null)
-                {
-                    dto.FullName = profile.FullName;
-                    dto.Gender = profile.Gender;
-                    dto.BirthYear = profile.BirthYear;
-                    dto.PreferredLocation = profile.PreferredLocation;
-                }
+                dto.FullName = user.JobSeekerProfile.FullName;
+                dto.Gender = user.JobSeekerProfile.Gender;
+                dto.BirthYear = user.JobSeekerProfile.BirthYear;
+                dto.PreferredLocation = user.JobSeekerProfile.PreferredLocation;
+                dto.AvatarUrl = user.JobSeekerProfile.ProfilePicture;
             }
-            else if (dto.Role == "Employer")
+            // Employer
+            else if (role == "Employer" && user.EmployerProfile != null)
             {
-                var profile = await _db.EmployerProfiles.FirstOrDefaultAsync(p => p.UserId == id);
-                if (profile != null)
-                {
-                    dto.FullName = profile.DisplayName;
-                    dto.Address = profile.Location ?? dto.Address;
-                    dto.PhoneNumber = profile.ContactPhone?.ToString() ?? dto.PhoneNumber;
-                    dto.PreferredLocation = profile.Website;
-                }
+                dto.CompanyName = user.EmployerProfile.DisplayName ?? user.Username;
+                dto.Website = user.EmployerProfile.Website;
+                dto.Address ??= user.EmployerProfile.Location;
+                dto.PhoneNumber ??= user.EmployerProfile.ContactPhone;
+                dto.AvatarUrl = user.EmployerProfile.AvatarUrl;
             }
 
             return dto;
         }
-        // ============ Chi tiết người dùng đầy đủ (Admin) =============
-        public async Task<IEnumerable<AdminUserFullDto>> GetAllUserFullAsync()
-        {
-            // 1) Query lấy dữ liệu thô (KHÔNG gọi .ToString() trong Select)
-            var rows = await _db.Users
-                .Include(u => u.Roles)
-                .Include(u => u.JobSeekerProfile)
-                .Include(u => u.EmployerProfile)
-                .Select(u => new
-                {
-                    u.UserId,
-                    u.Username,
-                    u.Email,
-                    Role = u.Roles.Select(r => r.RoleName).FirstOrDefault(),
-                    u.IsActive,
-                    u.IsVerified,
-                    u.CreatedAt,
-                    u.LastLogin,
-                    u.Address,
-                    Phone = u.PhoneNumber,                       // giữ nguyên kiểu gốc (int?)
-                    JS = u.JobSeekerProfile,
-                    EP = u.EmployerProfile
-                })
-                .OrderByDescending(x => x.CreatedAt)
-                .ToListAsync(); // 2) Materialize tại đây
 
-            // 3) Map sang DTO và lúc này mới .ToString()
-            var result = rows.Select(x => new AdminUserFullDto
-            {
-                UserId = x.UserId,
-                Username = x.Username,
-                Email = x.Email,
-                Role = x.Role ?? "Unknown",
-                IsActive = x.IsActive,
-                IsVerified = x.IsVerified,
-                CreatedAt = x.CreatedAt,
-                LastLogin = x.LastLogin,
-                Address = x.Address,
-                PhoneNumber = x.Phone?.ToString(),             // OK: chạy trên bộ nhớ, không còn translate SQL
+        public Task<User?> GetUserEntityAsync(int id)
+            => _db.Users.FirstOrDefaultAsync(x => x.UserId == id);
 
-                // Job Seeker
-                FullName = x.JS?.FullName,
-                Gender = x.JS?.Gender,
-                BirthYear = x.JS?.BirthYear,
-                PreferredLocation = x.JS?.PreferredLocation,
-
-                // Employer
-                CompanyName = x.EP?.DisplayName,
-                Website = x.EP?.Website
-            });
-
-            return result;
-        }
-
-
-        // ============= Khóa / Mở khóa =============
-        public async Task<bool> ToggleUserActiveAsync(int id)
-        {
-            var user = await _db.Users.FirstOrDefaultAsync(x => x.UserId == id);
-            if (user == null) return false;
-
-            user.IsActive = !user.IsActive;
-            await _db.SaveChangesAsync();
-            return true;
-        }
+        public Task SaveChangesAsync() => _db.SaveChangesAsync();
     }
 }

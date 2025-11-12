@@ -11,7 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PTJ_Service.JobApplicationService.Implementations
-    {
+{
     public class JobApplicationService : IJobApplicationService
         {
         private readonly IJobApplicationRepository _repo;

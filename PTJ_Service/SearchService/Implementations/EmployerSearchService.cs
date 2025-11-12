@@ -1,4 +1,4 @@
-﻿using PTJ_Data.Repositories.Interfaces;
+﻿using PTJ_Data.Repositories.Interfaces.EPost;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.DTO.SearchDTO;
 using PTJ_Service.SearchService.Interfaces;

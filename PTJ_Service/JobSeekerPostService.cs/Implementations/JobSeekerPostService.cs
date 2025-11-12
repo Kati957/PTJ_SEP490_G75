@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using PTJ_Data;
 using PTJ_Data.Repositories.Interfaces;
+using PTJ_Data.Repositories.Interfaces.JPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;

@@ -27,10 +27,6 @@ using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Service.AiService.Implementations;
 using PTJ_Service.AiService;
 using PTJ_Data;
-using PTJ_Data.Repo.Implement;
-using PTJ_Data.Repo.Interface;
-using PTJ_Service.Implement;
-using PTJ_Service.Interface;
 using PTJ_Data.Repositories.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Service.Admin.Interfaces;
@@ -49,12 +45,29 @@ using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Models.Models;
 using PTJ_Service.AiService;
+using PTJ_Service.Implementations.Admin;
+using PTJ_Service.Interfaces.Admin;
+using PTJ_Service.Admin.Implementations;
+using PTJ_Data.Repositories.Interfaces.EPost;
+using PTJ_Data.Repositories.Implementations.EPost;
+using PTJ_Data.Repositories.Interfaces.JPost;
+using PTJ_Data.Repositories.Implementations.JPost;
+using PTJ_Data.Repositories.Implementations.ActivityUsers;
+using PTJ_Data.Repositories.Interfaces.ActivityUsers;
+using PTJ_Data.Repositories.Interfaces.NewsPost;
+using PTJ_Service.SystemReportService.Interfaces;
+using PTJ_Service.SystemReportService.Implementations;
+using PTJ_Service.RatingService.Interfaces;
+using PTJ_Service.RatingService.Implementations;
+using PTJ_Service.FollowService;
+using PTJ_Service.Interfaces;
+using PTJ_Service.Implementations;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAuthorization();
-// =============================================
+
 
 // 1️⃣ CONFIG DATABASE (EF CORE)
 
@@ -99,6 +112,13 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IReportService, ReportService>();    
+builder.Services.AddScoped<IRatingService, RatingService>();
+builder.Services.AddScoped<ISystemReportService, SystemReportService>();
+builder.Services.AddScoped<IAdminNewsService, AdminNewsService>();
+builder.Services.AddScoped<IAdminJobPostService, AdminJobPostService>();
+builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminReportService, AdminReportService>();
 builder.Services.AddScoped<IEmployerPostService, EmployerPostService>();
@@ -112,9 +132,16 @@ builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<INewsService, NewsService>();
-builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
+builder.Services.AddScoped<IFollowService, FollowService>();
+
 
 // Repository
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IAdminSystemReportRepository, AdminSystemReportRepository>();
+builder.Services.AddScoped<IAdminNewsRepository, AdminNewsRepository>();
+builder.Services.AddScoped<IAdminJobPostRepository, AdminJobPostRepository>();
+builder.Services.AddScoped<IAdminCategoryRepository, AdminCategoryRepository>();
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 builder.Services.AddScoped<IAdminReportRepository, AdminReportRepository>();
 builder.Services.AddScoped<IEmployerPostRepository, EmployerPostRepository>();
@@ -126,6 +153,7 @@ builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileReposito
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
 builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
+
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
