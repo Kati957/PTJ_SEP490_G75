@@ -13,7 +13,6 @@ using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
 using PTJ_Service.LocationService;
-using PTJ_Service.RatingService;
 using PTJ_Service.SystemReportService;
 using PTJ_Service.AuthService.Implementations;
 using PTJ_Service.AuthService.Interfaces;
@@ -55,9 +54,11 @@ using PTJ_Data.Repositories.Interfaces.ActivityUsers;
 using PTJ_Data.Repositories.Interfaces.NewsPost;
 using PTJ_Service.SystemReportService.Interfaces;
 using PTJ_Service.SystemReportService.Implementations;
-using PTJ_Service.RatingService.Interfaces;
-using PTJ_Service.RatingService.Implementations;
 using PTJ_Service.FollowService;
+using PTJ_Data.Repositories.Implementations.Ratings;
+using PTJ_Data.Repositories.Interfaces.Ratings;
+using PTJ_Service.RatingService.Implementations;
+using PTJ_Service.RatingService.Interfaces;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -111,7 +112,6 @@ builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
-builder.Services.AddScoped<IRatingService, RatingService>();
 builder.Services.AddScoped<ISystemReportService, SystemReportService>();
 builder.Services.AddScoped<IAdminNewsService, AdminNewsService>();
 builder.Services.AddScoped<IAdminJobPostService, AdminJobPostService>();
@@ -131,6 +131,7 @@ builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 
+builder.Services.AddScoped<IRatingService, RatingService>();
 
 // Repository
 builder.Services.AddScoped<IAdminSystemReportRepository, AdminSystemReportRepository>();
@@ -148,7 +149,7 @@ builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileReposito
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
 builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
-
+builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -188,7 +189,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "https://localhost:7100", // Swagger & API cùng port
             "http://localhost:5169",  // HTTP fallback
-            "https://localhost:7025"  // trường hợp FE dev khác port
+            "https://localhost:5174"  // trường hợp FE dev khác port
         )
         .AllowAnyHeader()
         .AllowCredentials()
