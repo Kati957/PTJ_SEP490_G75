@@ -9,10 +9,9 @@ namespace PTJ_Data.Repositories.Interfaces.NewsPost
 {
     public interface INewsRepository
     {
-        Task AddAsync(News news);
+        Task<(List<News> Data, int Total)> GetPagedAsync(
+            string? keyword, string? category, int page, int pageSize, string sortBy, bool desc);
+
         Task<News?> GetByIdAsync(int id);
-        Task<(List<News> Data, int Total)> GetPagedAsync(string? keyword, string? category, int page, int pageSize, string sortBy, bool desc);
-        Task UpdateAsync(News news);
-        Task DeleteAsync(News news);
     }
 }
