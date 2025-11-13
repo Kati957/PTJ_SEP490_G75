@@ -300,9 +300,10 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 return null;
 
             // --- VALIDATE SelectedCvId: phải thuộc user + không bị dùng ở post khác ---
+            // Kiểm tra SelectedCvId hợp lệ
             if (dto.SelectedCvId.HasValue)
                 {
-                // CV phải thuộc về user
+                // 1. CV phải thuộc user
                 var cv = await _db.JobSeekerCvs
                     .FirstOrDefaultAsync(c => c.Cvid == dto.SelectedCvId.Value &&
                                               c.JobSeekerId == post.UserId);
@@ -310,17 +311,19 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 if (cv == null)
                     throw new Exception("CV không hợp lệ hoặc không thuộc về người dùng.");
 
-                // CV đó có đang được gắn vào post khác không?
-                bool cvUsed = await _db.JobSeekerPosts
+                // 2. CV này có đang được dùng ở bài đăng khác hay không?
+                bool cvUsedByOtherPost = await _db.JobSeekerPosts
                     .AnyAsync(x =>
                         x.UserId == post.UserId &&
                         x.SelectedCvId == dto.SelectedCvId &&
-                        x.JobSeekerPostId != post.JobSeekerPostId &&
-                        x.Status != "Deleted");
+                        x.JobSeekerPostId != post.JobSeekerPostId &&   // loại trừ chính bài này
+                        x.Status != "Deleted");                        // chỉ tính bài chưa xóa
 
-                if (cvUsed)
-                    throw new Exception("CV này đã được sử dụng cho bài đăng khác. Vui lòng chọn CV khác.");
+                if (cvUsedByOtherPost)
+                    throw new Exception("CV này đang được sử dụng ở bài đăng khác. "
+                                        + "Hãy xóa bài đăng kia hoặc chọn CV khác.");
                 }
+
 
             post.Title = dto.Title;
             post.Description = dto.Description;
