@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace PTJ_Models.DTO.PostDTO
 {
+    // Ensure there is only one definition of the JobSeekerPostDtoOut class in this namespace.
     public class JobSeekerPostDtoOut
-    {
+        {
         public int JobSeekerPostId { get; set; }
         public int UserID { get; set; }
         public string Title { get; set; } = string.Empty;
@@ -21,5 +22,6 @@ namespace PTJ_Models.DTO.PostDTO
         public string? SeekerName { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? Status { get; set; }
-    }
+        public int? CvId { get; set; } // Added property based on the type signature context.
+        }
 }
