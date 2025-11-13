@@ -47,13 +47,15 @@ namespace PTJ_API.Controllers
                 return Unauthorized(new { success = false, message = "Token không hợp lệ." });
 
             int jobSeekerId = int.Parse(sub.Value);
-            var result = await _service.GetByIdAsync(id);
 
-            if (result == null || result.JobSeekerId != jobSeekerId)
+            var result = await _service.GetByIdAsync(id, jobSeekerId);
+
+            if (result == null)
                 return NotFound(new { success = false, message = "Không tìm thấy CV." });
 
             return Ok(new { success = true, data = result });
             }
+
 
         // =========================================================
         // Tạo CV mới
