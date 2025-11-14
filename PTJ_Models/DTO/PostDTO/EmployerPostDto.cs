@@ -8,7 +8,10 @@
         public decimal? Salary { get; set; }
         public string? Requirements { get; set; }
         public string? WorkHours { get; set; }
-        public string? Location { get; set; }
+        // THAY CHO LOCATION TEXT
+        public int ProvinceId { get; set; }
+        public int DistrictId { get; set; }
+        public int WardId { get; set; }
         public int? CategoryID { get; set; }
         public string? PhoneContact { get; set; }
         }

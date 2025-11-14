@@ -7,13 +7,14 @@ using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
 using PTJ_Service.AiService;
+using PTJ_Service.JobSeekerPostService;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
 using PTJ_Service.LocationService;
 using System.Security.Cryptography;
 using System.Text;
 using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
 
-namespace PTJ_Service.JobSeekerPostService.cs.Implementations
+namespace PTJ_Service.JobSeekerPostService.Implementations
     {
     public class JobSeekerPostService : IJobSeekerPostService
         {
@@ -21,17 +22,19 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
         private readonly JobMatchingDbContext _db;
         private readonly IAIService _ai;
         private readonly OpenMapService _map;
-
+        private readonly LocationDisplayService _locDisplay;
         public JobSeekerPostService(
             IJobSeekerPostRepository repo,
             JobMatchingDbContext db,
             IAIService ai,
-            OpenMapService map)
+            OpenMapService map,
+            LocationDisplayService locDisplay)
             {
             _repo = repo;
             _db = db;
             _ai = ai;
             _map = map;
+            _locDisplay = locDisplay;
             }
 
 
@@ -69,6 +72,12 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                     throw new Exception("CV này đã được sử dụng cho một bài đăng khác. Vui lòng chọn CV khác hoặc sửa bài đăng cũ.");
                 }
 
+            string fullLocation = await _locDisplay.BuildAddressAsync(
+                dto.ProvinceId,
+                dto.DistrictId,
+                dto.WardId
+            );
+
             // 1) Create Post
             var post = new JobSeekerPostModel
                 {
@@ -78,7 +87,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 Age = dto.Age,
                 Gender = dto.Gender,
                 PreferredWorkHours = dto.PreferredWorkHours,
-                PreferredLocation = dto.PreferredLocation,
+                PreferredLocation = fullLocation,
                 CategoryId = dto.CategoryID,
                 PhoneContact = dto.PhoneContact,
                 SelectedCvId = dto.SelectedCvId,   // ✅ GẮN CV VÀO BÀI ĐĂNG
@@ -330,7 +339,11 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             post.Age = dto.Age;
             post.Gender = dto.Gender;
             post.PreferredWorkHours = dto.PreferredWorkHours;
-            post.PreferredLocation = dto.PreferredLocation;
+            post.PreferredLocation = await _locDisplay.BuildAddressAsync(
+                dto.ProvinceId,
+                dto.DistrictId,
+                dto.WardId
+            );
             post.CategoryId = dto.CategoryID;
             post.PhoneContact = dto.PhoneContact;
             post.SelectedCvId = dto.SelectedCvId;   // ✅ GÁN CV CHO BÀI NÀY

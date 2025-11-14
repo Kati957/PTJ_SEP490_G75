@@ -20,17 +20,21 @@ namespace PTJ_Service.EmployerPostService.Implementations
         private readonly JobMatchingDbContext _db;
         private readonly IAIService _ai;
         private readonly OpenMapService _map;
+        private readonly LocationDisplayService _locDisplay;
+
 
         public EmployerPostService(
             IEmployerPostRepository repo,
             JobMatchingDbContext db,
             IAIService ai,
-            OpenMapService map)
+            OpenMapService map,
+            LocationDisplayService locDisplay)
             {
             _repo = repo;
             _db = db;
             _ai = ai;
             _map = map;
+            _locDisplay = locDisplay;
             }
 
         // CREATE
@@ -43,6 +47,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (dto.UserID <= 0)
                 throw new Exception("Thiếu thông tin UserID khi tạo bài đăng tuyển dụng.");
 
+            string fullLocation = await _locDisplay.BuildAddressAsync(
+                dto.ProvinceId,
+                dto.DistrictId,
+                dto.WardId
+            );
             // 🧱 Tạo bài đăng mới
             var post = new EmployerPostModel
                 {
@@ -52,7 +61,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Salary = dto.Salary,
                 Requirements = dto.Requirements,
                 WorkHours = dto.WorkHours,
-                Location = dto.Location,
+                Location = fullLocation,
                 CategoryId = dto.CategoryID,
                 PhoneContact = dto.PhoneContact,
                 CreatedAt = DateTime.Now,
@@ -150,9 +159,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // 🎯 Chuẩn hóa danh sách ứng viên trả về
             var suggestions = scored
-    .OrderByDescending(x => x.Score)
-    .Take(5)
-    .Select(x => new AIResultDto
+        .OrderByDescending(x => x.Score)
+        .Take(5)
+        .Select(x => new AIResultDto
         {
         Id = $"JobSeekerPost:{x.Seeker.JobSeekerPostId}",
         Score = Math.Round(x.Score * 100, 2),
@@ -260,13 +269,18 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var post = await _repo.GetByIdAsync(id);
             if (post == null || post.Status == "Deleted")
                 return null;
+            string fullLocation = await _locDisplay.BuildAddressAsync(
+                dto.ProvinceId,
+                dto.DistrictId,
+                dto.WardId
+            );
 
             post.Title = dto.Title;
             post.Description = dto.Description;
             post.Salary = dto.Salary;
             post.Requirements = dto.Requirements;
             post.WorkHours = dto.WorkHours;
-            post.Location = dto.Location;
+            post.Location = fullLocation;
             post.CategoryId = dto.CategoryID;
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;

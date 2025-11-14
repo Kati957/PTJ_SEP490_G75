@@ -2,6 +2,8 @@
 using PTJ_Models.DTO.CvDTO;
 using PTJ_Models.Models;
 using PTJ_Service.JobSeekerCvService.Interfaces;
+using PTJ_Service.LocationService;
+using PTJ_Service.LocationService.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,10 +14,12 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
     public class JobSeekerCvService : IJobSeekerCvService
         {
         private readonly IJobSeekerCvRepository _repo;
+        private readonly LocationDisplayService _location;
 
-        public JobSeekerCvService(IJobSeekerCvRepository repo)
+        public JobSeekerCvService(IJobSeekerCvRepository repo, LocationDisplayService location)
             {
             _repo = repo;
+            _location = location;
             }
 
         // =========================================================
@@ -27,7 +31,7 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             if (cv == null || cv.JobSeekerId != jobSeekerId)
                 return null;
 
-            return ToDto(cv);
+            return await ToDto(cv);
             }
 
         // =========================================================
@@ -39,7 +43,7 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             if (cv == null)
                 return null;
 
-            return ToDto(cv);
+            return await ToDto(cv);
             }
 
         // =========================================================
@@ -48,7 +52,14 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
         public async Task<IEnumerable<JobSeekerCvResultDto>> GetByJobSeekerAsync(int jobSeekerId)
             {
             var list = await _repo.GetByJobSeekerAsync(jobSeekerId);
-            return list.Select(ToDto);
+            var result = new List<JobSeekerCvResultDto>();
+
+            foreach (var cv in list)
+                {
+                result.Add(await ToDto(cv));
+                }
+
+            return result;
             }
 
         // =========================================================
@@ -63,15 +74,18 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
                 SkillSummary = dto.SkillSummary,
                 Skills = dto.Skills,
                 PreferredJobType = dto.PreferredJobType,
-                PreferredLocation = dto.PreferredLocation,
+
+                ProvinceId = dto.ProvinceId,
+                DistrictId = dto.DistrictId,
+                WardId = dto.WardId,
+
                 ContactPhone = dto.ContactPhone,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
                 };
 
             await _repo.AddAsync(cv);
-
-            return ToDto(cv);
+            return await ToDto(cv);
             }
 
         // =========================================================
@@ -87,7 +101,11 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             cv.SkillSummary = dto.SkillSummary;
             cv.Skills = dto.Skills;
             cv.PreferredJobType = dto.PreferredJobType;
-            cv.PreferredLocation = dto.PreferredLocation;
+
+            cv.ProvinceId = dto.ProvinceId;
+            cv.DistrictId = dto.DistrictId;
+            cv.WardId = dto.WardId;
+
             cv.ContactPhone = dto.ContactPhone;
             cv.UpdatedAt = DateTime.Now;
 
@@ -111,20 +129,29 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
         // =========================================================
         // Helper convert entity → DTO
         // =========================================================
-        private JobSeekerCvResultDto ToDto(JobSeekerCv cv)
+        private async Task<JobSeekerCvResultDto> ToDto(JobSeekerCv cv)
             {
+            var fullAddress = await _location.BuildAddressAsync(cv.ProvinceId, cv.DistrictId, cv.WardId);
+
             return new JobSeekerCvResultDto
                 {
                 Cvid = cv.Cvid,
                 JobSeekerId = cv.JobSeekerId,
+
                 CvTitle = cv.Cvtitle,
                 SkillSummary = cv.SkillSummary,
                 Skills = cv.Skills,
                 PreferredJobType = cv.PreferredJobType,
-                PreferredLocation = cv.PreferredLocation,
+
+                ProvinceId = cv.ProvinceId,
+                DistrictId = cv.DistrictId,
+                WardId = cv.WardId,
+
+                PreferredLocationName = fullAddress,
+
                 ContactPhone = cv.ContactPhone,
-                CreatedAt = cv.CreatedAt,
-                UpdatedAt = cv.UpdatedAt
+                CreatedAt = (DateTime)cv.CreatedAt,
+                UpdatedAt = (DateTime)cv.UpdatedAt
                 };
             }
         }

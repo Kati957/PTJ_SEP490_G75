@@ -49,8 +49,9 @@ namespace PTJ_API.Controllers.Post
             if (string.IsNullOrWhiteSpace(dto.Title) || dto.Title.Length < 5)
                 return BadRequest(new { success = false, message = "Tiêu đề phải có ít nhất 5 ký tự." });
 
-            if (string.IsNullOrWhiteSpace(dto.PreferredLocation))
-                return BadRequest(new { success = false, message = "Vui lòng chọn địa điểm mong muốn." });
+            if (dto.ProvinceId <= 0 || dto.DistrictId <= 0 || dto.WardId <= 0)
+                return BadRequest(new { success = false, message = "Vui lòng chọn Tỉnh/Quận/Huyện/Xã đầy đủ." });
+
 
             if (dto.Age is < 15 or > 65)
                 return BadRequest(new { success = false, message = "Tuổi không hợp lệ." });

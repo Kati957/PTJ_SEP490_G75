@@ -293,7 +293,6 @@ public partial class JobMatchingDbContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false);
             entity.Property(e => e.DisplayName).HasMaxLength(100);
-            entity.Property(e => e.Location).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -465,7 +464,6 @@ public partial class JobMatchingDbContext : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.FullName).HasMaxLength(100);
             entity.Property(e => e.Gender).HasMaxLength(10);
-            entity.Property(e => e.PreferredLocation).HasMaxLength(255);
             entity.Property(e => e.ProfilePicture).HasMaxLength(255);
             entity.Property(e => e.ProfilePicturePublicId).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)

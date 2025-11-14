@@ -21,8 +21,6 @@ public partial class EmployerProfile
 
     public string? ContactEmail { get; set; }
 
-    public string? Location { get; set; }
-
     public string? Website { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -30,6 +28,12 @@ public partial class EmployerProfile
     public string? AvatarPublicId { get; set; }
 
     public bool IsAvatarHidden { get; set; }
+
+    public int ProvinceId { get; set; }
+
+    public int DistrictId { get; set; }
+
+    public int WardId { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

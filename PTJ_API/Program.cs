@@ -19,7 +19,7 @@ using PTJ_Service.AuthService.Interfaces;
 using PTJ_Service.SearchService.Interfaces;
 using PTJ_Service.SearchService.Implementations;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
-using PTJ_Service.JobSeekerPostService.cs.Implementations;
+using PTJ_Service.JobSeekerPostService;
 using PTJ_Service.JobApplicationService.Interfaces;
 using PTJ_Service.JobApplicationService.Implementations;
 using PTJ_Service.EmployerPostService.Implementations;
@@ -68,6 +68,7 @@ using PTJ_Service.RatingService.Interfaces;
 using PTJ_Service.Interfaces;
 using PTJ_Service.Implementations;
 using PTJ_Data.Repositories.Implementations.NewsPost;
+using PTJ_Service.JobSeekerPostService.Implementations;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -141,6 +142,9 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
+builder.Services.AddHttpClient<VnPostLocationService>();
+builder.Services.AddScoped<LocationDisplayService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
 
 // Repository
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();

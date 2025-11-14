@@ -25,6 +25,12 @@ public partial class JobSeekerCv
 
     public DateTime? UpdatedAt { get; set; }
 
+    public int ProvinceId { get; set; }
+
+    public int DistrictId { get; set; }
+
+    public int WardId { get; set; }
+
     public virtual User JobSeeker { get; set; } = null!;
 
     public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();

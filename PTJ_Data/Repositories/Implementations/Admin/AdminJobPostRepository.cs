@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
@@ -56,30 +57,36 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         }
 
         public async Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id)
-        {
+            {
             return await _db.EmployerPosts
                 .Include(p => p.User)
                 .Include(p => p.Category)
                 .Include(p => p.User.EmployerProfile)
                 .Where(p => p.EmployerPostId == id)
                 .Select(p => new AdminEmployerPostDetailDto
-                {
+                    {
                     EmployerPostId = p.EmployerPostId,
                     Title = p.Title,
                     Description = p.Description,
                     Salary = p.Salary,
                     Requirements = p.Requirements,
                     WorkHours = p.WorkHours,
-                    Location = p.Location,
+
+                    // ⭐ SỬA Ở ĐÂY — ĐÚNG CÚ PHÁP
+                    ProvinceId = p.User.EmployerProfile.ProvinceId,
+                    DistrictId = p.User.EmployerProfile.DistrictId,
+                    WardId = p.User.EmployerProfile.WardId,
+
                     PhoneContact = p.PhoneContact,
                     EmployerEmail = p.User.Email,
                     EmployerName = p.User.EmployerProfile != null ? p.User.EmployerProfile.DisplayName : null,
                     CategoryName = p.Category != null ? p.Category.Name : null,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt
-                })
+                    })
                 .FirstOrDefaultAsync();
-        }
+            }
+
 
         public async Task<bool> ToggleEmployerPostBlockedAsync(int id)
         {
@@ -151,7 +158,9 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     JobSeekerEmail = p.User.Email,
                     FullName = p.User.JobSeekerProfile != null ? p.User.JobSeekerProfile.FullName : null,
                     CategoryName = p.Category != null ? p.Category.Name : null,
-                    PreferredLocation = p.PreferredLocation,
+                    ProvinceId = p.User.JobSeekerProfile.ProvinceId,
+                    DistrictId = p.User.JobSeekerProfile.DistrictId,
+                    WardId = p.User.JobSeekerProfile.WardId,
                     PreferredWorkHours = p.PreferredWorkHours,
                     Gender = p.Gender,
                     Status = p.Status,
