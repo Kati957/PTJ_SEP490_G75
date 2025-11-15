@@ -7,7 +7,10 @@
         public string? Description { get; set; }
         public int? Age { get; set; }
         public string? Gender { get; set; }
-        public string? PreferredWorkHours { get; set; }
+
+        public string? PreferredWorkHourStart { get; set; }
+        public string? PreferredWorkHourEnd { get; set; }
+
         public int ProvinceId { get; set; }
         public int DistrictId { get; set; }
         public int WardId { get; set; }

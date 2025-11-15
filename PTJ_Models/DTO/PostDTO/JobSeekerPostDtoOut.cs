@@ -16,6 +16,10 @@ namespace PTJ_Models.DTO.PostDTO
         public int? Age { get; set; }
         public string? Gender { get; set; }
         public string? PreferredWorkHours { get; set; }
+
+        public string? PreferredWorkHourStart { get; set; }
+        public string? PreferredWorkHourEnd { get; set; }
+
         public string? PreferredLocation { get; set; }
         public int ProvinceId { get; set; }
         public int DistrictId { get; set; }

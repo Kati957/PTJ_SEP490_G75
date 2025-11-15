@@ -58,9 +58,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 UserId = dto.UserID,
                 Title = dto.Title,
                 Description = dto.Description,
-                Salary = dto.Salary,
+                Salary = (!string.IsNullOrEmpty(dto.SalaryText) &&
+                          dto.SalaryText.ToLower().Contains("thoả thuận"))
+                            ? null
+                            : dto.Salary,
                 Requirements = dto.Requirements,
-                WorkHours = dto.WorkHours,
+                WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}",
+
                 Location = fullLocation,
 
                 // ⭐ LOCATION ID — thêm vào DB
@@ -284,14 +288,16 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             post.Title = dto.Title;
             post.Description = dto.Description;
-            post.Salary = dto.Salary;
+            post.Salary = (!string.IsNullOrEmpty(dto.SalaryText) &&
+               dto.SalaryText.ToLower().Contains("thoả thuận"))
+                ? null
+                : dto.Salary;
             post.Requirements = dto.Requirements;
-            post.WorkHours = dto.WorkHours;
             post.Location = fullLocation;
             post.ProvinceId = dto.ProvinceId;
             post.DistrictId = dto.DistrictId;
             post.WardId = dto.WardId;
-
+            post.WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}";
             post.CategoryId = dto.CategoryID;
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;
@@ -855,8 +861,15 @@ ScoreAndFilterCandidatesAsync(
                 Title = post.Title,
                 Description = post.Description,
                 Salary = post.Salary,
+                SalaryText = post.Salary == null ? "Thỏa thuận" : $"{post.Salary}",
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
+                
+                WorkHourStart = post.WorkHours?.Split('-')[0].Trim(),
+                WorkHourEnd = post.WorkHours?.Split('-').Length > 1
+                ? post.WorkHours.Split('-')[1].Trim()
+                : null,
+
 
                 Location = post.Location,
 
