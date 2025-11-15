@@ -29,6 +29,7 @@ public class AdminJobPostService : IAdminJobPostService
         return dto;
         }
 
+
     public async Task ToggleEmployerPostBlockedAsync(int id)
         {
         var ok = await _repo.ToggleEmployerPostBlockedAsync(id);
@@ -50,6 +51,7 @@ public class AdminJobPostService : IAdminJobPostService
 
         return dto;
         }
+
 
     public async Task ToggleJobSeekerPostArchivedAsync(int id)
         {

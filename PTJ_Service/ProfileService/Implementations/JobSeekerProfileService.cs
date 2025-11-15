@@ -59,7 +59,7 @@ namespace PTJ_Services.Implementations
                 WardId = p.WardId
                 };
 
-            dto.Location = await BuildLocationDtoAsync(p);
+            dto.Location = await BuildLocationStringAsync(p);
 
             return dto;
             }
@@ -84,7 +84,7 @@ namespace PTJ_Services.Implementations
                 WardId = p.WardId
                 };
 
-            dto.Location = await BuildLocationDtoAsync(p);
+            dto.Location = await BuildLocationStringAsync(p);
 
             return dto;
             }
@@ -138,34 +138,18 @@ namespace PTJ_Services.Implementations
             }
 
         // 🔁 Helper: build LocationDto từ Id bằng VnPostLocationService
-        private async Task<JobSeekerLocationDto> BuildLocationDtoAsync(JobSeekerProfile p)
+        private async Task<string> BuildLocationStringAsync(JobSeekerProfile p)
             {
-            // Lấy tên tỉnh
-            string? provinceName = null;
-            string? districtName = null;
-            string? wardName = null;
-
-            // Provinces
             var provinces = await _locationService.GetProvincesAsync();
-            var province = provinces.FirstOrDefault(x => x.code == p.ProvinceId);
-            provinceName = province?.name;
+            var province = provinces.FirstOrDefault(x => x.code == p.ProvinceId)?.name;
 
-            // Districts (theo ProvinceId)
             var districts = await _locationService.GetDistrictsAsync(p.ProvinceId);
-            var district = districts.FirstOrDefault(x => x.code == p.DistrictId);
-            districtName = district?.name;
+            var district = districts.FirstOrDefault(x => x.code == p.DistrictId)?.name;
 
-            // Wards (theo DistrictId)
             var wards = await _locationService.GetWardsAsync(p.DistrictId);
-            var ward = wards.FirstOrDefault(x => x.code == p.WardId);
-            wardName = ward?.name;
+            var ward = wards.FirstOrDefault(x => x.code == p.WardId)?.name;
 
-            return new JobSeekerLocationDto
-                {
-                Province = provinceName,
-                District = districtName,
-                Ward = wardName
-                };
+            return $"{ward}, {district}, {province}".Trim().Trim(',');
             }
         }
     }

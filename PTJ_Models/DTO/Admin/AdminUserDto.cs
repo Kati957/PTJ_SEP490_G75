@@ -1,4 +1,6 @@
-﻿public class AdminUserDto
+﻿using System.Text.Json.Serialization;
+
+public class AdminUserDto
     {
     public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
@@ -19,10 +21,14 @@ public class AdminUserDetailDto : AdminUserDto
     public string? PhoneNumber { get; set; }
     public string? Address { get; set; }
 
+    [JsonIgnore]
     public int ProvinceId { get; set; }
-    public int DistrictId { get; set; }
-    public int WardId { get; set; }
 
+    [JsonIgnore]
+    public int DistrictId { get; set; }
+
+    [JsonIgnore]
+    public int WardId { get; set; }
     public string? ProvinceName { get; set; }
     public string? DistrictName { get; set; }
     public string? WardName { get; set; }

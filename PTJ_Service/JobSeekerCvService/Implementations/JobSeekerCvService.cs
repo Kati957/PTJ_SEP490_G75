@@ -143,10 +143,6 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
                 Skills = cv.Skills,
                 PreferredJobType = cv.PreferredJobType,
 
-                ProvinceId = cv.ProvinceId,
-                DistrictId = cv.DistrictId,
-                WardId = cv.WardId,
-
                 PreferredLocationName = fullAddress,
 
                 ContactPhone = cv.ContactPhone,

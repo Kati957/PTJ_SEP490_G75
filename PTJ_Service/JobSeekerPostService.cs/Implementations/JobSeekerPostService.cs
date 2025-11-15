@@ -88,6 +88,11 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Gender = dto.Gender,
                 PreferredWorkHours = dto.PreferredWorkHours,
                 PreferredLocation = fullLocation,
+
+                ProvinceId = dto.ProvinceId,
+                DistrictId = dto.DistrictId,
+                WardId = dto.WardId,
+    
                 CategoryId = dto.CategoryID,
                 PhoneContact = dto.PhoneContact,
                 SelectedCvId = dto.SelectedCvId,   // ✅ GẮN CV VÀO BÀI ĐĂNG
@@ -339,17 +344,26 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             post.Age = dto.Age;
             post.Gender = dto.Gender;
             post.PreferredWorkHours = dto.PreferredWorkHours;
+
+            //UPDATE 3 TRƯỜNG NÀY
+            post.ProvinceId = dto.ProvinceId;
+            post.DistrictId = dto.DistrictId;
+            post.WardId = dto.WardId;
+
+            // Build lại PreferredLocation
             post.PreferredLocation = await _locDisplay.BuildAddressAsync(
                 dto.ProvinceId,
                 dto.DistrictId,
                 dto.WardId
             );
+
             post.CategoryId = dto.CategoryID;
             post.PhoneContact = dto.PhoneContact;
-            post.SelectedCvId = dto.SelectedCvId;   // ✅ GÁN CV CHO BÀI NÀY
+            post.SelectedCvId = dto.SelectedCvId;
             post.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(post);
+
 
             // 🔍 Lấy CV GẮN VỚI BÀI ĐĂNG (không dùng "CV mới nhất của user")
             JobSeekerCv? selectedCv = null;
@@ -913,16 +927,24 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             return new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = post.JobSeekerPostId,
-                UserID = post.UserId, // ✅ Thêm dòng này để truyền đúng ID
+                UserID = post.UserId,
+
                 Title = post.Title,
                 Description = post.Description,
                 PreferredLocation = post.PreferredLocation,
+
+                // ⭐ THÊM 3 DÒNG QUAN TRỌNG
+                ProvinceId = post.ProvinceId,
+                DistrictId = post.DistrictId,
+                WardId = post.WardId,
+
                 CategoryName = category?.Name,
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
                 };
             }
+
 
 
         private async Task UpsertSuggestionsAsync(

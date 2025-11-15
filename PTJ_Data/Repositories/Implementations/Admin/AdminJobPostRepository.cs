@@ -72,20 +72,24 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     Requirements = p.Requirements,
                     WorkHours = p.WorkHours,
 
-                    // ⭐ SỬA Ở ĐÂY — ĐÚNG CÚ PHÁP
-                    ProvinceId = p.User.EmployerProfile.ProvinceId,
-                    DistrictId = p.User.EmployerProfile.DistrictId,
-                    WardId = p.User.EmployerProfile.WardId,
+                    // ⭐⭐ LẤY ĐÚNG TỪ EmployerPost (KHÔNG LẤY TỪ PROFILE)
+                    ProvinceId = p.ProvinceId,
+                    DistrictId = p.DistrictId,
+                    WardId = p.WardId,
 
                     PhoneContact = p.PhoneContact,
                     EmployerEmail = p.User.Email,
-                    EmployerName = p.User.EmployerProfile != null ? p.User.EmployerProfile.DisplayName : null,
+                    EmployerName = p.User.EmployerProfile != null
+                        ? p.User.EmployerProfile.DisplayName
+                        : p.User.Username,
+
                     CategoryName = p.Category != null ? p.Category.Name : null,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt
                     })
                 .FirstOrDefaultAsync();
             }
+
 
 
         public async Task<bool> ToggleEmployerPostBlockedAsync(int id)
@@ -158,9 +162,11 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     JobSeekerEmail = p.User.Email,
                     FullName = p.User.JobSeekerProfile != null ? p.User.JobSeekerProfile.FullName : null,
                     CategoryName = p.Category != null ? p.Category.Name : null,
-                    ProvinceId = p.User.JobSeekerProfile.ProvinceId,
-                    DistrictId = p.User.JobSeekerProfile.DistrictId,
-                    WardId = p.User.JobSeekerProfile.WardId,
+
+                    ProvinceId = p.ProvinceId,
+                    DistrictId = p.DistrictId,
+                    WardId = p.WardId,
+
                     PreferredWorkHours = p.PreferredWorkHours,
                     Gender = p.Gender,
                     Status = p.Status,

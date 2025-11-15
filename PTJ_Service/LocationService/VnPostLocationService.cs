@@ -13,21 +13,48 @@ public class VnPostLocationService
 
     public async Task<List<VnPostProvince>> GetProvincesAsync()
         {
-        var json = await _http.GetStringAsync("p/");
-        return JsonConvert.DeserializeObject<List<VnPostProvince>>(json);
+        try
+            {
+            var json = await _http.GetStringAsync("p/");
+            return JsonConvert.DeserializeObject<List<VnPostProvince>>(json) ?? new();
+            }
+        catch
+            {
+            return new();
+            }
         }
 
     public async Task<List<VnPostDistrict>> GetDistrictsAsync(int provinceId)
         {
-        var json = await _http.GetStringAsync($"p/{provinceId}?depth=2");
-        var data = JsonConvert.DeserializeObject<ProvinceWithDistricts>(json);
-        return data.districts;
+        if (provinceId <= 0)
+            return new();
+
+        try
+            {
+            var json = await _http.GetStringAsync($"p/{provinceId}?depth=2");
+            var data = JsonConvert.DeserializeObject<ProvinceWithDistricts>(json);
+            return data?.districts ?? new();
+            }
+        catch
+            {
+            return new();
+            }
         }
 
     public async Task<List<VnPostWard>> GetWardsAsync(int districtId)
         {
-        var json = await _http.GetStringAsync($"d/{districtId}?depth=2");
-        var data = JsonConvert.DeserializeObject<DistrictWithWards>(json);
-        return data.wards;
+        if (districtId <= 0)
+            return new();
+
+        try
+            {
+            var json = await _http.GetStringAsync($"d/{districtId}?depth=2");
+            var data = JsonConvert.DeserializeObject<DistrictWithWards>(json);
+            return data?.wards ?? new();
+            }
+        catch
+            {
+            return new();
+            }
         }
     }

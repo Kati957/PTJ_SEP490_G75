@@ -75,7 +75,8 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 .Include(u => u.EmployerProfile)
                 .FirstOrDefaultAsync(u => u.UserId == id);
 
-            if (user == null) return null;
+            if (user == null)
+                return null;
 
             var role = user.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown";
 
@@ -90,28 +91,29 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 CreatedAt = user.CreatedAt,
                 LastLogin = user.LastLogin,
                 Address = user.Address,
-                PhoneNumber = user.PhoneNumber?.ToString(),
+                PhoneNumber = user.PhoneNumber?.ToString()
                 };
 
-            // JobSeeker
+            // ⭐ JOB SEEKER PROFILE
             if (role == "JobSeeker" && user.JobSeekerProfile != null)
                 {
                 dto.FullName = user.JobSeekerProfile.FullName;
                 dto.Gender = user.JobSeekerProfile.Gender;
                 dto.BirthYear = user.JobSeekerProfile.BirthYear;
+
                 dto.ProvinceId = user.JobSeekerProfile.ProvinceId;
                 dto.DistrictId = user.JobSeekerProfile.DistrictId;
                 dto.WardId = user.JobSeekerProfile.WardId;
 
                 dto.AvatarUrl = user.JobSeekerProfile.ProfilePicture;
                 }
-            // Employer
+            // ⭐ EMPLOYER PROFILE
             else if (role == "Employer" && user.EmployerProfile != null)
                 {
                 dto.CompanyName = user.EmployerProfile.DisplayName ?? user.Username;
                 dto.Website = user.EmployerProfile.Website;
 
-                // 🔧 SỬA Ở ĐÂY: dùng EmployerProfile thay vì JobSeekerProfile
+                // ⭐⭐ LẤY ĐỊA ĐIỂM ĐÚNG
                 dto.ProvinceId = user.EmployerProfile.ProvinceId;
                 dto.DistrictId = user.EmployerProfile.DistrictId;
                 dto.WardId = user.EmployerProfile.WardId;
@@ -122,6 +124,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
             return dto;
             }
+
 
         public Task<User?> GetUserEntityAsync(int id)
             => _db.Users.FirstOrDefaultAsync(x => x.UserId == id);

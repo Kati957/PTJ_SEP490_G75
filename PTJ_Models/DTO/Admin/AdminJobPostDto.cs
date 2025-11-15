@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace PTJ_Models.DTO.Admin
@@ -25,8 +26,13 @@ namespace PTJ_Models.DTO.Admin
         public string? Requirements { get; set; }
         public string? WorkHours { get; set; }
 
+        [JsonIgnore]
         public int ProvinceId { get; set; }
+
+        [JsonIgnore]
         public int DistrictId { get; set; }
+
+        [JsonIgnore]
         public int WardId { get; set; }
 
         public string? ProvinceName { get; set; }
@@ -53,8 +59,13 @@ namespace PTJ_Models.DTO.Admin
         {
         public string? Description { get; set; }
 
+        [JsonIgnore]
         public int ProvinceId { get; set; }
+
+        [JsonIgnore]
         public int DistrictId { get; set; }
+
+        [JsonIgnore]
         public int WardId { get; set; }
 
         public string? ProvinceName { get; set; }

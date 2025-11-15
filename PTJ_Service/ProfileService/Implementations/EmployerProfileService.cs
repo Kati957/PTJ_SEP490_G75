@@ -59,7 +59,7 @@ namespace PTJ_Services.Implementations
                 WardId = p.WardId
                 };
 
-            dto.Location = await BuildLocationDtoAsync(p);
+            dto.Location = await BuildLocationStringAsync(p);
 
             return dto;
             }
@@ -82,7 +82,7 @@ namespace PTJ_Services.Implementations
                 WardId = p.WardId
                 };
 
-            dto.Location = await BuildLocationDtoAsync(p);
+            dto.Location = await BuildLocationStringAsync(p);
 
             return dto;
             }
@@ -136,23 +136,18 @@ namespace PTJ_Services.Implementations
             return true;
             }
 
-        private async Task<EmployerLocationDto> BuildLocationDtoAsync(EmployerProfile p)
+        private async Task<string> BuildLocationStringAsync(EmployerProfile p)
             {
             var provinces = await _locationService.GetProvincesAsync();
-            var province = provinces.FirstOrDefault(x => x.code == p.ProvinceId);
+            var province = provinces.FirstOrDefault(x => x.code == p.ProvinceId)?.name;
 
             var districts = await _locationService.GetDistrictsAsync(p.ProvinceId);
-            var district = districts.FirstOrDefault(x => x.code == p.DistrictId);
+            var district = districts.FirstOrDefault(x => x.code == p.DistrictId)?.name;
 
             var wards = await _locationService.GetWardsAsync(p.DistrictId);
-            var ward = wards.FirstOrDefault(x => x.code == p.WardId);
+            var ward = wards.FirstOrDefault(x => x.code == p.WardId)?.name;
 
-            return new EmployerLocationDto
-                {
-                Province = province?.name,
-                District = district?.name,
-                Ward = ward?.name
-                };
+            return $"{ward}, {district}, {province}".Trim().Trim(',');
             }
         }
     }

@@ -62,12 +62,19 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Requirements = dto.Requirements,
                 WorkHours = dto.WorkHours,
                 Location = fullLocation,
+
+                // ⭐ LOCATION ID — thêm vào DB
+                ProvinceId = dto.ProvinceId,
+                DistrictId = dto.DistrictId,
+                WardId = dto.WardId,
+
                 CategoryId = dto.CategoryID,
                 PhoneContact = dto.PhoneContact,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
                 Status = "Active"
                 };
+
 
             // ✅ Lưu DB để lấy ID thật
             await _repo.AddAsync(post);
@@ -281,9 +288,14 @@ namespace PTJ_Service.EmployerPostService.Implementations
             post.Requirements = dto.Requirements;
             post.WorkHours = dto.WorkHours;
             post.Location = fullLocation;
+            post.ProvinceId = dto.ProvinceId;
+            post.DistrictId = dto.DistrictId;
+            post.WardId = dto.WardId;
+
             post.CategoryId = dto.CategoryID;
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;
+
 
             await _repo.UpdateAsync(post);
 
@@ -838,13 +850,21 @@ ScoreAndFilterCandidatesAsync(
             return new EmployerPostDtoOut
                 {
                 EmployerPostId = post.EmployerPostId,
-                EmployerId = post.UserId, // ✅ THÊM DÒNG NÀY
+                EmployerId = post.UserId,
+
                 Title = post.Title,
                 Description = post.Description,
                 Salary = post.Salary,
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
+
                 Location = post.Location,
+
+                // ⭐ TRẢ ĐÚNG VỀ CLIENT
+                ProvinceId = post.ProvinceId,
+                DistrictId = post.DistrictId,
+                WardId = post.WardId,
+
                 PhoneContact = post.PhoneContact,
                 CategoryName = category?.Name,
                 EmployerName = user?.Username ?? "",
@@ -852,6 +872,7 @@ ScoreAndFilterCandidatesAsync(
                 Status = post.Status
                 };
             }
+
 
 
         private async Task UpsertSuggestionsAsync(
