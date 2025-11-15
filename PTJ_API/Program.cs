@@ -43,7 +43,6 @@ using CloudinaryDotNet;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Models.Models;
-using PTJ_Service.AiService;
 using PTJ_Service.Implementations.Admin;
 using PTJ_Service.Interfaces.Admin;
 using PTJ_Service.Admin.Implementations;
@@ -65,9 +64,8 @@ using PTJ_Data.Repositories.Implementations.Ratings;
 using PTJ_Data.Repositories.Interfaces.Ratings;
 using PTJ_Service.RatingService.Implementations;
 using PTJ_Service.RatingService.Interfaces;
-using PTJ_Service.Interfaces;
-using PTJ_Service.Implementations;
 using PTJ_Data.Repositories.Implementations.NewsPost;
+using Microsoft.AspNetCore.Mvc;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -222,7 +220,24 @@ builder.Services.AddControllers()
     });
 builder.Services.AddHttpContextAccessor();
 
-// 6️⃣ BUILD APP
+// 60 CHECK VALIDATE
+
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(e => e.Value.Errors.Count > 0)
+                .ToDictionary(
+                    e => e.Key,
+                    e => e.Value.Errors.Select(err => err.ErrorMessage).ToArray()
+                );
+            return new BadRequestObjectResult(new { message = "Validation failed", errors });
+        };
+    });
+
+// 70 BUILD APP
 
 var app = builder.Build();
 
