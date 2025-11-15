@@ -19,7 +19,7 @@ using PTJ_Service.AuthService.Interfaces;
 using PTJ_Service.SearchService.Interfaces;
 using PTJ_Service.SearchService.Implementations;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
-using PTJ_Service.JobSeekerPostService.cs.Implementations;
+using PTJ_Service.JobSeekerPostService;
 using PTJ_Service.JobApplicationService.Interfaces;
 using PTJ_Service.JobApplicationService.Implementations;
 using PTJ_Service.EmployerPostService.Implementations;
@@ -43,6 +43,7 @@ using CloudinaryDotNet;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Models.Models;
+using PTJ_Service.AiService;
 using PTJ_Service.Implementations.Admin;
 using PTJ_Service.Interfaces.Admin;
 using PTJ_Service.Admin.Implementations;
@@ -64,8 +65,10 @@ using PTJ_Data.Repositories.Implementations.Ratings;
 using PTJ_Data.Repositories.Interfaces.Ratings;
 using PTJ_Service.RatingService.Implementations;
 using PTJ_Service.RatingService.Interfaces;
+using PTJ_Service.Interfaces;
+using PTJ_Service.Implementations;
 using PTJ_Data.Repositories.Implementations.NewsPost;
-using Microsoft.AspNetCore.Mvc;
+using PTJ_Service.JobSeekerPostService.Implementations;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -139,6 +142,9 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
+builder.Services.AddHttpClient<VnPostLocationService>();
+builder.Services.AddScoped<LocationDisplayService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
 
 // Repository
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -220,24 +226,7 @@ builder.Services.AddControllers()
     });
 builder.Services.AddHttpContextAccessor();
 
-// 60 CHECK VALIDATE
-
-builder.Services.AddControllers()
-    .ConfigureApiBehaviorOptions(options =>
-    {
-        options.InvalidModelStateResponseFactory = context =>
-        {
-            var errors = context.ModelState
-                .Where(e => e.Value.Errors.Count > 0)
-                .ToDictionary(
-                    e => e.Key,
-                    e => e.Value.Errors.Select(err => err.ErrorMessage).ToArray()
-                );
-            return new BadRequestObjectResult(new { message = "Validation failed", errors });
-        };
-    });
-
-// 70 BUILD APP
+// 6️⃣ BUILD APP
 
 var app = builder.Build();
 

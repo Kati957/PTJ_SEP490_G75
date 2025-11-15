@@ -7,14 +7,13 @@ namespace PTJ_Models.DTO
         public string? FullName { get; set; }
         public string? Gender { get; set; }
         public int? BirthYear { get; set; }
-        public string? Skills { get; set; }
-        public string? Experience { get; set; }
-        public string? Education { get; set; }
-        public string? PreferredJobType { get; set; }
-        public string? PreferredLocation { get; set; }
+
+        public int ProvinceId { get; set; }
+        public int DistrictId { get; set; }
+        public int WardId { get; set; }
+
         public string? ContactPhone { get; set; }
 
-        // 🖼️ file ảnh người dùng chọn để tải lên
         public IFormFile? ImageFile { get; set; }
         }
     }

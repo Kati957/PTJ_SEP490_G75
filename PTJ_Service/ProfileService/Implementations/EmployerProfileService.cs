@@ -5,7 +5,8 @@ using PTJ_Models.DTO;
 using PTJ_Models.DTO.ProfileDTO;
 using PTJ_Repositories.Interfaces;
 using PTJ_Services.Interfaces;
-using System.Collections.Generic;
+using PTJ_Models.Models;
+using PTJ_Service.LocationService;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -15,28 +16,34 @@ namespace PTJ_Services.Implementations
         {
         private readonly IEmployerProfileRepository _repo;
         private readonly Cloudinary _cloudinary;
+        private readonly VnPostLocationService _locationService;
 
-        private const string DefaultAvatarUrl = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
+        private const string DefaultAvatarUrl =
+            "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
+
         private const string DefaultPublicId = "avtDefaut_huflze";
 
-        public EmployerProfileService(IEmployerProfileRepository repo, IConfiguration config)
+        public EmployerProfileService(
+            IEmployerProfileRepository repo,
+            IConfiguration config,
+            VnPostLocationService locationService)
             {
             _repo = repo;
-            var account = new Account(
+            _locationService = locationService;
+
+            _cloudinary = new Cloudinary(new Account(
                 config["Cloudinary:CloudName"],
                 config["Cloudinary:ApiKey"],
                 config["Cloudinary:ApiSecret"]
-            );
-            _cloudinary = new Cloudinary(account);
+            ));
             }
 
-        // 🟢 1️⃣ Lấy profile của chính Employer đăng nhập (đầy đủ)
         public async Task<EmployerProfileDto?> GetProfileAsync(int userId)
             {
-            var p = await _repo.GetByUserIdAsync(userId);
+            EmployerProfile? p = await _repo.GetByUserIdAsync(userId);
             if (p == null) return null;
 
-            return new EmployerProfileDto
+            var dto = new EmployerProfileDto
                 {
                 ProfileId = p.ProfileId,
                 UserId = p.UserId,
@@ -47,29 +54,39 @@ namespace PTJ_Services.Implementations
                 ContactPhone = p.ContactPhone,
                 ContactEmail = p.ContactEmail,
                 Website = p.Website,
-                Location = p.Location
+                ProvinceId = p.ProvinceId,
+                DistrictId = p.DistrictId,
+                WardId = p.WardId
                 };
+
+            dto.Location = await BuildLocationStringAsync(p);
+
+            return dto;
             }
 
-        // 🌐 3️⃣ Xem chi tiết profile của Employer khác (chỉ public info)
         public async Task<EmployerProfileDto?> GetProfileByUserIdAsync(int targetUserId)
             {
-            var p = await _repo.GetByUserIdAsync(targetUserId);
+            EmployerProfile? p = await _repo.GetByUserIdAsync(targetUserId);
             if (p == null) return null;
 
-            return new EmployerProfileDto
+            var dto = new EmployerProfileDto
                 {
                 DisplayName = p.DisplayName,
                 Description = p.Description,
                 AvatarUrl = p.AvatarUrl,
-                Website = p.Website,
                 ContactPhone = p.ContactPhone,
                 ContactEmail = p.ContactEmail,
-                Location = p.Location
+                Website = p.Website,
+                ProvinceId = p.ProvinceId,
+                DistrictId = p.DistrictId,
+                WardId = p.WardId
                 };
+
+            dto.Location = await BuildLocationStringAsync(p);
+
+            return dto;
             }
 
-        // ✏️ 4️⃣ Cập nhật thông tin + upload avatar (chính chủ)
         public async Task<bool> UpdateProfileAsync(int userId, EmployerProfileUpdateDto dto)
             {
             var existing = await _repo.GetByUserIdAsync(userId);
@@ -80,8 +97,11 @@ namespace PTJ_Services.Implementations
             existing.ContactName = dto.ContactName;
             existing.ContactPhone = dto.ContactPhone;
             existing.ContactEmail = dto.ContactEmail;
-            existing.Location = dto.Location;
             existing.Website = dto.Website;
+
+            existing.ProvinceId = dto.ProvinceId;
+            existing.DistrictId = dto.DistrictId;
+            existing.WardId = dto.WardId;
 
             if (dto.ImageFile != null && dto.ImageFile.Length > 0)
                 {
@@ -91,6 +111,7 @@ namespace PTJ_Services.Implementations
                     File = new FileDescription(dto.ImageFile.FileName, stream),
                     Folder = "ptj_profiles/employers"
                     };
+
                 var result = await _cloudinary.UploadAsync(uploadParams);
 
                 existing.AvatarUrl = result.SecureUrl.ToString();
@@ -102,7 +123,6 @@ namespace PTJ_Services.Implementations
             return true;
             }
 
-        // ❌ 5️⃣ Gỡ avatar (chuyển về ảnh mặc định)
         public async Task<bool> DeleteAvatarAsync(int userId)
             {
             var existing = await _repo.GetByUserIdAsync(userId);
@@ -114,6 +134,20 @@ namespace PTJ_Services.Implementations
 
             await _repo.UpdateAsync(existing);
             return true;
+            }
+
+        private async Task<string> BuildLocationStringAsync(EmployerProfile p)
+            {
+            var provinces = await _locationService.GetProvincesAsync();
+            var province = provinces.FirstOrDefault(x => x.code == p.ProvinceId)?.name;
+
+            var districts = await _locationService.GetDistrictsAsync(p.ProvinceId);
+            var district = districts.FirstOrDefault(x => x.code == p.DistrictId)?.name;
+
+            var wards = await _locationService.GetWardsAsync(p.DistrictId);
+            var ward = wards.FirstOrDefault(x => x.code == p.WardId)?.name;
+
+            return $"{ward}, {district}, {province}".Trim().Trim(',');
             }
         }
     }

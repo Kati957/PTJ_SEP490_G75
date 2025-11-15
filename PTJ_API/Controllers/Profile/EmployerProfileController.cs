@@ -29,8 +29,10 @@ namespace PTJ_API.Controllers
             {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var dto = await _employerService.GetProfileAsync(userId);
+
             if (dto == null)
                 return NotFound("Không tìm thấy profile.");
+
             return Ok(dto);
             }
 
@@ -39,7 +41,7 @@ namespace PTJ_API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetProfileByUserId(int userId)
             {
-            // ✅ Thử tìm Employer trước
+            // 1️⃣ Kiểm tra Employer trước
             var employerDto = await _employerService.GetProfileByUserIdAsync(userId);
             if (employerDto != null)
                 {
@@ -52,11 +54,11 @@ namespace PTJ_API.Controllers
                     employerDto.Website,
                     employerDto.ContactPhone,
                     employerDto.ContactEmail,
-                    employerDto.Location
+                    Location = employerDto.Location // ⚡ TRẢ TÊN ĐỊA ĐIỂM
                     });
                 }
 
-            // ✅ Nếu không có Employer → thử JobSeeker
+            // 2️⃣ Nếu không phải Employer → kiểm tra JobSeeker
             var jobSeekerDto = await _jobSeekerService.GetProfileByUserIdAsync(userId);
             if (jobSeekerDto != null)
                 {
@@ -67,11 +69,7 @@ namespace PTJ_API.Controllers
                     AvatarUrl = jobSeekerDto.ProfilePicture,
                     jobSeekerDto.Gender,
                     jobSeekerDto.BirthYear,
-                    jobSeekerDto.Skills,
-                    jobSeekerDto.Experience,
-                    jobSeekerDto.Education,
-                    jobSeekerDto.PreferredJobType,
-                    Location = jobSeekerDto.PreferredLocation,
+                    Location = jobSeekerDto.Location, // ⚡ TRẢ TÊN ĐỊA ĐIỂM
                     jobSeekerDto.ContactPhone
                     });
                 }
@@ -87,8 +85,10 @@ namespace PTJ_API.Controllers
             {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var success = await _employerService.UpdateProfileAsync(userId, model);
+
             if (!success)
                 return BadRequest("Cập nhật thất bại.");
+
             return Ok("Cập nhật profile thành công.");
             }
 
@@ -99,8 +99,10 @@ namespace PTJ_API.Controllers
             {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var success = await _employerService.DeleteAvatarAsync(userId);
+
             if (!success)
                 return BadRequest("Không thể gỡ ảnh.");
+
             return Ok("Ảnh đại diện đã được thay bằng ảnh mặc định.");
             }
         }
