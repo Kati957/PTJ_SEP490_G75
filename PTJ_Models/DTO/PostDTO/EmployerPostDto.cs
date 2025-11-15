@@ -5,10 +5,15 @@
         public int UserID { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public decimal? Salary { get; set; }
+
+        public decimal? Salary { get; set; }          // FE nhập số
+        public string? SalaryText { get; set; }       // FE gửi "thỏa thuận"
+
         public string? Requirements { get; set; }
-        public string? WorkHours { get; set; }
-        // THAY CHO LOCATION TEXT
+
+        public string? WorkHourStart { get; set; }    // UI mới
+        public string? WorkHourEnd { get; set; }      // UI mới
+
         public int ProvinceId { get; set; }
         public int DistrictId { get; set; }
         public int WardId { get; set; }

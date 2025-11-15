@@ -86,7 +86,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = dto.Description,
                 Age = dto.Age,
                 Gender = dto.Gender,
-                PreferredWorkHours = dto.PreferredWorkHours,
+                PreferredWorkHours = $"{dto.PreferredWorkHourStart} - {dto.PreferredWorkHourEnd}",
+
                 PreferredLocation = fullLocation,
 
                 ProvinceId = dto.ProvinceId,
@@ -343,7 +344,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             post.Description = dto.Description;
             post.Age = dto.Age;
             post.Gender = dto.Gender;
-            post.PreferredWorkHours = dto.PreferredWorkHours;
+            post.PreferredWorkHours = $"{dto.PreferredWorkHourStart} - {dto.PreferredWorkHourEnd}";
 
             //UPDATE 3 TRƯỜNG NÀY
             post.ProvinceId = dto.ProvinceId;
@@ -933,7 +934,13 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = post.Description,
                 PreferredLocation = post.PreferredLocation,
 
-                // ⭐ THÊM 3 DÒNG QUAN TRỌNG
+                PreferredWorkHours = post.PreferredWorkHours,
+
+                PreferredWorkHourStart = post.PreferredWorkHours?.Split('-')[0].Trim(),
+                PreferredWorkHourEnd = post.PreferredWorkHours?.Split('-').Length > 1
+                            ? post.PreferredWorkHours.Split('-')[1].Trim()
+                            : null,
+
                 ProvinceId = post.ProvinceId,
                 DistrictId = post.DistrictId,
                 WardId = post.WardId,
@@ -943,6 +950,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
                 };
+
             }
 
 
