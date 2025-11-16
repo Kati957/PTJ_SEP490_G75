@@ -63,8 +63,8 @@ namespace PTJ_API.Controllers
         // READ
         // =========================================================
         [HttpGet("all")]
-        [Authorize(Roles = "Admin")]
-        //[AllowAnonymous]
+        //[Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
             {
             var result = await _service.GetAllAsync();
