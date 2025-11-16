@@ -874,9 +874,9 @@ ScoreAndFilterCandidatesAsync(
                 Location = post.Location,
 
                 // ⭐ TRẢ ĐÚNG VỀ CLIENT
-                ProvinceId = post.ProvinceId,
-                DistrictId = post.DistrictId,
-                WardId = post.WardId,
+                //ProvinceId = post.ProvinceId,
+                //DistrictId = post.DistrictId,
+                //WardId = post.WardId,
 
                 PhoneContact = post.PhoneContact,
                 CategoryName = category?.Name,

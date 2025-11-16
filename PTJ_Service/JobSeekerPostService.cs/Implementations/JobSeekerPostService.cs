@@ -941,9 +941,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                             ? post.PreferredWorkHours.Split('-')[1].Trim()
                             : null,
 
-                ProvinceId = post.ProvinceId,
-                DistrictId = post.DistrictId,
-                WardId = post.WardId,
+                //ProvinceId = post.ProvinceId,
+                //DistrictId = post.DistrictId,
+                //WardId = post.WardId,
 
                 CategoryName = category?.Name,
                 SeekerName = user?.Username ?? "",

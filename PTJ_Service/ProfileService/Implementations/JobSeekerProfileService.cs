@@ -103,6 +103,8 @@ namespace PTJ_Services.Implementations
             existing.ProvinceId = dto.ProvinceId;
             existing.DistrictId = dto.DistrictId;
             existing.WardId = dto.WardId;
+            existing.FullLocation = dto.FullLocation;
+
 
             if (dto.ImageFile is not null && dto.ImageFile.Length > 0)
                 {
@@ -149,7 +151,17 @@ namespace PTJ_Services.Implementations
             var wards = await _locationService.GetWardsAsync(p.DistrictId);
             var ward = wards.FirstOrDefault(x => x.code == p.WardId)?.name;
 
-            return $"{ward}, {district}, {province}".Trim().Trim(',');
+            string detail = p.FullLocation ?? "";
+
+            var parts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(detail)) parts.Add(detail);
+            if (!string.IsNullOrWhiteSpace(ward)) parts.Add(ward);
+            if (!string.IsNullOrWhiteSpace(district)) parts.Add(district);
+            if (!string.IsNullOrWhiteSpace(province)) parts.Add(province);
+
+            return string.Join(", ", parts);
             }
+
         }
     }

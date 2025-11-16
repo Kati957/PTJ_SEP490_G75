@@ -14,6 +14,8 @@ namespace PTJ_Models.DTO
 
         public string? ContactPhone { get; set; }
 
+        public string? FullLocation { get; set; }
+
         public IFormFile? ImageFile { get; set; }
         }
     }

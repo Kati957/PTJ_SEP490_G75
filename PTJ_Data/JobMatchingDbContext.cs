@@ -624,6 +624,21 @@ public partial class JobMatchingDbContext : DbContext
                 .HasColumnType("datetime");
         });
 
+        modelBuilder.Entity<NotificationTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId);
+
+            entity.Property(e => e.TemplateId).HasColumnName("TemplateID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.NotificationType).HasMaxLength(50);
+            entity.Property(e => e.TitleTemplate).HasMaxLength(200);
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+        });
+
         modelBuilder.Entity<PasswordResetToken>(entity =>
         {
             entity.HasKey(e => e.TokenId);
