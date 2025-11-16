@@ -49,6 +49,14 @@ namespace PTJ_API.Controllers.Post
             if (string.IsNullOrWhiteSpace(dto.Title) || dto.Title.Length < 5)
                 return BadRequest(new { success = false, message = "Tiêu đề phải có ít nhất 5 ký tự." });
 
+            if (!string.IsNullOrEmpty(dto.PreferredWorkHourStart) &&
+                !string.IsNullOrEmpty(dto.PreferredWorkHourEnd))
+                {
+                if (TimeSpan.Parse(dto.PreferredWorkHourStart) >= TimeSpan.Parse(dto.PreferredWorkHourEnd))
+                    return BadRequest(new { success = false, message = "Giờ kết thúc phải sau giờ bắt đầu." });
+                }
+
+
             if (dto.ProvinceId <= 0 || dto.DistrictId <= 0 || dto.WardId <= 0)
                 return BadRequest(new { success = false, message = "Vui lòng chọn Tỉnh/Quận/Huyện/Xã đầy đủ." });
 
@@ -109,7 +117,8 @@ namespace PTJ_API.Controllers.Post
         // =========================================================
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] JobSeekerPostDto dto)
-        {
+            {
+            // Validate từ DataAnnotations
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
 
@@ -117,17 +126,41 @@ namespace PTJ_API.Controllers.Post
             if (existing == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng để cập nhật." });
 
+            // Lấy user từ token
             var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
             if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+                return Unauthorized(new { success = false, message = "Token không hợp lệ." });
 
             var currentUserId = int.Parse(sub.Value);
+
+            // Không phải admin → không được sửa bài người khác
             if (!User.IsInRole("Admin") && existing.UserID != currentUserId)
                 return Forbidden("Bạn không thể chỉnh sửa bài đăng của người khác.");
 
+            // ====== VALIDATE NGHIỆP VỤ ======
+
+            // Validate giờ làm
+            if (!string.IsNullOrEmpty(dto.PreferredWorkHourStart) &&
+                !string.IsNullOrEmpty(dto.PreferredWorkHourEnd))
+                {
+                if (TimeSpan.Parse(dto.PreferredWorkHourStart) >= TimeSpan.Parse(dto.PreferredWorkHourEnd))
+                    return BadRequest(new { success = false, message = "Giờ kết thúc phải sau giờ bắt đầu." });
+                }
+
+            // Validate địa chỉ
+            if (dto.ProvinceId <= 0 || dto.DistrictId <= 0 || dto.WardId <= 0)
+                return BadRequest(new { success = false, message = "Vui lòng chọn Tỉnh/Huyện/Xã đầy đủ." });
+
+            // Validate tuổi
+            if (dto.Age is < 15 or > 65)
+                return BadRequest(new { success = false, message = "Tuổi không hợp lệ." });
+
+            // ====== Gọi service cập nhật ======
             var result = await _service.UpdateAsync(id, dto);
+
             return Ok(new { success = true, message = "Cập nhật thành công.", data = result });
-        }
+            }
+
 
         // =========================================================
         // DELETE

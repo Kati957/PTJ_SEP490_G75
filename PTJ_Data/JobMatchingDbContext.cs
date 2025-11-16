@@ -59,6 +59,8 @@ public partial class JobMatchingDbContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<NotificationTemplate> NotificationTemplates { get; set; }
+
     public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
 
     public virtual DbSet<PostReport> PostReports { get; set; }
@@ -293,6 +295,7 @@ public partial class JobMatchingDbContext : DbContext
                 .HasMaxLength(20)
                 .IsUnicode(false);
             entity.Property(e => e.DisplayName).HasMaxLength(100);
+            entity.Property(e => e.FullLocation).HasMaxLength(255);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -462,6 +465,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.ContactPhone)
                 .HasMaxLength(20)
                 .IsUnicode(false);
+            entity.Property(e => e.FullLocation).HasMaxLength(255);
             entity.Property(e => e.FullName).HasMaxLength(100);
             entity.Property(e => e.Gender).HasMaxLength(10);
             entity.Property(e => e.ProfilePicture).HasMaxLength(255);
@@ -605,6 +609,21 @@ public partial class JobMatchingDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Notificat__UserI__531856C7");
+        });
+
+        modelBuilder.Entity<NotificationTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId);
+
+            entity.Property(e => e.TemplateId).HasColumnName("TemplateID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.NotificationType).HasMaxLength(50);
+            entity.Property(e => e.TitleTemplate).HasMaxLength(200);
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
         });
 
         modelBuilder.Entity<PasswordResetToken>(entity =>
