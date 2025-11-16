@@ -143,6 +143,7 @@ builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
 builder.Services.AddHttpClient<VnPostLocationService>();
 builder.Services.AddScoped<LocationDisplayService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>();
 
 // Repository
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();

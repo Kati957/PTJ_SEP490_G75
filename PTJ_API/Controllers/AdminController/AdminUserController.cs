@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Service.Admin.Interfaces;
 using PTJ_Models.DTO.Admin;
+using System.Security.Claims;
 
 namespace PTJ_API.Controllers.Admin
 {
@@ -12,6 +13,12 @@ namespace PTJ_API.Controllers.Admin
     {
         private readonly IAdminUserService _svc;
         public AdminUserController(IAdminUserService svc) => _svc = svc;
+
+        // 🔥 Lấy AdminId từ JWT
+        private int AdminId =>
+            int.Parse(User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new Exception("Token missing userId"));
 
         [HttpGet]
         public async Task<IActionResult> GetUsers(
@@ -35,6 +42,23 @@ namespace PTJ_API.Controllers.Admin
         {
             await _svc.ToggleActiveAsync(id);
             return Ok(new { message = "User active toggled successfully." });
+        }
+
+        //  NEW: Admin khóa user + nhập lý do + gửi thông báo
+        [HttpPost("{id:int}/ban")]
+        public async Task<IActionResult> BanUser(int id, [FromBody] BanUserDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Reason))
+                return BadRequest(new { message = "Reason is required." });
+
+            await _svc.BanUserAsync(id, dto.Reason, AdminId);
+
+            return Ok(new
+            {
+                message = "User has been banned and notified.",
+                userId = id,
+                reason = dto.Reason
+            });
         }
     }
 }
