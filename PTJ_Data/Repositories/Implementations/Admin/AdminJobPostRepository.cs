@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
@@ -11,7 +10,10 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminJobPostRepository(JobMatchingDbContext db) => _db = db;
 
-        //  EMPLOYER POSTS 
+        // ============================
+        // EMPLOYER POSTS
+        // ============================
+
         public async Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsPagedAsync(
             string? status, int? categoryId, string? keyword, int page, int pageSize)
         {
@@ -46,8 +48,12 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     EmployerPostId = p.EmployerPostId,
                     Title = p.Title,
                     EmployerEmail = p.User.Email,
-                    EmployerName = p.User.EmployerProfile != null ? p.User.EmployerProfile.DisplayName : null,
-                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    EmployerName = p.User.EmployerProfile != null
+                        ? p.User.EmployerProfile.DisplayName
+                        : null,
+                    CategoryName = p.Category != null
+                        ? p.Category.Name
+                        : null,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt
                 })
@@ -57,14 +63,14 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         }
 
         public async Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id)
-            {
+        {
             return await _db.EmployerPosts
                 .Include(p => p.User)
                 .Include(p => p.Category)
                 .Include(p => p.User.EmployerProfile)
                 .Where(p => p.EmployerPostId == id)
                 .Select(p => new AdminEmployerPostDetailDto
-                    {
+                {
                     EmployerPostId = p.EmployerPostId,
                     Title = p.Title,
                     Description = p.Description,
@@ -72,7 +78,6 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     Requirements = p.Requirements,
                     WorkHours = p.WorkHours,
 
-                    // ⭐⭐ LẤY ĐÚNG TỪ EmployerPost (KHÔNG LẤY TỪ PROFILE)
                     ProvinceId = p.ProvinceId,
                     DistrictId = p.DistrictId,
                     WardId = p.WardId,
@@ -86,23 +91,36 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     CategoryName = p.Category != null ? p.Category.Name : null,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt
-                    })
+                })
                 .FirstOrDefaultAsync();
-            }
-
-
+        }
 
         public async Task<bool> ToggleEmployerPostBlockedAsync(int id)
         {
-            var post = await _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == id);
+            var post = await _db.EmployerPosts
+                .FirstOrDefaultAsync(p => p.EmployerPostId == id);
+
             if (post == null) return false;
+
             post.Status = post.Status == "Blocked" ? "Active" : "Blocked";
             post.UpdatedAt = System.DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
             return true;
         }
 
-        //  JOB SEEKER POSTS 
+        // ⭐⭐ NEW — Lấy EmployerPost để gửi Notification ⭐⭐
+        public async Task<EmployerPost?> GetEmployerPostByIdAsync(int id)
+        {
+            return await _db.EmployerPosts
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(p => p.EmployerPostId == id);
+        }
+
+        // ============================
+        // JOB SEEKER POSTS
+        // ============================
+
         public async Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsPagedAsync(
             string? status, int? categoryId, string? keyword, int page, int pageSize)
         {
@@ -137,8 +155,12 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     JobSeekerPostId = p.JobSeekerPostId,
                     Title = p.Title,
                     JobSeekerEmail = p.User.Email,
-                    FullName = p.User.JobSeekerProfile != null ? p.User.JobSeekerProfile.FullName : null,
-                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    FullName = p.User.JobSeekerProfile != null
+                        ? p.User.JobSeekerProfile.FullName
+                        : null,
+                    CategoryName = p.Category != null
+                        ? p.Category.Name
+                        : null,
                     Status = p.Status,
                     CreatedAt = p.CreatedAt
                 })
@@ -160,8 +182,12 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     Title = p.Title,
                     Description = p.Description,
                     JobSeekerEmail = p.User.Email,
-                    FullName = p.User.JobSeekerProfile != null ? p.User.JobSeekerProfile.FullName : null,
-                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    FullName = p.User.JobSeekerProfile != null
+                        ? p.User.JobSeekerProfile.FullName
+                        : null,
+                    CategoryName = p.Category != null
+                        ? p.Category.Name
+                        : null,
 
                     ProvinceId = p.ProvinceId,
                     DistrictId = p.DistrictId,
@@ -177,12 +203,24 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
         public async Task<bool> ToggleJobSeekerPostArchivedAsync(int id)
         {
-            var post = await _db.JobSeekerPosts.FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
+            var post = await _db.JobSeekerPosts
+                .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
+
             if (post == null) return false;
+
             post.Status = post.Status == "Archived" ? "Active" : "Archived";
             post.UpdatedAt = System.DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
             return true;
+        }
+
+        // ⭐⭐ NEW — Lấy JobSeekerPost để gửi Notification ⭐⭐
+        public async Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int id)
+        {
+            return await _db.JobSeekerPosts
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
         }
     }
 }
