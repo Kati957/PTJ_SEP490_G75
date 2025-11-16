@@ -6,7 +6,7 @@ using PTJ_Models.DTO.Admin;
 using PTJ_Models.DTO;
 using PTJ_Models.Models;
 using PTJ_Service.Interfaces.Admin;
-using PTJ_Service.Interfaces; 
+using PTJ_Service.Interfaces;
 
 namespace PTJ_Service.Implementations.Admin
 {
@@ -35,14 +35,15 @@ namespace PTJ_Service.Implementations.Admin
         public Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId)
             => _repo.GetReportDetailAsync(reportId);
 
-        // 4️⃣ Xử lý report
+        // 4️⃣ XỬ LÝ REPORT + GỬI NOTIFICATION
+
         public async Task<AdminSolvedReportDto> ResolveReportAsync(int reportId, AdminResolveReportDto dto, int adminId)
         {
             var report = await _repo.GetReportByIdAsync(reportId)
                 ?? throw new KeyNotFoundException("Report not found.");
 
             if (report.Status != "Pending")
-                throw new InvalidOperationException("This report has already been processed.");
+                throw new InvalidOperationException("Report has already been processed.");
 
             switch (dto.ActionTaken)
             {
@@ -59,16 +60,18 @@ namespace PTJ_Service.Implementations.Admin
                     break;
 
                 default:
-                    throw new InvalidOperationException("Invalid action type.");
+                    throw new InvalidOperationException("Invalid report action.");
             }
 
+            // Cập nhật trạng thái
             report.Status = "Resolved";
 
+            // Lưu thông tin đã xử lý
             var solved = new PostReportSolved
             {
                 PostReportId = report.PostReportId,
                 AdminId = adminId,
-                AffectedUserId = report.TargetUserId,
+                AffectedUserId = report.TargetUserId ?? report.ReporterId,
                 AffectedPostId = dto.AffectedPostId,
                 AffectedPostType = dto.AffectedPostType,
                 ActionTaken = dto.ActionTaken,
@@ -89,11 +92,13 @@ namespace PTJ_Service.Implementations.Admin
             };
         }
 
-        //  Ẩn bài đăng (DeletePost → Hidden)
+
+        // CASE 1️⃣: GỠ HOẶC ẨN BÀI ĐĂNG
+       
         private async Task HandleDeletePostAsync(AdminResolveReportDto dto, PostReport report)
         {
-            if (dto.AffectedPostId == null || string.IsNullOrEmpty(dto.AffectedPostType))
-                throw new InvalidOperationException("Missing post information.");
+            if (dto.AffectedPostId == null || dto.AffectedPostType == null)
+                throw new InvalidOperationException("Missing post info.");
 
             if (dto.AffectedPostType == "EmployerPost")
             {
@@ -103,13 +108,18 @@ namespace PTJ_Service.Implementations.Admin
                     post.Status = "Hidden";
                     post.UpdatedAt = DateTime.UtcNow;
 
-                    await _noti.SendNotificationAsync(
-                        post.UserId,
-                        "Bài đăng bị ẩn",
-                        "Bài đăng của bạn đã bị ẩn do vi phạm chính sách nội dung.",
-                        "PostHidden",
-                        post.EmployerPostId
-                    );
+                    //  SEND NOTIFICATION
+                    await _noti.SendAsync(new CreateNotificationDto
+                    {
+                        UserId = post.UserId,
+                        NotificationType = "PostRemoved",
+                        RelatedItemId = post.EmployerPostId,
+                        Data = new()
+                        {
+                            { "PostTitle", post.Title },
+                            { "Reason", dto.Reason ?? "" }
+                        }
+                    });
                 }
             }
             else if (dto.AffectedPostType == "JobSeekerPost")
@@ -120,47 +130,56 @@ namespace PTJ_Service.Implementations.Admin
                     post.Status = "Hidden";
                     post.UpdatedAt = DateTime.UtcNow;
 
-                    await _noti.SendNotificationAsync(
-                        post.UserId,
-                        "Bài viết bị ẩn",
-                        "Bài viết giới thiệu bản thân của bạn đã bị ẩn do vi phạm quy định.",
-                        "PostHidden",
-                        post.JobSeekerPostId
-                    );
+                    await _noti.SendAsync(new CreateNotificationDto
+                    {
+                        UserId = post.UserId,
+                        NotificationType = "PostRemoved",
+                        RelatedItemId = post.JobSeekerPostId,
+                        Data = new()
+                        {
+                            { "PostTitle", post.Title },
+                            { "Reason", dto.Reason ?? "" }
+                        }
+                    });
                 }
             }
-            else
-            {
-                throw new InvalidOperationException("Invalid post type.");
-            }
         }
 
-        //  Gửi cảnh báo
+
+        
+        // CASE 2️⃣: CẢNH CÁO USER
+        
         private async Task HandleWarnAsync(AdminResolveReportDto dto, PostReport report)
         {
-            int? targetUserId = report.TargetUserId ?? report.ReporterId;
-            if (targetUserId.HasValue)
+            int userId = report.TargetUserId ?? report.ReporterId;
+
+            await _noti.SendAsync(new CreateNotificationDto
             {
-                await _noti.SendNotificationAsync(
-                    targetUserId.Value,
-                    "Cảnh báo nội dung bài đăng",
-                    "Bài đăng của bạn bị cảnh báo, vui lòng chỉnh sửa nội dung để tránh vi phạm.",
-                    "PostWarning",
-                    dto.AffectedPostId
-                );
-            }
+                UserId = userId,
+                NotificationType = "UserWarned",
+                RelatedItemId = report.PostReportId,
+                Data = new()
+                {
+                    { "Reason", dto.Reason ?? "No reason specified" }
+                }
+            });
         }
 
-        //  Bỏ qua report
+       
+        // CASE 3️⃣: BỎ QUA REPORT
+       
         private async Task HandleIgnoreAsync(PostReport report)
         {
-            await _noti.SendNotificationAsync(
-                report.ReporterId,
-                "Báo cáo đã được xem xét",
-                "Báo cáo của bạn đã được xem xét, không phát hiện vi phạm.",
-                "ReportIgnored",
-                report.PostReportId
-            );
+            await _noti.SendAsync(new CreateNotificationDto
+            {
+                UserId = report.ReporterId,
+                NotificationType = "ReportIgnored",
+                RelatedItemId = report.PostReportId,
+                Data = new()
+                {
+                    { "Reason", "Report reviewed, no issues found." }
+                }
+            });
         }
     }
 }

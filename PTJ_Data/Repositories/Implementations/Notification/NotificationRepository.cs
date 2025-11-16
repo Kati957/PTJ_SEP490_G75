@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.Models;
 
@@ -10,24 +7,50 @@ namespace PTJ_Data.Repositories.Implementations
     public class NotificationRepository : INotificationRepository
     {
         private readonly JobMatchingDbContext _db;
-        public NotificationRepository(JobMatchingDbContext db) => _db = db;
 
-        public async Task<IEnumerable<Notification>> GetByUserIdAsync(int userId)
+        public NotificationRepository(JobMatchingDbContext db)
         {
-            return await _db.Notifications
-                .Where(n => n.UserId == userId)
-                .OrderByDescending(n => n.CreatedAt)
-                .ToListAsync();
+            _db = db;
         }
 
-        public Task<Notification?> GetByIdAsync(int id)
-            => _db.Notifications.FirstOrDefaultAsync(n => n.NotificationId == id);
-
-        public async Task AddAsync(Notification notification)
+        public async Task<NotificationTemplate?> GetTemplateAsync(string type)
         {
-            await _db.Notifications.AddAsync(notification);
+            return await _db.NotificationTemplates
+                .FirstOrDefaultAsync(t => t.NotificationType == type);
         }
 
-        public Task SaveChangesAsync() => _db.SaveChangesAsync();
+        public async Task<int> CreateAsync(Notification entity)
+        {
+            _db.Notifications.Add(entity);
+            await _db.SaveChangesAsync();
+            return entity.NotificationId;
+        }
+
+        public async Task<IEnumerable<Notification>> GetUserNotificationsAsync(int userId, bool? isRead = null)
+        {
+            var query = _db.Notifications
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .AsQueryable();
+
+            if (isRead.HasValue)
+                query = query.Where(x => x.IsRead == isRead.Value);
+
+            return await query.ToListAsync();
+        }
+
+        public async Task<bool> MarkAsReadAsync(int notificationId, int userId)
+        {
+            var noti = await _db.Notifications
+                .FirstOrDefaultAsync(x => x.NotificationId == notificationId && x.UserId == userId);
+
+            if (noti == null) return false;
+
+            noti.IsRead = true;
+            noti.UpdatedAt = DateTime.Now;
+
+            await _db.SaveChangesAsync();
+            return true;
+        }
     }
 }

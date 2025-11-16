@@ -35,5 +35,7 @@ public partial class EmployerProfile
 
     public int WardId { get; set; }
 
+    public string? FullLocation { get; set; }
+
     public virtual User User { get; set; } = null!;
 }

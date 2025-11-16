@@ -43,7 +43,6 @@ using CloudinaryDotNet;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Models.Models;
-using PTJ_Service.AiService;
 using PTJ_Service.Implementations.Admin;
 using PTJ_Service.Interfaces.Admin;
 using PTJ_Service.Admin.Implementations;
@@ -65,10 +64,9 @@ using PTJ_Data.Repositories.Implementations.Ratings;
 using PTJ_Data.Repositories.Interfaces.Ratings;
 using PTJ_Service.RatingService.Implementations;
 using PTJ_Service.RatingService.Interfaces;
-using PTJ_Service.Interfaces;
-using PTJ_Service.Implementations;
 using PTJ_Data.Repositories.Implementations.NewsPost;
 using PTJ_Service.JobSeekerPostService.Implementations;
+using PTJ_Service.Hubs;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -196,6 +194,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             };
     });
 
+// 4️⃣ SIGNALR
+builder.Services.AddSignalR();
+ 
 // 4️⃣ CẤU HÌNH CORS
 
 builder.Services.AddCors(options =>
@@ -241,11 +242,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     }
 
+
 app.UseHttpsRedirection();
 app.UseCors("AllowLocalhost");   // Phải đặt trước Authentication
 app.UseAuthentication();
 app.UseAuthorization();
-
+// SignalR Hub Registration
+app.MapHub<NotificationHub>("/hubs/notification");
 app.MapControllers();
 
 app.Run();

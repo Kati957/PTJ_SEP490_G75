@@ -58,5 +58,32 @@ namespace PTJ_Data.Repositories.Implementations
                 r.CreatedAt >= since &&
                 r.Status == "Pending");
         }
+
+        //  NOTIFICATION SUPPORT (NEW)
+        public async Task<string?> GetEmployerPostTitleAsync(int employerPostId)
+        {
+            return await _db.EmployerPosts
+                .Where(p => p.EmployerPostId == employerPostId)
+                .Select(p => p.Title)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<string?> GetJobSeekerPostTitleAsync(int jobSeekerPostId)
+        {
+            return await _db.JobSeekerPosts
+                .Where(p => p.JobSeekerPostId == jobSeekerPostId)
+                .Select(p => p.Title)
+                .FirstOrDefaultAsync();
+        }
+       public async Task<int> GetAdminUserIdAsync()
+        {
+            return await _db.Users
+                .Where(u => u.IsActive && u.Roles.Any(r => r.RoleId == 1))
+                .Select(u => u.UserId)
+                .FirstOrDefaultAsync();
+        }
+
     }
+
 }
+
