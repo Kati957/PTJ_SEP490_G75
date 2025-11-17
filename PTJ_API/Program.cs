@@ -67,6 +67,9 @@ using PTJ_Service.RatingService.Interfaces;
 using PTJ_Data.Repositories.Implementations.NewsPost;
 using PTJ_Service.JobSeekerPostService.Implementations;
 using PTJ_Service.Hubs;
+using PTJ_Data.Repositories.Implementations.Home;
+using PTJ_Data.Repositories.Interfaces.Home;
+using PTJ_Service.HomeService;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -144,8 +147,13 @@ builder.Services.AddHttpClient<VnPostLocationService>();
 builder.Services.AddScoped<LocationDisplayService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>();
+builder.Services.AddScoped<IHomeService, HomeService>();
+builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
+
 
 // Repository
+builder.Services.AddScoped<IAdminStatisticsRepository, AdminStatisticsRepository>();
+builder.Services.AddScoped<IHomeRepository, HomeRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
 builder.Services.AddScoped<IAdminSystemReportRepository, AdminSystemReportRepository>();

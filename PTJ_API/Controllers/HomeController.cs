@@ -20,5 +20,11 @@ namespace PTJ_API.Controllers
             var posts = await _homeService.GetLatestPostsAsync(keyword, page, pageSize);
             return Ok(posts);
         }
+        [HttpGet("statistics")]
+        public async Task<IActionResult> GetHomeStatistics()
+        {
+            var stats = await _homeService.GetHomeStatisticsAsync();
+            return Ok(stats);
+        }
     }
 }
