@@ -52,6 +52,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 dto.DistrictId,
                 dto.WardId
             );
+
+            // GỘP ĐỊA CHỈ CHI TIẾT
+            if (!string.IsNullOrWhiteSpace(dto.DetailAddress))
+                {
+                fullLocation = $"{dto.DetailAddress}, {fullLocation}";
+                }
+
             // 🧱 Tạo bài đăng mới
             var post = new EmployerPostModel
                 {
@@ -285,6 +292,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 dto.DistrictId,
                 dto.WardId
             );
+
+            if (!string.IsNullOrWhiteSpace(dto.DetailAddress))
+                {
+                fullLocation = $"{dto.DetailAddress}, {fullLocation}";
+                }
+
 
             post.Title = dto.Title;
             post.Description = dto.Description;
