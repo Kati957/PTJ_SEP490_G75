@@ -159,9 +159,13 @@ public sealed class AuthService : IAuthService
                 DisplayName = dto.DisplayName ?? user.Username,
                 AvatarUrl = DefaultAvatar,
                 AvatarPublicId = DefaultPublicId,
-                ContactPhone = dto.PhoneNumber,
-                ContactEmail = dto.Email,
+                ContactPhone = dto.ContactPhone,
+                ContactEmail = null,
                 Website = dto.Website,
+                ProvinceId = 0,
+                DistrictId = 0,
+                WardId = 0,
+                FullLocation = null,
                 IsAvatarHidden = false,
                 UpdatedAt = DateTime.UtcNow
             });

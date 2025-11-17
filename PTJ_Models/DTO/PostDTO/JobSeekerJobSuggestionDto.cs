@@ -1,7 +1,7 @@
 ﻿namespace PTJ_Models.DTO.PostDTO
-    {
+{
     public class JobSeekerJobSuggestionDto
-        {
+    {
         public int EmployerPostId { get; set; }
         public int EmployerUserId { get; set; }
 
@@ -26,5 +26,5 @@
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
-        }
     }
+}

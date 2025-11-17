@@ -624,21 +624,6 @@ public partial class JobMatchingDbContext : DbContext
                 .HasColumnType("datetime");
         });
 
-        modelBuilder.Entity<NotificationTemplate>(entity =>
-        {
-            entity.HasKey(e => e.TemplateId);
-
-            entity.Property(e => e.TemplateId).HasColumnName("TemplateID");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.NotificationType).HasMaxLength(50);
-            entity.Property(e => e.TitleTemplate).HasMaxLength(200);
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-        });
-
         modelBuilder.Entity<PasswordResetToken>(entity =>
         {
             entity.HasKey(e => e.TokenId);
@@ -837,7 +822,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasIndex(e => e.Username, "UQ_Users_Username").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
-            entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -846,9 +830,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.LastLogin).HasColumnType("datetime");
             entity.Property(e => e.LockoutEnd).HasColumnType("datetime");
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
-            entity.Property(e => e.PhoneNumber)
-                .HasMaxLength(20)
-                .IsUnicode(false);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");

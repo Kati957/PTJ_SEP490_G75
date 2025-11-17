@@ -15,7 +15,7 @@ using System.Text;
 using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
 
 namespace PTJ_Service.JobSeekerPostService.Implementations
-    {
+{
     public class JobSeekerPostService : IJobSeekerPostService
         {
         private readonly IJobSeekerPostRepository _repo;

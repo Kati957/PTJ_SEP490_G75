@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
 namespace PTJ_Models.DTO.PostDTO
-    {
+{
     public class JobSeekerPostDto
-        {
+    {
         public int UserID { get; set; }
         [Required(ErrorMessage = "Tiêu đề không được để trống.")]
         [StringLength(120, MinimumLength = 5, ErrorMessage = "Tiêu đề phải từ 5–120 ký tự.")]
@@ -49,11 +49,11 @@ namespace PTJ_Models.DTO.PostDTO
         [Range(1, int.MaxValue, ErrorMessage = "SelectedCvId không hợp lệ.")]
         public int? SelectedCvId { get; set; }
 
-        }
+    }
 
     public class JobSeekerPostResultDto
-        {
+    {
         public JobSeekerPostDtoOut Post { get; set; } = new();
         public List<AIResultDto> SuggestedJobs { get; set; } = new();
-        }
     }
+}
