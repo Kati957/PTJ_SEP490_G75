@@ -42,6 +42,10 @@ namespace PTJ_Models.DTO.PostDTO
         [Range(1, int.MaxValue, ErrorMessage = "WardId không hợp lệ.")]
         public int WardId { get; set; }
 
+        [Required(ErrorMessage = "Địa chỉ chi tiết không được để trống.")]
+        public string? DetailAddress { get; set; }
+
+
         [Range(1, int.MaxValue, ErrorMessage = "CategoryID không hợp lệ.")]
         public int? CategoryID { get; set; }
 
