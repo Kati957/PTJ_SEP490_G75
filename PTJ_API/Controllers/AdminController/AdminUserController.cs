@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Service.Admin.Interfaces;
+using PTJ_Models.DTO.Admin;
+using System.Security.Claims;
 
 namespace PTJ_API.Controllers.Admin
 {
@@ -12,17 +14,21 @@ namespace PTJ_API.Controllers.Admin
         private readonly IAdminUserService _svc;
         public AdminUserController(IAdminUserService svc) => _svc = svc;
 
+        // 🔥 Lấy AdminId từ JWT
+        private int AdminId =>
+            int.Parse(User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? throw new Exception("Token missing userId"));
+
         [HttpGet]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetAllUsers(
+        public async Task<IActionResult> GetUsers(
             [FromQuery] string? role = null,
             [FromQuery] bool? isActive = null,
             [FromQuery] bool? isVerified = null,
-            [FromQuery] string? keyword = null)
-        {
-            var data = await _svc.GetAllUsersAsync(role, isActive, isVerified, keyword);
-            return Ok(data);
-        }
+            [FromQuery] string? keyword = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+            => Ok(await _svc.GetUsersAsync(role, isActive, isVerified, keyword, page, pageSize));
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetUserDetail(int id)
@@ -34,14 +40,25 @@ namespace PTJ_API.Controllers.Admin
         [HttpPost("{id:int}/toggle-active")]
         public async Task<IActionResult> ToggleActive(int id)
         {
-            await _svc.ToggleUserActiveAsync(id);
+            await _svc.ToggleActiveAsync(id);
             return Ok(new { message = "User active toggled successfully." });
         }
-        [HttpGet("full")]
-        public async Task<IActionResult> GetAllUserFull()
+
+        //  NEW: Admin khóa user + nhập lý do + gửi thông báo
+        [HttpPost("{id:int}/ban")]
+        public async Task<IActionResult> BanUser(int id, [FromBody] BanUserDto dto)
         {
-            var data = await _svc.GetAllUserFullAsync();
-            return Ok(data);
+            if (string.IsNullOrWhiteSpace(dto.Reason))
+                return BadRequest(new { message = "Reason is required." });
+
+            await _svc.BanUserAsync(id, dto.Reason, AdminId);
+
+            return Ok(new
+            {
+                message = "User has been banned and notified.",
+                userId = id,
+                reason = dto.Reason
+            });
         }
     }
 }

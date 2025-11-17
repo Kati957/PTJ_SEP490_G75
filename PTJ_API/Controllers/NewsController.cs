@@ -1,40 +1,20 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.News;
 using PTJ_Service.NewsService;
 
 namespace PTJ_API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/news")]
+    [AllowAnonymous]
     public class NewsController : ControllerBase
     {
-        private readonly INewsService _newsService;
+        private readonly INewsService _svc;
+        public NewsController(INewsService svc) => _svc = svc;
 
-        public NewsController(INewsService newsService)
-        {
-            _newsService = newsService;
-        }
-
-        [HttpPost]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> Create([FromForm] NewsCreateDto dto)
-        {
-            try
-            {
-                var news = await _newsService.CreateAsync(dto);
-                return Ok(new
-                {
-                    message = "Tạo bài viết thành công!",
-                    data = news
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-
-        [HttpGet("paged")]
+        // Danh sách public
+        [HttpGet]
         public async Task<IActionResult> GetPaged(
             [FromQuery] string? keyword,
             [FromQuery] string? category,
@@ -43,70 +23,16 @@ namespace PTJ_API.Controllers
             [FromQuery] string sortBy = "CreatedAt",
             [FromQuery] bool desc = true)
         {
-            var (data, total) = await _newsService.GetPagedAsync(keyword, category, page, pageSize, sortBy, desc);
-            return Ok(new
-            {
-                total,
-                data
-            });
+            var (data, total) = await _svc.GetPagedAsync(keyword, category, page, pageSize, sortBy, desc);
+            return Ok(new { total, data });
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        // Chi tiết bài public
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetDetail([FromRoute] int id)
         {
-            var result = await _newsService.GetPagedAsync(null, null, 1, 1, "CreatedAt", true);
-            var newsItem = result.Data.FirstOrDefault(n => n.NewsID == id);
-
-            if (newsItem == null)
-                return NotFound(new { message = "Không tìm thấy bài viết." });
-
-            return Ok(newsItem);
-        }
-
-        [HttpPut("{id}")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> Update(int id, [FromForm] NewsUpdateDto dto)
-        {
-            try
-            {
-                dto.NewsID = id;
-                var updated = await _newsService.UpdateAsync(dto);
-                if (updated == null)
-                    return NotFound(new { message = "Không tìm thấy bài viết để cập nhật." });
-
-                return Ok(new
-                {
-                    message = "Cập nhật bài viết thành công!",
-                    data = updated
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
-        [HttpPut("{id}/toggle-status")]
-        public async Task<IActionResult> ToggleStatus(int id)
-        {
-            var news = await _newsService.ToggleStatusAsync(id);
-            if (news == null)
-                return NotFound(new { message = "Không tìm thấy bài viết." });
-
-            return Ok(new
-            {
-                message = $"Đã chuyển trạng thái bài viết thành {(news.Status == "Active" ? "Active" : "Inactive")}.",
-                data = news
-            });
-        }
-
-        [HttpDelete("{id}/hard-delete")]
-        public async Task<IActionResult> HardDelete(int id)
-        {
-            var result = await _newsService.DeleteAsync(id, isHardDelete: true);
-            if (!result)
-                return NotFound(new { message = "Không tìm thấy bài viết để xóa." });
-
-            return Ok(new { message = "Đã xóa bài viết vĩnh viễn!" });
+            var data = await _svc.GetDetailAsync(id);
+            return data is null ? NotFound() : Ok(data);
         }
     }
 }

@@ -31,6 +31,12 @@ public partial class EmployerPost
 
     public string Status { get; set; } = null!;
 
+    public int ProvinceId { get; set; }
+
+    public int DistrictId { get; set; }
+
+    public int WardId { get; set; }
+
     public virtual Category? Category { get; set; }
 
     public virtual ICollection<EmployerCandidatesList> EmployerCandidatesLists { get; set; } = new List<EmployerCandidatesList>();

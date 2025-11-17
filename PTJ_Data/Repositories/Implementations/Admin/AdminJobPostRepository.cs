@@ -1,190 +1,226 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces.Admin;
-using PTJ_Models;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Implementations.Admin
 {
-        public class AdminJobPostRepository : IAdminJobPostRepository
+    public class AdminJobPostRepository : IAdminJobPostRepository
+    {
+        private readonly JobMatchingDbContext _db;
+        public AdminJobPostRepository(JobMatchingDbContext db) => _db = db;
+
+        // ============================
+        // EMPLOYER POSTS
+        // ============================
+
+        public async Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsPagedAsync(
+            string? status, int? categoryId, string? keyword, int page, int pageSize)
         {
-            private readonly JobMatchingDbContext _db;
-            public AdminJobPostRepository(JobMatchingDbContext db) => _db = db;
+            var q = _db.EmployerPosts
+                .Include(p => p.User)
+                .Include(p => p.User.EmployerProfile)
+                .Include(p => p.Category)
+                .AsQueryable();
 
-            //  Employer Posts 
+            if (!string.IsNullOrEmpty(status))
+                q = q.Where(p => p.Status == status);
 
-            public async Task<IEnumerable<AdminEmployerPostDto>> GetEmployerPostsAsync(string status = null, int? categoryId = null, string keyword = null)
+            if (categoryId.HasValue)
+                q = q.Where(p => p.CategoryId == categoryId);
+
+            if (!string.IsNullOrEmpty(keyword))
             {
-                var q = _db.EmployerPosts
-                    .Include(p => p.User)
-                    .Include(p => p.Category)
-                    .Include(p => p.User.EmployerProfile)
-                    .AsQueryable();
+                var kw = keyword.ToLower();
+                q = q.Where(p =>
+                    p.Title.ToLower().Contains(kw) ||
+                    (p.Description != null && p.Description.ToLower().Contains(kw)) ||
+                    p.User.Email.ToLower().Contains(kw));
+            }
 
-                if (!string.IsNullOrEmpty(status)) q = q.Where(p => p.Status == status);
-                if (categoryId.HasValue) q = q.Where(p => p.CategoryId == categoryId.Value);
-                if (!string.IsNullOrWhiteSpace(keyword))
+            var total = await q.CountAsync();
+            var items = await q
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => new AdminEmployerPostDto
                 {
-                    var kw = keyword.ToLower();
-                    q = q.Where(p =>
-                        p.Title.ToLower().Contains(kw) ||
-                        (p.Description != null && p.Description.ToLower().Contains(kw)) ||
-                        (p.Location != null && p.Location.ToLower().Contains(kw)) ||
-                        p.User.Email.ToLower().Contains(kw));
-                }
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    EmployerEmail = p.User.Email,
+                    EmployerName = p.User.EmployerProfile != null
+                        ? p.User.EmployerProfile.DisplayName
+                        : null,
+                    CategoryName = p.Category != null
+                        ? p.Category.Name
+                        : null,
+                    Status = p.Status,
+                    CreatedAt = p.CreatedAt
+                })
+                .ToListAsync();
 
-                var list = await q
-                    .OrderByDescending(p => p.CreatedAt)
-                    .Select(p => new AdminEmployerPostDto
-                    {
-                        Id = p.EmployerPostId,
-                        Title = p.Title,
-                        EmployerUserId = p.UserId,
-                        EmployerEmail = p.User.Email,
-                        EmployerName = p.User.EmployerProfile != null ? p.User.EmployerProfile.DisplayName : null,
-                        CategoryId = p.CategoryId,
-                        CategoryName = p.Category != null ? p.Category.Name : null,
-                        Status = p.Status,
-                        CreatedAt = p.CreatedAt
-                    })
-                    .ToListAsync();
+            return new PagedResult<AdminEmployerPostDto>(items, total, page, pageSize);
+        }
 
-                return list;
-            }
-
-            public async Task<AdminEmployerPostDetailDto> GetEmployerPostDetailAsync(int id)
-            {
-                return await _db.EmployerPosts
-                    .Include(p => p.User)
-                    .Include(p => p.Category)
-                    .Include(p => p.User.EmployerProfile)
-                    .Where(p => p.EmployerPostId == id)
-                    .Select(p => new AdminEmployerPostDetailDto
-                    {
-                        Id = p.EmployerPostId,
-                        Title = p.Title,
-                        Description = p.Description,
-                        Salary = p.Salary,
-                        Requirements = p.Requirements,
-                        WorkHours = p.WorkHours,
-                        Location = p.Location,
-                        PhoneContact = p.PhoneContact,
-                        EmployerUserId = p.UserId,
-                        EmployerEmail = p.User.Email,
-                        EmployerName = p.User.EmployerProfile != null ? p.User.EmployerProfile.DisplayName : null,
-                        CategoryId = p.CategoryId,
-                        CategoryName = p.Category != null ? p.Category.Name : null,
-                        Status = p.Status,
-                        CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt
-                    })
-                    .FirstOrDefaultAsync();
-            }
-
-            public async Task<bool> ToggleEmployerPostBlockedAsync(int id)
-            {
-                var post = await _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == id);
-                if (post == null) return false;
-
-                post.Status = post.Status == "Blocked" ? "Active" : "Blocked";
-                post.UpdatedAt = System.DateTime.UtcNow;
-                await _db.SaveChangesAsync();
-                return true;
-            }
-
-            public Task<EmployerPost> GetEmployerPostEntityAsync(int id)
-                => _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == id);
-
-            // ================= JobSeeker Posts =================
-
-            public async Task<IEnumerable<AdminJobSeekerPostDto>> GetJobSeekerPostsAsync(string status = null, int? categoryId = null, string keyword = null)
-            {
-                var q = _db.JobSeekerPosts
-                    .Include(p => p.User)
-                    .Include(p => p.Category)
-                    .Include(p => p.User.JobSeekerProfile)
-                    .AsQueryable();
-
-                if (!string.IsNullOrEmpty(status)) q = q.Where(p => p.Status == status);
-                if (categoryId.HasValue) q = q.Where(p => p.CategoryId == categoryId.Value);
-                if (!string.IsNullOrWhiteSpace(keyword))
+        public async Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id)
+        {
+            return await _db.EmployerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
+                .Include(p => p.User.EmployerProfile)
+                .Where(p => p.EmployerPostId == id)
+                .Select(p => new AdminEmployerPostDetailDto
                 {
-                    var kw = keyword.ToLower();
-                    q = q.Where(p =>
-                        p.Title.ToLower().Contains(kw) ||
-                        (p.Description != null && p.Description.ToLower().Contains(kw)) ||
-                        (p.PreferredLocation != null && p.PreferredLocation.ToLower().Contains(kw)) ||
-                        p.User.Email.ToLower().Contains(kw));
-                }
+                    EmployerPostId = p.EmployerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
 
-                var list = await q
-                    .OrderByDescending(p => p.CreatedAt)
-                    .Select(p => new AdminJobSeekerPostDto
-                    {
-                        Id = p.JobSeekerPostId,
-                        Title = p.Title,
-                        UserId = p.UserId,
-                        UserEmail = p.User.Email,
-                        FullName = p.User.JobSeekerProfile != null ? p.User.JobSeekerProfile.FullName : null,
-                        CategoryId = p.CategoryId,
-                        CategoryName = p.Category != null ? p.Category.Name : null,
-                        Gender = p.Gender,
-                        PreferredLocation = p.PreferredLocation,
-                        PreferredWorkHours = p.PreferredWorkHours,
-                        Status = p.Status,
-                        CreatedAt = p.CreatedAt
-                    })
-                    .ToListAsync();
+                    ProvinceId = p.ProvinceId,
+                    DistrictId = p.DistrictId,
+                    WardId = p.WardId,
 
-                return list;
-            }
+                    PhoneContact = p.PhoneContact,
+                    EmployerEmail = p.User.Email,
+                    EmployerName = p.User.EmployerProfile != null
+                        ? p.User.EmployerProfile.DisplayName
+                        : p.User.Username,
 
-            public async Task<AdminJobSeekerPostDetailDto> GetJobSeekerPostDetailAsync(int id)
+                    CategoryName = p.Category != null ? p.Category.Name : null,
+                    Status = p.Status,
+                    CreatedAt = p.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> ToggleEmployerPostBlockedAsync(int id)
+        {
+            var post = await _db.EmployerPosts
+                .FirstOrDefaultAsync(p => p.EmployerPostId == id);
+
+            if (post == null) return false;
+
+            post.Status = post.Status == "Blocked" ? "Active" : "Blocked";
+            post.UpdatedAt = System.DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
+        // ⭐⭐ NEW — Lấy EmployerPost để gửi Notification ⭐⭐
+        public async Task<EmployerPost?> GetEmployerPostByIdAsync(int id)
+        {
+            return await _db.EmployerPosts
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(p => p.EmployerPostId == id);
+        }
+
+        // ============================
+        // JOB SEEKER POSTS
+        // ============================
+
+        public async Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsPagedAsync(
+            string? status, int? categoryId, string? keyword, int page, int pageSize)
+        {
+            var q = _db.JobSeekerPosts
+                .Include(p => p.User)
+                .Include(p => p.User.JobSeekerProfile)
+                .Include(p => p.Category)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(status))
+                q = q.Where(p => p.Status == status);
+
+            if (categoryId.HasValue)
+                q = q.Where(p => p.CategoryId == categoryId);
+
+            if (!string.IsNullOrEmpty(keyword))
             {
-                return await _db.JobSeekerPosts
-                    .Include(p => p.User)
-                    .Include(p => p.Category)
-                    .Include(p => p.User.JobSeekerProfile)
-                    .Where(p => p.JobSeekerPostId == id)
-                    .Select(p => new AdminJobSeekerPostDetailDto
-                    {
-                        Id = p.JobSeekerPostId,
-                        Title = p.Title,
-                        Description = p.Description,
-                        UserId = p.UserId,
-                        UserEmail = p.User.Email,
-                        FullName = p.User.JobSeekerProfile != null ? p.User.JobSeekerProfile.FullName : null,
-                        CategoryId = p.CategoryId,
-                        CategoryName = p.Category != null ? p.Category.Name : null,
-                        Gender = p.Gender,
-                        PreferredLocation = p.PreferredLocation,
-                        PreferredWorkHours = p.PreferredWorkHours,
-                        Status = p.Status,
-                        CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt
-                    })
-                    .FirstOrDefaultAsync();
+                var kw = keyword.ToLower();
+                q = q.Where(p =>
+                    p.Title.ToLower().Contains(kw) ||
+                    (p.Description != null && p.Description.ToLower().Contains(kw)) ||
+                    p.User.Email.ToLower().Contains(kw));
             }
 
-            public async Task<bool> ToggleJobSeekerPostArchivedAsync(int id)
-            {
-                var post = await _db.JobSeekerPosts.FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
-                if (post == null) return false;
+            var total = await q.CountAsync();
+            var items = await q
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(p => new AdminJobSeekerPostDto
+                {
+                    JobSeekerPostId = p.JobSeekerPostId,
+                    Title = p.Title,
+                    JobSeekerEmail = p.User.Email,
+                    FullName = p.User.JobSeekerProfile != null
+                        ? p.User.JobSeekerProfile.FullName
+                        : null,
+                    CategoryName = p.Category != null
+                        ? p.Category.Name
+                        : null,
+                    Status = p.Status,
+                    CreatedAt = p.CreatedAt
+                })
+                .ToListAsync();
 
-                post.Status = post.Status == "Archived" ? "Active" : "Archived";
-                post.UpdatedAt = System.DateTime.UtcNow;
-                await _db.SaveChangesAsync();
-                return true;
-            }
+            return new PagedResult<AdminJobSeekerPostDto>(items, total, page, pageSize);
+        }
 
-            public Task<JobSeekerPost> GetJobSeekerPostEntityAsync(int id)
-                => _db.JobSeekerPosts.FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
+        public async Task<AdminJobSeekerPostDetailDto?> GetJobSeekerPostDetailAsync(int id)
+        {
+            return await _db.JobSeekerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
+                .Include(p => p.User.JobSeekerProfile)
+                .Where(p => p.JobSeekerPostId == id)
+                .Select(p => new AdminJobSeekerPostDetailDto
+                {
+                    JobSeekerPostId = p.JobSeekerPostId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    JobSeekerEmail = p.User.Email,
+                    FullName = p.User.JobSeekerProfile != null
+                        ? p.User.JobSeekerProfile.FullName
+                        : null,
+                    CategoryName = p.Category != null
+                        ? p.Category.Name
+                        : null,
 
-            public Task SaveChangesAsync() => _db.SaveChangesAsync();
+                    ProvinceId = p.ProvinceId,
+                    DistrictId = p.DistrictId,
+                    WardId = p.WardId,
+
+                    PreferredWorkHours = p.PreferredWorkHours,
+                    Gender = p.Gender,
+                    Status = p.Status,
+                    CreatedAt = p.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> ToggleJobSeekerPostArchivedAsync(int id)
+        {
+            var post = await _db.JobSeekerPosts
+                .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
+
+            if (post == null) return false;
+
+            post.Status = post.Status == "Archived" ? "Active" : "Archived";
+            post.UpdatedAt = System.DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
+        // ⭐⭐ NEW — Lấy JobSeekerPost để gửi Notification ⭐⭐
+        public async Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int id)
+        {
+            return await _db.JobSeekerPosts
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
         }
     }
+}

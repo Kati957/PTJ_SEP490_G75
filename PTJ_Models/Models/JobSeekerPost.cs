@@ -31,6 +31,14 @@ public partial class JobSeekerPost
 
     public string Status { get; set; } = null!;
 
+    public int? SelectedCvId { get; set; }
+
+    public int ProvinceId { get; set; }
+
+    public int DistrictId { get; set; }
+
+    public int WardId { get; set; }
+
     public virtual Category? Category { get; set; }
 
     public virtual ICollection<PostReport> PostReports { get; set; } = new List<PostReport>();

@@ -2,7 +2,6 @@
 
 namespace PTJ_Models.DTO.ApplicationDTO
     {
-
     public class JobApplicationUpdateDto
         {
         public string Status { get; set; } = string.Empty;

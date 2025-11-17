@@ -2,31 +2,42 @@
 
 namespace PTJ_Models.DTO.ApplicationDTO
     {
-   
     public class JobApplicationResultDto
         {
-     
+        // =========================================================
+        // THÔNG TIN ỨNG VIÊN
+        // =========================================================
         public int CandidateListId { get; set; }
         public int JobSeekerId { get; set; }
         public string Username { get; set; } = string.Empty;
 
-     
+        // 🟡 Giữ lại tạm thời cho tương thích (Profile cũ)
         public string? FullName { get; set; }
         public string? Gender { get; set; }
         public int? BirthYear { get; set; }
         public string? ProfilePicture { get; set; }
+
+        // =========================================================
+        // THÔNG TIN CV ỨNG VIÊN
+        // =========================================================
+        public int? CvId { get; set; }
+        public string? CvTitle { get; set; }
+        public string? SkillSummary { get; set; }
         public string? Skills { get; set; }
-        public string? Experience { get; set; }
-        public string? Education { get; set; }
         public string? PreferredJobType { get; set; }
         public string? PreferredLocation { get; set; }
+        public string? ContactPhone { get; set; }
 
-     
+        // =========================================================
+        // TRẠNG THÁI & THỜI GIAN
+        // =========================================================
         public string Status { get; set; } = "Pending";
         public DateTime ApplicationDate { get; set; }
         public string? Notes { get; set; }
 
-  
+        // =========================================================
+        // THÔNG TIN BÀI ĐĂNG TUYỂN
+        // =========================================================
         public int EmployerPostId { get; set; }
         public string? PostTitle { get; set; }
         public string? CategoryName { get; set; }

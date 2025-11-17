@@ -2,18 +2,19 @@
 using Newtonsoft.Json;
 using PTJ_Data;
 using PTJ_Data.Repositories.Interfaces;
+using PTJ_Data.Repositories.Interfaces.JPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
-using PTJ_Service.AiService.Interfaces;
+using PTJ_Service.AiService;
+using PTJ_Service.JobSeekerPostService;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
 using PTJ_Service.LocationService;
 using System.Security.Cryptography;
 using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
 
-namespace PTJ_Service.JobSeekerPostService.cs.Implementations
+namespace PTJ_Service.JobSeekerPostService.Implementations
     {
     public class JobSeekerPostService : IJobSeekerPostService
         {
@@ -21,24 +22,63 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
         private readonly JobMatchingDbContext _db;
         private readonly IAIService _ai;
         private readonly OpenMapService _map;
-
+        private readonly LocationDisplayService _locDisplay;
         public JobSeekerPostService(
             IJobSeekerPostRepository repo,
             JobMatchingDbContext db,
-            //IAIService ai,
-            OpenMapService map)
+            IAIService ai,
+            OpenMapService map,
+            LocationDisplayService locDisplay)
             {
             _repo = repo;
             _db = db;
-            //_ai = ai;
+            _ai = ai;
             _map = map;
+            _locDisplay = locDisplay;
             }
 
 
         // CREATE
-
         public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostDto dto)
             {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+            if (dto.UserID <= 0)
+                throw new Exception("Missing UserID.");
+
+            // =========================================================
+            // 0) VALIDATE SelectedCvId: phải thuộc user + chưa dùng ở post khác
+            // =========================================================
+            JobSeekerCv? selectedCv = null;
+
+            if (dto.SelectedCvId.HasValue)
+                {
+                // CV phải thuộc về user này
+                selectedCv = await _db.JobSeekerCvs
+                    .FirstOrDefaultAsync(c => c.Cvid == dto.SelectedCvId.Value &&
+                                              c.JobSeekerId == dto.UserID);
+
+                if (selectedCv == null)
+                    throw new Exception("CV không hợp lệ hoặc không thuộc về người dùng.");
+
+                // CV này đã gắn vào bài đăng nào khác chưa?
+                bool cvUsed = await _db.JobSeekerPosts
+                    .AnyAsync(x =>
+                        x.UserId == dto.UserID &&
+                        x.SelectedCvId == dto.SelectedCvId &&
+                        x.Status != "Deleted");
+
+                if (cvUsed)
+                    throw new Exception("CV này đã được sử dụng cho một bài đăng khác. Vui lòng chọn CV khác hoặc sửa bài đăng cũ.");
+                }
+
+            string fullLocation = await _locDisplay.BuildAddressAsync(
+                dto.ProvinceId,
+                dto.DistrictId,
+                dto.WardId
+            );
+
+            // 1) Create Post
             var post = new JobSeekerPostModel
                 {
                 UserId = dto.UserID,
@@ -46,105 +86,167 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 Description = dto.Description,
                 Age = dto.Age,
                 Gender = dto.Gender,
-                PreferredWorkHours = dto.PreferredWorkHours,
-                PreferredLocation = dto.PreferredLocation,
+                PreferredWorkHours = $"{dto.PreferredWorkHourStart} - {dto.PreferredWorkHourEnd}",
+
+                PreferredLocation = fullLocation,
+
+                ProvinceId = dto.ProvinceId,
+                DistrictId = dto.DistrictId,
+                WardId = dto.WardId,
+    
                 CategoryId = dto.CategoryID,
                 PhoneContact = dto.PhoneContact,
+                SelectedCvId = dto.SelectedCvId,   // ✅ GẮN CV VÀO BÀI ĐĂNG
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
                 Status = "Active"
                 };
 
             await _repo.AddAsync(post);
-
-            //  FIX: cần SaveChanges để có ID thật (tránh JobSeekerPostId=0)
             await _db.SaveChangesAsync();
 
-            //  Tạo embedding vector
-            //var (vector, hash) = await EnsureEmbeddingAsync(
-            //    "JobSeekerPost",
-            //    post.JobSeekerPostId,
-            //    $"{dto.Title}. {dto.Description}. Giờ làm: {dto.PreferredWorkHours}."
-            //);
+            var freshPost = await _db.JobSeekerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.JobSeekerPostId == post.JobSeekerPostId);
 
-            ////  Upsert vector vào Pinecone / vector DB
-            //await _ai.UpsertVectorAsync(
-            //    ns: "job_seeker_posts",
-            //    id: $"JobSeekerPost:{post.JobSeekerPostId}",
-            //    vector: vector,
-            //    metadata: new
-            //        {
-            //        title = dto.Title ?? "",
-            //        location = dto.PreferredLocation ?? "",
-            //        categoryId = dto.CategoryID ?? 0,
-            //        postId = post.JobSeekerPostId
-            //        });
+            if (freshPost == null)
+                throw new Exception("Cannot reload post.");
 
-            ////  Truy vấn gợi ý việc làm tương tự
-            //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
+            // =========================================================
+            // 2) SELECTED CV → TẠO EMBEDDING CV (nếu có)
+            // =========================================================
+            float[] cvEmbedding = Array.Empty<float>();
 
-            //  Nếu chưa có job nào để match (DB còn trống)
-            //if (!matches.Any())
-            //    {
-            //    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
-            //        {
-            //        EntityType = "JobSeekerPost",
-            //        EntityId = post.JobSeekerPostId,
-            //        Lang = "vi",
-            //        CanonicalText = $"{dto.Title}. {dto.Description}. Giờ làm: {dto.PreferredWorkHours}.",
-            //        Hash = hash,
-            //        LastPreparedAt = DateTime.Now
-            //        });
-            //    await _db.SaveChangesAsync();
+            if (selectedCv != null)
+                {
+                string cvText =
+                    $"{selectedCv.Skills}. {selectedCv.SkillSummary}. {selectedCv.PreferredJobType}. {selectedCv.PreferredLocation}";
 
-            //    return new JobSeekerPostResultDto
-            //        {
-            //        Post = await BuildCleanPostDto(post),
-            //        SuggestedJobs = new List<AIResultDto>()
-            //        };
-            //    }
+                cvEmbedding = await _ai.CreateEmbeddingAsync(cvText);
 
-            //  Tính điểm hybrid và lọc theo category
-            //var scored = await ScoreAndFilterJobsAsync(
-            //    matches,
-            //    dto.CategoryID,
-            //    dto.PreferredLocation ?? "",
-            //    dto.Title ?? ""
-            //);
+                _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
+                    {
+                    EntityType = "JobSeekerCV",
+                    EntityId = selectedCv.Cvid,
+                    ContentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(cvText))),
+                    Model = "text-embedding-3-large",
+                    VectorDim = cvEmbedding.Length,
+                    PineconeId = $"JobSeekerCV:{selectedCv.Cvid}",
+                    Status = "OK",
+                    UpdatedAt = DateTime.Now,
+                    VectorData = JsonConvert.SerializeObject(cvEmbedding)
+                    });
 
-            //  Lưu gợi ý top 5 vào bảng AiMatchSuggestions
-            //await UpsertSuggestionsAsync("JobSeekerPost", post.JobSeekerPostId, "EmployerPost", scored, keepTop: 5);
+                await _db.SaveChangesAsync();
+                }
 
-            //  Lấy danh sách job mà seeker đã lưu
-            //var savedIds = await _db.JobSeekerShortlistedJobs
-            //    .Where(x => x.JobSeekerId == post.UserId)
-            //    .Select(x => x.EmployerPostId)
-            //    .ToListAsync();
+            // =========================================================
+            // 3) EMBEDDING CHO JOB SEEKER POST (gồm CV text nếu có)
+            // =========================================================
+            string embedText =
+                $"{freshPost.Title}. {freshPost.Description}. Giờ làm: {freshPost.PreferredWorkHours}.";
 
-            //  Chuẩn hóa danh sách gợi ý trả ra client
-            //var suggestions = scored
-            //    .OrderByDescending(x => x.Score)
-            //    .Take(5)
-            //    .Select(x => new AIResultDto
-            //        {
-            //        Id = $"EmployerPost:{x.Job.EmployerPostId}",
-            //        Score = Math.Round(x.Score * 100, 2),
-            //        ExtraInfo = new
-            //            {
-            //            x.Job.EmployerPostId,
-            //            x.Job.Title,
-            //            x.Job.Location,
-            //            x.Job.WorkHours,
-            //            EmployerName = x.Job.User.Username,
-            //            IsSaved = savedIds.Contains(x.Job.EmployerPostId)
-            //            }
-            //        })
-            //    .ToList();
+            if (selectedCv != null)
+                {
+                embedText += $" | CV: {selectedCv.Skills} {selectedCv.SkillSummary} {selectedCv.PreferredJobType}";
+                }
+
+            var (vector, hash) = await EnsureEmbeddingAsync(
+                "JobSeekerPost",
+                freshPost.JobSeekerPostId,
+                embedText
+            );
+
+            await _ai.UpsertVectorAsync(
+                ns: "job_seeker_posts",
+                id: $"JobSeekerPost:{freshPost.JobSeekerPostId}",
+                vector: vector,
+                metadata: new
+                    {
+                    title = freshPost.Title,
+                    location = freshPost.PreferredLocation,
+                    categoryId = freshPost.CategoryId,
+                    postId = freshPost.JobSeekerPostId
+                    });
+
+            // =========================================================
+            // 4) TÌM JOB MATCHING
+            // =========================================================
+            var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
+
+            if (!matches.Any())
+                {
+                _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
+                    {
+                    EntityType = "JobSeekerPost",
+                    EntityId = freshPost.JobSeekerPostId,
+                    Lang = "vi",
+                    CanonicalText = embedText,
+                    Hash = hash,
+                    LastPreparedAt = DateTime.Now
+                    });
+                await _db.SaveChangesAsync();
+
+                return new JobSeekerPostResultDto
+                    {
+                    Post = await BuildCleanPostDto(freshPost),
+                    SuggestedJobs = new List<AIResultDto>()
+                    };
+                }
+
+            var scored = await ScoreAndFilterJobsAsync(
+                matches,
+                freshPost.CategoryId,
+                freshPost.PreferredLocation ?? "",
+                freshPost.Title,
+                freshPost.UserId,
+                freshPost.SelectedCvId         // ✅ TRUYỀN CV CỦA BÀI ĐĂNG
+            );
+
+            await UpsertSuggestionsAsync(
+                "JobSeekerPost",
+                freshPost.JobSeekerPostId,
+                "EmployerPost",
+                scored,
+                keepTop: 5,
+                selectedCvId: dto.SelectedCvId
+            );
+
+            var savedIds = await _db.JobSeekerShortlistedJobs
+                .Where(x => x.JobSeekerId == freshPost.UserId)
+                .Select(x => x.EmployerPostId)
+                .ToListAsync();
+
+            var suggestions = scored
+                .OrderByDescending(x => x.Score)
+                .Take(5)
+                .Select(x => new AIResultDto
+                    {
+                    Id = $"EmployerPost:{x.Job.EmployerPostId}",
+                    Score = Math.Round(x.Score * 100, 2),
+                    ExtraInfo = new
+                        {
+                        x.Job.EmployerPostId,
+                        x.Job.Title,
+                        x.Job.Description,
+                        x.Job.Requirements,
+                        x.Job.Salary,
+                        x.Job.Location,
+                        x.Job.WorkHours,
+                        x.Job.PhoneContact,
+                        CategoryName = x.Job.Category?.Name,
+                        EmployerName = x.Job.User.Username,
+                        IsSaved = savedIds.Contains(x.Job.EmployerPostId)
+                        }
+                    })
+                .ToList();
 
             return new JobSeekerPostResultDto
                 {
-                Post = await BuildCleanPostDto(post),
-                //SuggestedJobs = suggestions
+                Post = await BuildCleanPostDto(freshPost),
+                SuggestedJobs = suggestions
                 };
             }
 
@@ -163,13 +265,8 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 CategoryName = p.Category?.Name,
                 SeekerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
-                Status = p.Status,
-                Age = p.Age,
-                Gender = p.Gender,
-                PhoneContact = p.PhoneContact,
-                PreferredWorkHours = p.PreferredWorkHours,
-                UserID = p.UserId
-            });
+                Status = p.Status
+                });
             }
 
         public async Task<IEnumerable<JobSeekerPostDtoOut>> GetByUserAsync(int userId)
@@ -200,16 +297,12 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 UserID = post.UserId,
                 Title = post.Title,
                 Description = post.Description,
-                Age = post.Age,
-                Gender = post.Gender,
-                PreferredWorkHours = post.PreferredWorkHours,
                 PreferredLocation = post.PreferredLocation,
                 CategoryName = post.Category?.Name,
                 SeekerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
-                Status = post.Status,
-                PhoneContact = post.PhoneContact
-            };
+                Status = post.Status
+                };
             }
 
 
@@ -221,39 +314,102 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             if (post == null || post.Status == "Deleted")
                 return null;
 
+            // --- VALIDATE SelectedCvId: phải thuộc user + không bị dùng ở post khác ---
+            // Kiểm tra SelectedCvId hợp lệ
+            if (dto.SelectedCvId.HasValue)
+                {
+                // 1. CV phải thuộc user
+                var cv = await _db.JobSeekerCvs
+                    .FirstOrDefaultAsync(c => c.Cvid == dto.SelectedCvId.Value &&
+                                              c.JobSeekerId == post.UserId);
+
+                if (cv == null)
+                    throw new Exception("CV không hợp lệ hoặc không thuộc về người dùng.");
+
+                // 2. CV này có đang được dùng ở bài đăng khác hay không?
+                bool cvUsedByOtherPost = await _db.JobSeekerPosts
+                    .AnyAsync(x =>
+                        x.UserId == post.UserId &&
+                        x.SelectedCvId == dto.SelectedCvId &&
+                        x.JobSeekerPostId != post.JobSeekerPostId &&   // loại trừ chính bài này
+                        x.Status != "Deleted");                        // chỉ tính bài chưa xóa
+
+                if (cvUsedByOtherPost)
+                    throw new Exception("CV này đang được sử dụng ở bài đăng khác. "
+                                        + "Hãy xóa bài đăng kia hoặc chọn CV khác.");
+                }
+
+
             post.Title = dto.Title;
             post.Description = dto.Description;
             post.Age = dto.Age;
             post.Gender = dto.Gender;
-            post.PreferredWorkHours = dto.PreferredWorkHours;
-            post.PreferredLocation = dto.PreferredLocation;
+            post.PreferredWorkHours = $"{dto.PreferredWorkHourStart} - {dto.PreferredWorkHourEnd}";
+
+            //UPDATE 3 TRƯỜNG NÀY
+            post.ProvinceId = dto.ProvinceId;
+            post.DistrictId = dto.DistrictId;
+            post.WardId = dto.WardId;
+
+            // Build lại PreferredLocation
+            post.PreferredLocation = await _locDisplay.BuildAddressAsync(
+                dto.ProvinceId,
+                dto.DistrictId,
+                dto.WardId
+            );
+
             post.CategoryId = dto.CategoryID;
             post.PhoneContact = dto.PhoneContact;
+            post.SelectedCvId = dto.SelectedCvId;
             post.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(post);
 
-            // Cập nhật embedding
-            //var (vector, _) = await EnsureEmbeddingAsync(
-            //    "JobSeekerPost",
-            //    post.JobSeekerPostId,
-            //    $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}."
-            //);
 
-            //await _ai.UpsertVectorAsync(
-            //    ns: "job_seeker_posts",
-            //    id: $"JobSeekerPost:{post.JobSeekerPostId}",
-            //    vector: vector,
-            //    metadata: new
-            //        {
-            //        title = post.Title ?? "",
-            //        location = post.PreferredLocation ?? "",
-            //        categoryId = post.CategoryId ?? 0,
-            //        postId = post.JobSeekerPostId
-            //        });
+            // 🔍 Lấy CV GẮN VỚI BÀI ĐĂNG (không dùng "CV mới nhất của user")
+            JobSeekerCv? selectedCv = null;
+            if (post.SelectedCvId.HasValue)
+                {
+                selectedCv = await _db.JobSeekerCvs
+                    .FirstOrDefaultAsync(c => c.Cvid == post.SelectedCvId.Value &&
+                                              c.JobSeekerId == post.UserId);
+                }
+
+            string cvText = "";
+            if (selectedCv != null)
+                {
+                cvText =
+                    $"Kỹ năng: {selectedCv.Skills}. " +
+                    $"Tóm tắt: {selectedCv.SkillSummary}. " +
+                    $"Công việc mong muốn: {selectedCv.PreferredJobType}. " +
+                    $"Địa điểm mong muốn: {selectedCv.PreferredLocation}. ";
+                }
+
+            string embedText =
+                $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}. {cvText}";
+
+            var (vector, _) = await EnsureEmbeddingAsync(
+                "JobSeekerPost",
+                post.JobSeekerPostId,
+                embedText
+            );
+
+            await _ai.UpsertVectorAsync(
+                ns: "job_seeker_posts",
+                id: $"JobSeekerPost:{post.JobSeekerPostId}",
+                vector: vector,
+                metadata: new
+                    {
+                    title = post.Title ?? "",
+                    location = post.PreferredLocation ?? "",
+                    categoryId = post.CategoryId ?? 0,
+                    postId = post.JobSeekerPostId
+                    });
 
             return await BuildCleanPostDto(post);
             }
+
+
 
 
         // DELETE (Soft)
@@ -281,10 +437,32 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             if (post == null)
                 throw new Exception("Không tìm thấy bài đăng.");
 
+            // 🔍 Lấy CV gắn với bài đăng (SelectedCvId)
+            JobSeekerCv? selectedCv = null;
+            if (post.SelectedCvId.HasValue)
+                {
+                selectedCv = await _db.JobSeekerCvs
+                    .FirstOrDefaultAsync(c => c.Cvid == post.SelectedCvId.Value &&
+                                              c.JobSeekerId == post.UserId);
+                }
+
+            string cvText = "";
+            if (selectedCv != null)
+                {
+                cvText =
+                    $"Kỹ năng: {selectedCv.Skills}. " +
+                    $"Tóm tắt: {selectedCv.SkillSummary}. " +
+                    $"Công việc mong muốn: {selectedCv.PreferredJobType}. " +
+                    $"Địa điểm mong muốn: {selectedCv.PreferredLocation}. ";
+                }
+
+            string embedText =
+                $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}. {cvText}";
+
             var (vector, _) = await EnsureEmbeddingAsync(
                 "JobSeekerPost",
                 post.JobSeekerPostId,
-                $"{post.Title}. {post.Description}. Giờ làm: {post.PreferredWorkHours}."
+                embedText
             );
 
             await _ai.UpsertVectorAsync(
@@ -309,15 +487,24 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                     };
                 }
 
-            var scored = await ScoreAndFilterJobsAsync(matches, post.CategoryId, post.PreferredLocation ?? "", post.Title ?? "");
-            await UpsertSuggestionsAsync("JobSeekerPost", post.JobSeekerPostId, "EmployerPost", scored, keepTop: 5);
+            var scored = await ScoreAndFilterJobsAsync(
+                matches,
+                post.CategoryId,
+                post.PreferredLocation ?? "",
+                post.Title ?? "",
+                post.UserId,
+                post.SelectedCvId       // ✅ DÙNG CV CỦA BÀI
+            );
+
+            await UpsertSuggestionsAsync("JobSeekerPost", post.JobSeekerPostId, "EmployerPost", scored, keepTop: 5, selectedCvId: post.SelectedCvId);
 
             var savedIds = await _db.JobSeekerShortlistedJobs
                 .Where(x => x.JobSeekerId == post.UserId)
                 .Select(x => x.EmployerPostId)
                 .ToListAsync();
 
-            var suggestions = scored.OrderByDescending(x => x.Score)
+            var suggestions = scored
+                .OrderByDescending(x => x.Score)
                 .Take(5)
                 .Select(x => new AIResultDto
                     {
@@ -327,12 +514,16 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                         {
                         x.Job.EmployerPostId,
                         x.Job.Title,
+                        x.Job.Description,
+                        x.Job.Requirements,
+                        x.Job.Salary,
                         x.Job.Location,
                         x.Job.WorkHours,
                         EmployerName = x.Job.User.Username,
                         IsSaved = savedIds.Contains(x.Job.EmployerPostId)
                         }
-                    }).ToList();
+                    })
+                .ToList();
 
             return new JobSeekerPostResultDto
                 {
@@ -342,43 +533,142 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             }
 
 
-        // SCORING (Hybrid)
 
-        private async Task<List<(EmployerPost Job, double Score)>> ScoreAndFilterJobsAsync(
-     List<(string Id, double Score)> matches,
-     int? categoryId,
-     string seekerLocation,
-     string seekerTitle)
+        // SCORING (Hybrid)
+        private async Task<List<(EmployerPost Job, double Score)>>
+    ScoreAndFilterJobsAsync(
+        List<(string Id, double Score)> matches,
+        int? mustMatchCategoryId,
+        string preferredLocation,
+        string seekerTitle,
+        int seekerUserId,
+        int? selectedCvId
+    )
             {
-            //  Đặt tên cho tuple ở đây
-            var list = new List<(EmployerPost Job, double Score)>();
+            var results = new List<(EmployerPost Job, double Score)>();
+
+            // Lấy embedding của CV nếu có
+            float[] cvEmbedding = Array.Empty<float>();
+            JobSeekerCv? cv = null;
+
+            if (selectedCvId.HasValue)
+                {
+                cv = await _db.JobSeekerCvs
+                    .FirstOrDefaultAsync(c => c.Cvid == selectedCvId.Value &&
+                                              c.JobSeekerId == seekerUserId);
+
+                if (cv != null)
+                    {
+                    var embedRecord = await _db.AiEmbeddingStatuses
+                        .FirstOrDefaultAsync(e =>
+                            e.EntityType == "JobSeekerCV" &&
+                            e.EntityId == cv.Cvid);
+
+                    if (embedRecord != null && embedRecord.VectorData != null)
+                        cvEmbedding = JsonConvert.DeserializeObject<float[]>(embedRecord.VectorData);
+                    }
+                }
 
             foreach (var m in matches)
                 {
                 if (!m.Id.StartsWith("EmployerPost:"))
                     continue;
-                if (!int.TryParse(m.Id.Split(':')[1], out var jobId))
+
+                if (!int.TryParse(m.Id.Split(':')[1], out int employerPostId))
                     continue;
 
                 var job = await _db.EmployerPosts
                     .Include(x => x.User)
-                    .FirstOrDefaultAsync(x => x.EmployerPostId == jobId && x.Status == "Active");
+                    .Include(x => x.Category)
+                    .FirstOrDefaultAsync(x => x.EmployerPostId == employerPostId);
 
-                if (job == null)
+                if (job == null || job.Status != "Active")
                     continue;
-                if (categoryId.HasValue && job.CategoryId != categoryId)
+
+                // CATEGORY FILTER
+                if (mustMatchCategoryId.HasValue &&
+                    job.CategoryId != mustMatchCategoryId.Value)
                     continue;
 
-                double score = await ComputeHybridScoreAsync(
-                                m.Score, seekerLocation, job.Location);
+                // LOCATION SCORE
+                double locationScore = await ComputeHybridScoreAsync(
+                    m.Score,
+                    preferredLocation,
+                    job.Location
+                );
 
+                double finalScore = locationScore;
 
-                list.Add((job, score));
+                // === CV BOOST (nếu có) ===
+                if (cv != null && cvEmbedding.Length > 0)
+                    {
+                    float[] jdEmbedding = await _ai.CreateEmbeddingAsync(
+                        $"{job.Title}. {job.Requirements}. {job.Description}"
+                    );
+
+                    if (jdEmbedding.Length == cvEmbedding.Length)
+                        {
+                        double cvCosine = Cosine(cvEmbedding, jdEmbedding);
+                        finalScore += cvCosine * 0.35;
+                        }
+
+                    // === Skill Boost ===
+                    var cvSkills = (cv.Skills ?? "")
+                        .ToLower()
+                        .Split(',', ';', '.', ' ')
+                        .Where(s => s.Length > 1)
+                        .Distinct()
+                        .ToList();
+
+                    var jdReq = (job.Requirements ?? "")
+                        .ToLower()
+                        .Split(',', ';', '.', ' ')
+                        .Where(s => s.Length > 1)
+                        .Distinct()
+                        .ToList();
+
+                    int matched = cvSkills.Count(s => jdReq.Contains(s));
+                    if (cvSkills.Count > 0)
+                        {
+                        double overlap = (double)matched / cvSkills.Count;
+                        finalScore += overlap * 0.25;
+                        }
+                    }
+
+                finalScore = Math.Clamp(finalScore, 0, 1);
+
+                results.Add((job, finalScore));
                 }
 
-            //  Lọc bỏ các job có score quá thấp (ví dụ < 0.4)
-            return list.Where(x => x.Score >= 0.4).ToList();
+            return results;
             }
+
+
+        private double Cosine(float[] a, float[] b)
+            {
+            if (a == null || b == null)
+                return 0;
+            if (a.Length != b.Length)
+                return 0;
+
+            double dot = 0;
+            double magA = 0;
+            double magB = 0;
+
+            for (int i = 0; i < a.Length; i++)
+                {
+                dot += a[i] * b[i];
+                magA += a[i] * a[i];
+                magB += b[i] * b[i];
+                }
+
+            if (magA == 0 || magB == 0)
+                return 0;
+
+            return dot / (Math.Sqrt(magA) * Math.Sqrt(magB));
+            }
+
+
 
 
         private async Task<double> ComputeHybridScoreAsync(
@@ -521,9 +811,17 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                 select new JobSeekerJobSuggestionDto
                     {
                     EmployerPostId = ep.EmployerPostId,
+                    EmployerUserId = ep.UserId,
+
                     Title = ep.Title ?? string.Empty,
+                    Description = ep.Description ?? string.Empty,
+                    Requirements = ep.Requirements,
+                    Salary = ep.Salary,
                     Location = ep.Location,
                     WorkHours = ep.WorkHours,
+                    PhoneContact = ep.PhoneContact,
+                    CategoryName = ep.Category != null ? ep.Category.Name : null,
+
                     EmployerName = ep.User.Username,
 
                     MatchPercent = s.MatchPercent,
@@ -534,6 +832,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                     CreatedAt = s.CreatedAt,
                     UpdatedAt = s.UpdatedAt
                     };
+
 
             if (skip > 0)
                 query = query.Skip(skip);
@@ -629,23 +928,41 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
             return new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = post.JobSeekerPostId,
+                UserID = post.UserId,
+
                 Title = post.Title,
                 Description = post.Description,
-                Age = post.Age,
-                Gender = post.Gender,
-                PreferredWorkHours = post.PreferredWorkHours,
                 PreferredLocation = post.PreferredLocation,
-                PhoneContact = post.PhoneContact,
+
+                PreferredWorkHours = post.PreferredWorkHours,
+
+                PreferredWorkHourStart = post.PreferredWorkHours?.Split('-')[0].Trim(),
+                PreferredWorkHourEnd = post.PreferredWorkHours?.Split('-').Length > 1
+                            ? post.PreferredWorkHours.Split('-')[1].Trim()
+                            : null,
+
+                //ProvinceId = post.ProvinceId,
+                //DistrictId = post.DistrictId,
+                //WardId = post.WardId,
+
                 CategoryName = category?.Name,
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
                 };
+
             }
 
+
+
         private async Task UpsertSuggestionsAsync(
-            string sourceType, int sourceId, string targetType,
-            List<(EmployerPost Job, double Score)> scored, int keepTop)
+    string sourceType,
+    int sourceId,
+    string targetType,
+    List<(EmployerPost Job, double Score)> scored,
+    int keepTop,
+    int? selectedCvId = null
+)
             {
             var top = scored.OrderByDescending(x => x.Score).Take(keepTop).ToList();
             var keepIds = top.Select(x => x.Job.EmployerPostId).ToHashSet();
@@ -668,7 +985,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                         TargetId = job.EmployerPostId,
                         RawScore = score,
                         MatchPercent = (int)Math.Round(score * 100),
-                        Reason = "AI đề xuất việc làm",
+                        Reason = selectedCvId.HasValue
+                            ? $"AI đề xuất | CV={selectedCvId}"
+                            : "AI đề xuất",
                         CreatedAt = DateTime.Now
                         });
                     }
@@ -676,7 +995,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
                     {
                     exist.RawScore = score;
                     exist.MatchPercent = (int)Math.Round(score * 100);
-                    exist.Reason = "AI cập nhật đề xuất";
+                    exist.Reason = selectedCvId.HasValue
+                        ? $"AI cập nhật | CV={selectedCvId}"
+                        : "AI cập nhật";
                     exist.UpdatedAt = DateTime.Now;
                     }
                 }
@@ -693,5 +1014,6 @@ namespace PTJ_Service.JobSeekerPostService.cs.Implementations
 
             await _db.SaveChangesAsync();
             }
+
         }
     }

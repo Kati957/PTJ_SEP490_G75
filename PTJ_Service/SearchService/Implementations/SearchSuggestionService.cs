@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models;
+using PTJ_Models.Models;
 using PTJ_Service.SearchService.Interfaces;
 
 namespace PTJ_Service.SearchService.Implementations

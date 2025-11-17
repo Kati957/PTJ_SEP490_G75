@@ -1,22 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using PTJ_Models.DTO.Admin;
+﻿using PTJ_Models.DTO.Admin;
 
 namespace PTJ_Service.Admin.Interfaces
 {
     public interface IAdminJobPostService
     {
-        // Employer
-        Task<IEnumerable<AdminEmployerPostDto>> GetEmployerPostsAsync(string status = null, int? categoryId = null, string keyword = null);
-        Task<AdminEmployerPostDetailDto> GetEmployerPostDetailAsync(int id);
-        Task ToggleEmployerPostBlockedAsync(int id);
+        // Employer Posts
+        Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsAsync(
+            string? status,
+            int? categoryId,
+            string? keyword,
+            int page,
+            int pageSize);
 
-        // JobSeeker
-        Task<IEnumerable<AdminJobSeekerPostDto>> GetJobSeekerPostsAsync(string status = null, int? categoryId = null, string keyword = null);
-        Task<AdminJobSeekerPostDetailDto> GetJobSeekerPostDetailAsync(int id);
-        Task ToggleJobSeekerPostArchivedAsync(int id);
+        Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id);
+
+        //  NEW: Admin nhập lý do + truyền adminId
+        Task ToggleEmployerPostBlockedAsync(int id, string? reason, int adminId);
+
+
+        // JobSeeker Posts
+        Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsAsync(
+            string? status,
+            int? categoryId,
+            string? keyword,
+            int page,
+            int pageSize);
+
+        Task<AdminJobSeekerPostDetailDto?> GetJobSeekerPostDetailAsync(int id);
+
+        // NEW: Admin nhập lý do + truyền adminId
+        Task ToggleJobSeekerPostArchivedAsync(int id, string? reason, int adminId);
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using PTJ_Data;
 using PTJ_Models;
+using PTJ_Models.Models;
 using System.Security.Claims;
 
 namespace PTJ_API.Attributes
