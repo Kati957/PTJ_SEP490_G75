@@ -1,80 +1,116 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Data.Repositories.Interfaces;
-using PTJ_Models;
 using PTJ_Models.DTO.ApplicationDTO;
+using PTJ_Models.DTO.Notification;
 using PTJ_Models.Models;
+using PTJ_Service.Interfaces;
 using PTJ_Service.JobApplicationService.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace PTJ_Service.JobApplicationService.Implementations
-    {
+{
     public class JobApplicationService : IJobApplicationService
-        {
+    {
         private readonly IJobApplicationRepository _repo;
         private readonly JobMatchingDbContext _db;
+        private readonly INotificationService _noti;   //  ADD SERVICE
 
-        public JobApplicationService(IJobApplicationRepository repo, JobMatchingDbContext db)
-            {
+        public JobApplicationService(
+            IJobApplicationRepository repo,
+            JobMatchingDbContext db,
+            INotificationService noti) // inject thêm NotificationService
+        {
             _repo = repo;
             _db = db;
-            }
+            _noti = noti;
+        }
 
-        // =========================================================
-        // ỨNG VIÊN NỘP ĐƠN (có validation)
-        // =========================================================
-        public async Task<(bool success, string? error)> ApplyAsync(int jobSeekerId, int employerPostId, string? note)
-            {
-            // 1️⃣ Kiểm tra user hợp lệ
+       
+        // 1️⃣ ỨNG VIÊN NỘP ĐƠN (APPLY)
+
+        public async Task<(bool success, string? error)> ApplyAsync(
+            int jobSeekerId,
+            int employerPostId,
+            string? note,
+            int? cvid = null)
+        {
+            // 1. Kiểm tra user hợp lệ
             var seeker = await _db.Users.FirstOrDefaultAsync(u => u.UserId == jobSeekerId);
             if (seeker == null || !seeker.IsActive)
                 return (false, "Tài khoản ứng viên không tồn tại hoặc đã bị khóa.");
 
-            // 2️⃣ Kiểm tra bài đăng hợp lệ
+            // 2. Kiểm tra bài đăng hợp lệ
             var post = await _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == employerPostId);
             if (post == null)
                 return (false, "Bài đăng không tồn tại.");
             if (post.Status == "Deleted" || post.Status == "Closed")
                 return (false, "Bài đăng đã đóng tuyển.");
 
-            // 3️⃣ Kiểm tra đã ứng tuyển chưa
+            // Lấy thông tin Employer
+            var employerId = post.UserId;
+
+            // 3. Kiểm tra CV hợp lệ
+            if (cvid.HasValue)
+            {
+                var cv = await _db.JobSeekerCvs.FirstOrDefaultAsync(c => c.Cvid == cvid && c.JobSeekerId == jobSeekerId);
+                if (cv == null)
+                    return (false, "CV không hợp lệ hoặc không thuộc về bạn.");
+            }
+
+            // 4. Kiểm tra đã ứng tuyển chưa
             var existing = await _repo.GetAsync(jobSeekerId, employerPostId);
             if (existing != null)
-                {
+            {
                 if (existing.Status == "Withdrawn")
-                    {
+                {
                     existing.Status = "Pending";
                     existing.Notes = note;
+                    existing.Cvid = cvid;
                     existing.UpdatedAt = DateTime.Now;
                     await _repo.UpdateAsync(existing);
                     return (true, null);
-                    }
-                return (false, "Bạn đã ứng tuyển bài này trước đó.");
                 }
+                return (false, "Bạn đã ứng tuyển bài này trước đó.");
+            }
 
-            // 4️⃣ Tạo đơn ứng tuyển mới
+            // 5. Tạo đơn ứng tuyển mới
             var submission = new JobSeekerSubmission
-                {
+            {
                 JobSeekerId = jobSeekerId,
                 EmployerPostId = employerPostId,
                 AppliedAt = DateTime.Now,
                 Status = "Pending",
                 Notes = note,
+                Cvid = cvid,
                 UpdatedAt = DateTime.Now
-                };
+            };
 
             await _repo.AddAsync(submission);
-            return (true, null);
-            }
 
-        // =========================================================
-        // RÚT ĐƠN
-        // =========================================================
-        public async Task<bool> WithdrawAsync(int jobSeekerId, int employerPostId)
+          
+            //   GỬI THÔNG BÁO REALTIME CHO EMPLOYER
+            
+            await _noti.SendAsync(new CreateNotificationDto
             {
+                UserId = employerId,
+                NotificationType = "JobApplication",
+                RelatedItemId = submission.SubmissionId,
+                Data = new Dictionary<string, string>
+                {
+                    { "Name", seeker.Username ?? "Ứng viên" },
+                    { "PostTitle", post.Title }
+                }
+            });
+
+            return (true, null);
+        }
+
+
+    
+        // 2️⃣ RÚT ĐƠN
+       
+        public async Task<bool> WithdrawAsync(int jobSeekerId, int employerPostId)
+        {
             var app = await _repo.GetAsync(jobSeekerId, employerPostId);
             if (app == null)
                 return false;
@@ -85,45 +121,46 @@ namespace PTJ_Service.JobApplicationService.Implementations
 
             await _repo.UpdateAsync(app);
             return true;
-            }
+        }
 
-        // =========================================================
-        // EMPLOYER XEM DANH SÁCH ỨNG VIÊN
-        // =========================================================
+
+ 
+        // 3️⃣ EMPLOYER XEM DANH SÁCH ỨNG VIÊN
+       
         public async Task<IEnumerable<JobApplicationResultDto>> GetCandidatesByPostAsync(int employerPostId)
-            {
+        {
             var list = await _repo.GetByEmployerPostWithDetailAsync(employerPostId);
 
             return list.Select(x =>
             {
-                var profile = x.JobSeeker.JobSeekerProfile;
+                var cv = x.Cv;
+                var seeker = x.JobSeeker;
 
                 return new JobApplicationResultDto
-                    {
+                {
                     CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
-                    Username = x.JobSeeker.Username,
-                    FullName = profile?.FullName,
-                    Gender = profile?.Gender,
-                    BirthYear = profile?.BirthYear,
-                    ProfilePicture = profile?.ProfilePicture,
-                    Skills = profile?.Skills,
-                    Experience = profile?.Experience,
-                    Education = profile?.Education,
-                    PreferredJobType = profile?.PreferredJobType,
-                    PreferredLocation = profile?.PreferredLocation,
+                    Username = seeker.Username,
                     Status = x.Status,
                     ApplicationDate = x.AppliedAt,
-                    Notes = x.Notes
-                    };
+                    Notes = x.Notes,
+                    CvId = cv?.Cvid,
+                    CvTitle = cv?.Cvtitle,
+                    SkillSummary = cv?.SkillSummary,
+                    Skills = cv?.Skills,
+                    PreferredJobType = cv?.PreferredJobType,
+                    PreferredLocation = cv?.PreferredLocation,
+                    ContactPhone = cv?.ContactPhone
+                };
             }).ToList();
-            }
+        }
 
-        // =========================================================
-        // JOBSEEKER XEM CÁC BÀI ĐÃ ỨNG TUYỂN
-        // =========================================================
+
+       
+        // 4️⃣ JOBSEEKER XEM CÁC ĐƠN ỨNG TUYỂN CỦA MÌNH
+        
         public async Task<IEnumerable<JobApplicationResultDto>> GetApplicationsBySeekerAsync(int jobSeekerId)
-            {
+        {
             var list = await _repo.GetByJobSeekerWithPostDetailAsync(jobSeekerId);
 
             return list.Select(x =>
@@ -131,9 +168,10 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 var post = x.EmployerPost;
                 var category = post?.Category;
                 var employer = post?.User;
+                var cv = x.Cv;
 
                 return new JobApplicationResultDto
-                    {
+                {
                     CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
                     Username = x.JobSeeker?.Username ?? "Unknown",
@@ -147,32 +185,76 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Location = post?.Location,
                     Salary = post?.Salary,
                     WorkHours = post?.WorkHours,
-                    PhoneContact = post?.PhoneContact
-                    };
+                    PhoneContact = post?.PhoneContact,
+                    CvId = cv?.Cvid,
+                    CvTitle = cv?.Cvtitle,
+                    SkillSummary = cv?.SkillSummary,
+                    Skills = cv?.Skills,
+                    PreferredJobType = cv?.PreferredJobType,
+                    PreferredLocation = cv?.PreferredLocation,
+                    ContactPhone = cv?.ContactPhone
+                };
             }).ToList();
-            }
+        }
 
-        // =========================================================
-        // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
-        // =========================================================
+
+     
+        // 5️⃣ EMPLOYER ACCEPT / REJECT APPLICATION
+     
         public async Task<bool> UpdateStatusAsync(int submissionId, string status, string? note = null)
-            {
+        {
             var validStatuses = new[] { "Accepted", "Rejected" };
             if (!validStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
-                throw new ArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận 'Accepted' hoặc 'Rejected'.");
+                throw new ArgumentException("Trạng thái không hợp lệ.");
 
             var entity = await _repo.GetByIdAsync(submissionId);
             if (entity == null)
                 throw new Exception("Không tìm thấy đơn ứng tuyển.");
-            if (entity.Status == "Withdrawn")
-                throw new Exception("Không thể cập nhật đơn đã bị rút.");
 
+            if (entity.Status == "Withdrawn")
+                throw new Exception("Không thể cập nhật đơn đã rút.");
+
+            // Cập nhật trạng thái
             entity.Status = status.Trim();
             entity.Notes = note;
             entity.UpdatedAt = DateTime.Now;
-
             await _repo.UpdateAsync(entity);
-            return true;
+
+            // Lấy thông tin JS và bài post
+            var seeker = await _db.Users.FirstAsync(u => u.UserId == entity.JobSeekerId);
+            var post = await _db.EmployerPosts.FirstAsync(p => p.EmployerPostId == entity.EmployerPostId);
+
+            
+            //  SEND NOTIFICATION TO JOBSEEKER
+           
+            if (status == "Accepted")
+            {
+                await _noti.SendAsync(new CreateNotificationDto
+                {
+                    UserId = seeker.UserId,
+                    NotificationType = "ApplicationAccepted",
+                    RelatedItemId = submissionId,
+                    Data = new()
+                    {
+                        { "PostTitle", post.Title }
+                    }
+                });
             }
+            else if (status == "Rejected")
+            {
+                await _noti.SendAsync(new CreateNotificationDto
+                {
+                    UserId = seeker.UserId,
+                    NotificationType = "ApplicationRejected",
+                    RelatedItemId = submissionId,
+                    Data = new()
+                    {
+                        { "PostTitle", post.Title }
+                    }
+                });
+            }
+
+            return true;
         }
     }
+}

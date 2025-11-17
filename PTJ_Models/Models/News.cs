@@ -25,7 +25,9 @@ public partial class News
 
     public DateTime UpdatedAt { get; set; }
 
-    public string Status { get; set; } = null!;
+    public bool IsPublished { get; set; }
+
+    public bool IsDeleted { get; set; }
 
     public virtual User Admin { get; set; } = null!;
 

@@ -13,19 +13,18 @@ using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
 using PTJ_Service.LocationService;
-using PTJ_Service.RatingService;
 using PTJ_Service.SystemReportService;
 using PTJ_Service.AuthService.Implementations;
 using PTJ_Service.AuthService.Interfaces;
 using PTJ_Service.SearchService.Interfaces;
 using PTJ_Service.SearchService.Implementations;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
-using PTJ_Service.JobSeekerPostService.cs.Implementations;
+using PTJ_Service.JobSeekerPostService;
 using PTJ_Service.JobApplicationService.Interfaces;
 using PTJ_Service.JobApplicationService.Implementations;
 using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Service.AiService.Implementations;
-using PTJ_Service.AiService.Interfaces;
+using PTJ_Service.AiService;
 using PTJ_Data;
 using PTJ_Data.Repositories.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces.Admin;
@@ -40,12 +39,34 @@ using PTJ_Service.SearchService.Services;
 using PTJ_Service.ImageService;
 using PTJ_Service.NewsService;
 using CloudinaryDotNet;
-using dotenv.net;
+//using dotenv.net;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
+using PTJ_Models.Models;
 using PTJ_Service.Implementations.Admin;
 using PTJ_Service.Interfaces.Admin;
 using PTJ_Service.Admin.Implementations;
+using PTJ_Data.Repositories.Interfaces.EPost;
+using PTJ_Data.Repositories.Implementations.EPost;
+using PTJ_Data.Repositories.Interfaces.JPost;
+using PTJ_Data.Repositories.Implementations.JPost;
+using PTJ_Data.Repositories.Implementations.ActivityUsers;
+using PTJ_Data.Repositories.Interfaces.ActivityUsers;
+using PTJ_Data.Repositories.Interfaces.NewsPost;
+using PTJ_Service.SystemReportService.Interfaces;
+using PTJ_Service.SystemReportService.Implementations;
+using PTJ_Service.FollowService;
+using PTJ_Service.Interfaces;
+using PTJ_Service.Implementations;
+using PTJ_Service.JobSeekerCvService.Implementations;
+using PTJ_Service.JobSeekerCvService.Interfaces;
+using PTJ_Data.Repositories.Implementations.Ratings;
+using PTJ_Data.Repositories.Interfaces.Ratings;
+using PTJ_Service.RatingService.Implementations;
+using PTJ_Service.RatingService.Interfaces;
+using PTJ_Data.Repositories.Implementations.NewsPost;
+using PTJ_Service.JobSeekerPostService.Implementations;
+using PTJ_Service.Hubs;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -94,11 +115,14 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // AI Services
-builder.Services.AddHttpClient<OpenAIService>();
-builder.Services.AddHttpClient<PineconeService>();
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<INewsService, NewsService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IReportService, ReportService>();    
+builder.Services.AddScoped<IRatingService, RatingService>();
+builder.Services.AddScoped<ISystemReportService, SystemReportService>();
 builder.Services.AddScoped<IAdminNewsService, AdminNewsService>();
 builder.Services.AddScoped<IAdminJobPostService, AdminJobPostService>();
 builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
@@ -114,10 +138,17 @@ builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
 builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
-builder.Services.AddScoped<INewsService, NewsService>();
-
+builder.Services.AddScoped<IFollowService, FollowService>();
+builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
+builder.Services.AddHttpClient<VnPostLocationService>();
+builder.Services.AddScoped<LocationDisplayService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
+builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>();
 
 // Repository
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IReportRepository, ReportRepository>();
+builder.Services.AddScoped<IAdminSystemReportRepository, AdminSystemReportRepository>();
 builder.Services.AddScoped<IAdminNewsRepository, AdminNewsRepository>();
 builder.Services.AddScoped<IAdminJobPostRepository, AdminJobPostRepository>();
 builder.Services.AddScoped<IAdminCategoryRepository, AdminCategoryRepository>();
@@ -132,6 +163,8 @@ builder.Services.AddScoped<IJobSeekerProfileRepository, JobSeekerProfileReposito
 builder.Services.AddScoped<IEmployerProfileRepository, EmployerProfileRepository>();
 builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
+builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
+builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -162,6 +195,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             };
     });
 
+// 4️⃣ SIGNALR
+builder.Services.AddSignalR();
+ 
 // 4️⃣ CẤU HÌNH CORS
 
 builder.Services.AddCors(options =>
@@ -171,7 +207,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "https://localhost:7100", // Swagger & API cùng port
             "http://localhost:5169",  // HTTP fallback
-            "https://localhost:7025"  // trường hợp FE dev khác port
+            "https://localhost:5174"  // trường hợp FE dev khác port
         )
         .AllowAnyHeader()
         .AllowCredentials()
@@ -207,11 +243,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     }
 
+
 app.UseHttpsRedirection();
 app.UseCors("AllowLocalhost");   // Phải đặt trước Authentication
 app.UseAuthentication();
 app.UseAuthorization();
-
+// SignalR Hub Registration
+app.MapHub<NotificationHub>("/hubs/notification");
 app.MapControllers();
 
 app.Run();

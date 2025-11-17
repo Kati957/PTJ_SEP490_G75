@@ -17,16 +17,6 @@ public partial class JobSeekerProfile
 
     public string? ProfilePicture { get; set; }
 
-    public string? Skills { get; set; }
-
-    public string? Experience { get; set; }
-
-    public string? Education { get; set; }
-
-    public string? PreferredJobType { get; set; }
-
-    public string? PreferredLocation { get; set; }
-
     public DateTime UpdatedAt { get; set; }
 
     public string? ProfilePicturePublicId { get; set; }
@@ -34,6 +24,14 @@ public partial class JobSeekerProfile
     public bool IsPictureHidden { get; set; }
 
     public string? ContactPhone { get; set; }
+
+    public int ProvinceId { get; set; }
+
+    public int DistrictId { get; set; }
+
+    public int WardId { get; set; }
+
+    public string? FullLocation { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

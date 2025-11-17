@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Models.DTO.Admin;
 using PTJ_Service.Admin.Interfaces;
+using PTJ_Models.DTO.Admin;
+using System.Security.Claims;
 
 namespace PTJ_API.Controllers.AdminController
 {
@@ -13,49 +12,60 @@ namespace PTJ_API.Controllers.AdminController
     public class AdminNewsController : ControllerBase
     {
         private readonly IAdminNewsService _svc;
-        public AdminNewsController(IAdminNewsService svc) => _svc = svc;
 
-        // List + filter
-        [HttpGet]
-        public async Task<IActionResult> GetAllNews(
-            [FromQuery] string? status = null,
-            [FromQuery] string? keyword = null)
+        public AdminNewsController(IAdminNewsService svc)
         {
-            var data = await _svc.GetAllNewsAsync(status, keyword);
+            _svc = svc;
+        }
+
+        //  Danh sách + lọc
+        [HttpGet]
+        public async Task<IActionResult> GetAllNews([FromQuery] bool? isPublished = null, [FromQuery] string? keyword = null)
+        {
+            var data = await _svc.GetAllNewsAsync(isPublished, keyword);
             return Ok(data);
         }
 
-        // Detail
+        //  Chi tiết
         [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetNewsDetail([FromRoute] int id)
+        public async Task<IActionResult> GetDetail(int id)
         {
-            var data = await _svc.GetNewsDetailAsync(id);
-            return data is null ? NotFound() : Ok(data);
+            var news = await _svc.GetNewsDetailAsync(id);
+            return news is null ? NotFound() : Ok(news);
         }
 
-        // Create
+        //  Tạo mới
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] AdminCreateNewsDto dto)
+        public async Task<IActionResult> Create([FromForm] AdminCreateNewsDto dto)
         {
-            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
-            var newId = await _svc.CreateAsync(adminId, dto);
-            return CreatedAtAction(nameof(GetNewsDetail), new { id = newId }, new { id = newId });
+            var adminId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var id = await _svc.CreateAsync(adminId, dto);
+            return CreatedAtAction(nameof(GetDetail), new { id }, new { id });
         }
 
-        // Update
+        //  Cập nhật
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update([FromRoute] int id, [FromBody] AdminUpdateNewsDto dto)
+        public async Task<IActionResult> Update(int id, [FromForm] AdminUpdateNewsDto dto)
         {
-            await _svc.UpdateAsync(id, dto);
+            dto.NewsId = id;
+            await _svc.UpdateAsync(dto);
             return Ok(new { message = "News updated successfully." });
         }
 
-        // Toggle Active (Active <-> Hidden)
-        [HttpPost("{id:int}/toggle-active")]
-        public async Task<IActionResult> ToggleActive([FromRoute] int id)
+        // Publish / Unpublish
+        [HttpPost("{id:int}/toggle-publish")]
+        public async Task<IActionResult> TogglePublish(int id)
         {
-            await _svc.ToggleActiveAsync(id);
-            return Ok(new { message = "News status toggled." });
+            await _svc.TogglePublishStatusAsync(id);
+            return Ok(new { message = "Publish status changed successfully." });
+        }
+
+        //  Xóa mềm
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            await _svc.DeleteAsync(id);
+            return Ok(new { message = "News deleted successfully." });
         }
     }
 }

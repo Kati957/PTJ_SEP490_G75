@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
@@ -15,40 +10,33 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminNewsRepository(JobMatchingDbContext db) => _db = db;
 
-        public async Task<IEnumerable<AdminNewsDto>> GetAllNewsAsync(string? status = null, string? keyword = null)
+        public async Task<IEnumerable<AdminNewsDto>> GetAllNewsAsync(bool? isPublished = null, string? keyword = null)
         {
-            var q = _db.News.Include(n => n.Admin).AsQueryable();
+            var q = _db.News.Include(n => n.Admin).Where(n => !n.IsDeleted);
 
-            if (!string.IsNullOrWhiteSpace(status))
-                q = q.Where(n => n.Status == status);
+            if (isPublished.HasValue)
+                q = q.Where(n => n.IsPublished == isPublished.Value);
 
             if (!string.IsNullOrWhiteSpace(keyword))
-            {
-                var kw = keyword.ToLower();
-                q = q.Where(n =>
-                    n.Title.ToLower().Contains(kw) ||
-                    n.Content != null && n.Content.ToLower().Contains(kw));
-            }
+                q = q.Where(n => n.Title.Contains(keyword) || n.Content.Contains(keyword));
 
-            return await q
-                .OrderByDescending(n => n.CreatedAt)
-                .Select(n => new AdminNewsDto
-                {
-                    NewsId = n.NewsId,
-                    Title = n.Title,
-                    Category = n.Category,
-                    Status = n.Status,
-                    CreatedAt = n.CreatedAt,
-                    UpdatedAt = n.UpdatedAt
-                })
-                .ToListAsync();
+            return await q.OrderByDescending(n => n.CreatedAt)
+                          .Select(n => new AdminNewsDto
+                          {
+                              NewsId = n.NewsId,
+                              Title = n.Title,
+                              Category = n.Category,
+                              IsPublished = n.IsPublished,
+                              CreatedAt = n.CreatedAt,
+                              UpdatedAt = n.UpdatedAt
+                          })
+                          .ToListAsync();
         }
 
         public async Task<AdminNewsDetailDto?> GetNewsDetailAsync(int id)
         {
-            return await _db.News
-                .Include(n => n.Admin)
-                .Where(n => n.NewsId == id)
+            return await _db.News.Include(n => n.Admin)
+                .Where(n => n.NewsId == id && !n.IsDeleted)
                 .Select(n => new AdminNewsDetailDto
                 {
                     NewsId = n.NewsId,
@@ -56,11 +44,13 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     Content = n.Content,
                     ImageUrl = n.ImageUrl,
                     Category = n.Category,
-                    Status = n.Status,
-                    CreatedAt = n.CreatedAt,
-                    UpdatedAt = n.UpdatedAt,
+                    IsFeatured = n.IsFeatured,
+                    Priority = n.Priority,
+                    IsPublished = n.IsPublished,
                     AdminId = n.AdminId,
-                    AdminEmail = n.Admin.Email
+                    AdminEmail = n.Admin.Email,
+                    CreatedAt = n.CreatedAt,
+                    UpdatedAt = n.UpdatedAt
                 })
                 .FirstOrDefaultAsync();
         }
@@ -72,33 +62,34 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return entity.NewsId;
         }
 
-        public async Task<bool> UpdateAsync(int id, AdminUpdateNewsDto dto)
+        public async Task<bool> UpdateAsync(News entity)
         {
-            var news = await _db.News.FirstOrDefaultAsync(n => n.NewsId == id);
-            if (news == null) return false;
+            _db.News.Update(entity);
+            return await _db.SaveChangesAsync() > 0;
+        }
 
-            news.Title = dto.Title;
-            news.Content = dto.Content;
-            news.ImageUrl = dto.ImageUrl;
-            news.Category = dto.Category;
-            news.Status = dto.Status ?? news.Status;
+        public async Task<bool> TogglePublishStatusAsync(int id)
+        {
+            var news = await _db.News.FirstOrDefaultAsync(n => n.NewsId == id && !n.IsDeleted);
+            if (news == null)
+                return false;
+
+            news.IsPublished = !news.IsPublished;
             news.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> ToggleActiveAsync(int id)
+        public async Task<bool> SoftDeleteAsync(int id)
         {
-            var news = await _db.News.FirstOrDefaultAsync(n => n.NewsId == id);
+            var news = await _db.News.FindAsync(id);
             if (news == null) return false;
 
-            news.Status = news.Status == "Active" ? "Hidden" : "Active";
+            news.IsDeleted = true;
             news.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             return true;
         }
-
-        public Task SaveChangesAsync() => _db.SaveChangesAsync();
     }
 }

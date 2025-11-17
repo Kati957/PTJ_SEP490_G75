@@ -9,10 +9,13 @@ namespace PTJ_Models.DTO
         public string? ContactName { get; set; }
         public string? ContactPhone { get; set; }
         public string? ContactEmail { get; set; }
-        public string? Location { get; set; }
+        public int ProvinceId { get; set; }
+        public int DistrictId { get; set; }
+        public int WardId { get; set; }
+
+        public string? FullLocation { get; set; }
         public string? Website { get; set; }
 
-        // 🖼️ file ảnh đại diện doanh nghiệp
         public IFormFile? ImageFile { get; set; }
         }
     }

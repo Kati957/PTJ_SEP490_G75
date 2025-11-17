@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.Admin;
 using PTJ_Service.Admin.Interfaces;
+using System.Security.Claims;
 
 namespace PTJ_API.Controllers.Admin
 {
@@ -13,7 +14,18 @@ namespace PTJ_API.Controllers.Admin
         private readonly IAdminJobPostService _svc;
         public AdminJobPostController(IAdminJobPostService svc) => _svc = svc;
 
-        // Employer Posts
+        // Lấy AdminId từ token
+        private int AdminId =>
+            int.Parse(
+                User.FindFirst("sub")?.Value ??
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                throw new Exception("Token missing userId")
+            );
+
+        // ================================
+        // EMPLOYER POSTS
+        // ================================
+
         [HttpGet("employer")]
         public async Task<IActionResult> GetEmployerPosts(
             [FromQuery] string? status = null,
@@ -30,14 +42,18 @@ namespace PTJ_API.Controllers.Admin
             return data is null ? NotFound() : Ok(data);
         }
 
+        //  Admin toggle block + nhập lý do 
         [HttpPost("employer/{id:int}/toggle-block")]
-        public async Task<IActionResult> ToggleEmployerPostBlocked(int id)
+        public async Task<IActionResult> ToggleEmployerPostBlocked(int id, [FromBody] BlockPostDto dto)
         {
-            await _svc.ToggleEmployerPostBlockedAsync(id);
+            await _svc.ToggleEmployerPostBlockedAsync(id, dto.Reason, AdminId);
             return Ok(new { message = "Employer post status toggled." });
         }
 
-        // JobSeeker Posts
+        // ================================
+        // JOB SEEKER POSTS
+        // ================================
+
         [HttpGet("jobseeker")]
         public async Task<IActionResult> GetJobSeekerPosts(
             [FromQuery] string? status = null,
@@ -54,10 +70,11 @@ namespace PTJ_API.Controllers.Admin
             return data is null ? NotFound() : Ok(data);
         }
 
+        //  Admin toggle archive + nhập lý do ⭐
         [HttpPost("jobseeker/{id:int}/toggle-archive")]
-        public async Task<IActionResult> ToggleJobSeekerPostArchived(int id)
+        public async Task<IActionResult> ToggleJobSeekerPostArchived(int id, [FromBody] BlockPostDto dto)
         {
-            await _svc.ToggleJobSeekerPostArchivedAsync(id);
+            await _svc.ToggleJobSeekerPostArchivedAsync(id, dto.Reason, AdminId);
             return Ok(new { message = "JobSeeker post status toggled." });
         }
     }

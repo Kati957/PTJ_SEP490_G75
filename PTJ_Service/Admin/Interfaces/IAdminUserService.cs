@@ -18,6 +18,11 @@ namespace PTJ_Service.Admin.Interfaces
             int pageSize = 10);
 
         Task<AdminUserDetailDto?> GetUserDetailAsync(int id);
+
         Task ToggleActiveAsync(int id);
+
+        // ⭐ NEW: Khóa user + gửi thông báo có lý do (Admin nhập tay)
+        Task<bool> BanUserAsync(int userId, string reason, int adminId);
+
     }
 }

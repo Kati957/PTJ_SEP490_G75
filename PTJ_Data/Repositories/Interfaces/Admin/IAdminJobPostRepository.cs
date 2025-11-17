@@ -13,6 +13,7 @@ namespace PTJ_Data.Repositories.Interfaces.Admin
             int page = 1,
             int pageSize = 10);
 
+        Task<EmployerPost?> GetEmployerPostByIdAsync(int id);
         Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id);
         Task<bool> ToggleEmployerPostBlockedAsync(int id);
 
@@ -23,7 +24,8 @@ namespace PTJ_Data.Repositories.Interfaces.Admin
             string? keyword = null,
             int page = 1,
             int pageSize = 10);
-
+       
+        Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int id);
         Task<AdminJobSeekerPostDetailDto?> GetJobSeekerPostDetailAsync(int id);
         Task<bool> ToggleJobSeekerPostArchivedAsync(int id);
     }

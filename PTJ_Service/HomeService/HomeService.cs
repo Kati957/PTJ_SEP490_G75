@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models;
+using PTJ_Models.Models;
 
 namespace PTJ_Service.HomeService
 {

@@ -95,7 +95,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return new PagedResult<AdminSolvedReportDto>(items, total, page, pageSize);
         }
 
-        // 3️⃣ Chi tiết từng report (dành cho GET /api/admin/reports/{id})
+        // 3️⃣ Chi tiết report (GET /api/admin/reports/{id})
         public async Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId)
         {
             var report = await _db.PostReports
@@ -124,12 +124,9 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             };
         }
 
-        // 4️⃣ Các hàm phụ trợ xử lý
+        // 4️⃣ Các hàm phụ trợ
         public Task<PostReport?> GetReportByIdAsync(int reportId)
             => _db.PostReports.FirstOrDefaultAsync(r => r.PostReportId == reportId);
-
-        public Task<User?> GetUserByIdAsync(int userId)
-            => _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
 
         public Task<EmployerPost?> GetEmployerPostByIdAsync(int postId)
             => _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == postId);
