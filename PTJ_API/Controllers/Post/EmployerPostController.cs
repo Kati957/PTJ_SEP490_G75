@@ -75,16 +75,31 @@ namespace PTJ_API.Controllers.Post
             {
             var result = await _service.GetAllAsync();
 
-            // Nếu user đăng nhập và là admin → được xem tất cả
-            bool isAdmin = User.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
+            bool isLoggedIn = User.Identity?.IsAuthenticated == true;
+            bool isAdmin = isLoggedIn && User.IsInRole("Admin");
 
+            // Nếu không phải admin → chỉ lấy bài Active
             if (!isAdmin)
                 {
-                result = result.Where(p => p.Status == "Active"); // Chỉ lấy bài active
+                result = result.Where(p => p.Status == "Active");
+                }
+
+            // Nếu user đăng nhập thì không hiển thị bài của chính mình
+            if (isLoggedIn)
+                {
+                var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+                if (sub != null)
+                    {
+                    int currentUserId = int.Parse(sub.Value);
+
+                    // Loại bài của chính user đó
+                    result = result.Where(p => p.EmployerId != currentUserId);
+                    }
                 }
 
             return Ok(new { success = true, total = result.Count(), data = result });
             }
+
 
 
         [HttpGet("by-user/{userId}")]
