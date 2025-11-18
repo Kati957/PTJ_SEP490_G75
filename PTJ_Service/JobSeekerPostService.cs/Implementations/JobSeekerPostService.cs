@@ -259,6 +259,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             return posts.Select(p => new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = p.JobSeekerPostId,
+                UserID = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
                 PreferredLocation = p.PreferredLocation,
@@ -275,6 +276,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             return posts.Select(p => new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = p.JobSeekerPostId,
+                UserID = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
                 PreferredLocation = p.PreferredLocation,
