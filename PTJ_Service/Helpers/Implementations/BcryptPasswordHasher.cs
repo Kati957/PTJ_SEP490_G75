@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using PTJ_Service.Helpers.Interfaces;
 
 namespace PTJ_Service.Helpers.Implementations
@@ -13,7 +9,7 @@ namespace PTJ_Service.Helpers.Implementations
         public string Hash(string password)
         {
             if (string.IsNullOrWhiteSpace(password))
-                throw new ArgumentException("Password cannot be empty.", nameof(password));
+                throw new ArgumentException("Mật khẩu không được để trống.", nameof(password));
 
             return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
         }
@@ -22,7 +18,7 @@ namespace PTJ_Service.Helpers.Implementations
         public bool Verify(string password, string hash)
         {
             if (string.IsNullOrWhiteSpace(hash))
-                throw new ArgumentException("Hash cannot be empty.", nameof(hash));
+                throw new ArgumentException("Hash không được để trống.", nameof(hash));
 
             return BCrypt.Net.BCrypt.Verify(password, hash);
         }

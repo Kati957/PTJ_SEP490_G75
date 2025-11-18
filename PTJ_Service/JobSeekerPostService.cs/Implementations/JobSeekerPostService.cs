@@ -112,7 +112,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 .FirstOrDefaultAsync(x => x.JobSeekerPostId == post.JobSeekerPostId);
 
             if (freshPost == null)
-                throw new Exception("Cannot reload post.");
+                throw new Exception("Không thể tải lại bài đăng.");
 
             // =========================================================
             // 2) SELECTED CV → TẠO EMBEDDING CV (nếu có)

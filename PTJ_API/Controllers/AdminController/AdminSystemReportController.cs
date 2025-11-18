@@ -39,8 +39,8 @@ namespace PTJ_API.Controllers.Admin
         {
             var ok = await _svc.MarkReportSolvedAsync(id, dto.Note);
             return ok
-                ? Ok(new { message = $"System report {id} marked as solved." })
-                : NotFound(new { message = "Report not found." });
+                ? Ok(new { message = $"Báo cáo hệ thống {id} đã được xử lý." })
+                : NotFound(new { message = "Không tìm thấy báo cáo." });
         }
     }
 }

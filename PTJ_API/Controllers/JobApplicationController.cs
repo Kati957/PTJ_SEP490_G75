@@ -138,7 +138,7 @@ namespace PTJ_API.Controllers
 
             var validStatuses = new[] { "Accepted", "Rejected" };
             if (!validStatuses.Contains(dto.Status, System.StringComparer.OrdinalIgnoreCase))
-                return BadRequest(new { success = false, message = "Trạng thái không hợp lệ. Chỉ chấp nhận 'Accepted' hoặc 'Rejected'." });
+                return BadRequest(new { success = false, message = "Trạng thái không hợp lệ. Chỉ chấp nhận 'Đã chấp nhận' hoặc 'Đã từ chối'." });
 
             var result = await _service.UpdateStatusAsync(id, dto.Status, dto.Note);
             if (!result)
@@ -153,7 +153,7 @@ namespace PTJ_API.Controllers
         [HttpGet("valid-statuses")]
         public IActionResult GetValidStatuses()
             {
-            var statuses = new[] { "Pending", "Accepted", "Rejected", "Withdrawn" };
+            var statuses = new[] { "Đang chờ xử lý", "Đã chấp nhận", "Đã từ chối", "Đã rút lại" };
             return Ok(new { success = true, data = statuses });
             }
         }

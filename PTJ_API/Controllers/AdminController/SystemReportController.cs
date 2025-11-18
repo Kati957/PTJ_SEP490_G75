@@ -19,7 +19,7 @@ namespace PTJ_API.Controllers.AdminController
         public async Task<IActionResult> CreateReport([FromBody] SystemReportCreateDto dto)
         {
             await _reportService.CreateReportAsync(dto);
-            return Ok(new { message = "Report submitted successfully" });
+            return Ok(new { message = "Gửi báo cáo thành công." });
         }
 
         [HttpGet("user/{userId}")]
@@ -40,9 +40,9 @@ namespace PTJ_API.Controllers.AdminController
         public async Task<IActionResult> UpdateStatus(int reportId, [FromBody] SystemReportUpdateDto dto)
         {
             var success = await _reportService.UpdateStatusAsync(reportId, dto.Status);
-            if (!success) return NotFound(new { message = "Report not found" });
+            if (!success) return NotFound(new { message = "Không tìm thấy báo cáo." });
 
-            return Ok(new { message = "Report status updated successfully" });
+            return Ok(new { message = "Cập nhật trạng thái báo cáo thành công." });
         }
     }
 }

@@ -49,7 +49,7 @@ namespace PTJ_API.Controllers
             {
             var updated = await _service.UpdateAsync(id, dto);
             if (!updated) return NotFound();
-            return Ok(new { message = "Category updated successfully" });
+            return Ok(new { message = "Cập nhật danh mục thành công." });
             }
 
         [HttpDelete("{id}")]
@@ -58,7 +58,7 @@ namespace PTJ_API.Controllers
             {
             var deleted = await _service.DeleteAsync(id);
             if (!deleted) return NotFound();
-            return Ok(new { message = "Category deleted successfully" });
+            return Ok(new { message = "Xóa danh mục thành công." });
             }
         }
     }

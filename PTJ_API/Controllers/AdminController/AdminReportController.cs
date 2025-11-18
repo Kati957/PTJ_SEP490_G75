@@ -44,7 +44,7 @@ namespace PTJ_API.Controllers.Admin
         {
             var report = await _svc.GetReportDetailAsync(id);
             if (report == null)
-                return NotFound(new { message = $"Report with ID {id} not found." });
+                return NotFound(new { message = $"Báo cáo ID {id} không tồn tại." });
 
             return Ok(report);
         }
@@ -58,7 +58,7 @@ namespace PTJ_API.Controllers.Admin
 
             return Ok(new
             {
-                message = $"Report {reportId} resolved successfully.",
+                message = $"Báo cáo {reportId} đã được xử lý.",
                 result
             });
         }
