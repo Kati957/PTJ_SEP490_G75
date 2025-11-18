@@ -74,10 +74,20 @@ namespace PTJ_API.Controllers.Post
         [HttpGet("all")]
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
-        {
+            {
             var result = await _service.GetAllAsync();
+
+            bool isAdmin = User.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
+
+            if (!isAdmin)
+                {
+                // Chỉ load bài Active cho user thường
+                result = result.Where(p => p.Status == "Active");
+                }
+
             return Ok(new { success = true, total = result.Count(), data = result });
-        }
+            }
+
 
         [HttpGet("by-user/{userId}")]
         public async Task<IActionResult> GetByUser(int userId)
@@ -95,22 +105,25 @@ namespace PTJ_API.Controllers.Post
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
-        {
+            {
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && post.UserID != currentUserId)
+            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
             var post = await _service.GetByIdAsync(id);
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            bool isAdmin = User.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
-                return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            // Nếu không phải admin → không cho xem bài Deleted
+            if (!isAdmin && post.Status == "Deleted")
+                return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
             return Ok(new { success = true, data = post });
-        }
+            }
+
 
         // =========================================================
         // UPDATE

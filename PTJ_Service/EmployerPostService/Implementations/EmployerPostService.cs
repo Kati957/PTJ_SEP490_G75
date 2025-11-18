@@ -221,6 +221,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return posts.Select(p => new EmployerPostDtoOut
                 {
                 EmployerPostId = p.EmployerPostId,
+                EmployerId = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
                 Salary = p.Salary,
@@ -241,6 +242,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return posts.Select(p => new EmployerPostDtoOut
                 {
                 EmployerPostId = p.EmployerPostId,
+                EmployerId = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
                 Salary = p.Salary,
