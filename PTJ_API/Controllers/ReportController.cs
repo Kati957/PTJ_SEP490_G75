@@ -28,7 +28,7 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> ReportEmployerPost([FromBody] CreateEmployerPostReportDto dto)
         {
             var id = await _svc.ReportEmployerPostAsync(CurrentUserId, dto);
-            return Ok(new { message = "Report submitted.", reportId = id });
+            return Ok(new { message = "Báo cáo đã được gửi thành công.", reportId = id });
         }
 
         // POST /api/reports/jobseeker-post
@@ -36,7 +36,7 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> ReportJobSeekerPost([FromBody] CreateJobSeekerPostReportDto dto)
         {
             var id = await _svc.ReportJobSeekerPostAsync(CurrentUserId, dto);
-            return Ok(new { message = "Report submitted.", reportId = id });
+            return Ok(new { message = "Báo cáo đã được gửi thành công.", reportId = id });
         }
 
         // GET /api/reports/my

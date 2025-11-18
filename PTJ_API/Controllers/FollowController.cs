@@ -18,14 +18,14 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> Follow(int employerId, [FromQuery] int jobSeekerId)
         {
             await _followService.FollowEmployerAsync(jobSeekerId, employerId);
-            return Ok(new { message = "Followed employer successfully" });
+            return Ok(new { message = "Đã theo dõi nhà tuyển dụng thành công." });
         }
 
         [HttpDelete("{employerId}")]
         public async Task<IActionResult> Unfollow(int employerId, [FromQuery] int jobSeekerId)
         {
             await _followService.UnfollowEmployerAsync(jobSeekerId, employerId);
-            return Ok(new { message = "Unfollowed employer successfully" });
+            return Ok(new { message = "Bạn đã hủy theo dõi nhà tuyển dụng này." });
         }
 
         [HttpGet("check/{employerId}")]

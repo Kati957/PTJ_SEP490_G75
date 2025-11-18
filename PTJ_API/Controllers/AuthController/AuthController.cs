@@ -27,7 +27,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> RegisterJobSeeker(RegisterJobSeekerDto dto)
     {
         await _svc.RegisterJobSeekerAsync(dto);
-        return Ok(new { message = "Please check your email to verify your account." });
+        return Ok(new { message = "Vui lòng kiểm tra email để xác minh tài khoản của bạn." });
     }
 
     //  Đăng ký Employer (chọn role ngay từ đầu)
@@ -36,7 +36,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> RegisterEmployer(RegisterEmployerDto dto)
     {
         await _svc.RegisterEmployerAsync(dto);
-        return Ok(new { message = "Please check your email to verify your account." });
+        return Ok(new { message = "Vui lòng kiểm tra email để xác minh tài khoản của bạn." });
     }
 
     //  Xác thực email (Swagger hoặc FE gọi POST)
@@ -47,7 +47,7 @@ public class AuthController : ControllerBase
         try
         {
             await _svc.VerifyEmailAsync(dto.Token);
-            return Ok(new { message = "Email verified successfully." });
+            return Ok(new { message = "Xác minh email thành công." });
         }
         catch (Exception ex)
         {
@@ -86,7 +86,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> ResendVerification([FromBody] ResendVerifyDto dto)
     {
         await _svc.ResendVerificationAsync(dto.Email);
-        return Ok(new { message = "Verification email resent if account exists." });
+        return Ok(new { message = "Email xác minh đã được gửi lại." });
     }
 
     //  Đăng nhập
@@ -107,7 +107,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Logout([FromBody] RefreshDto dto)
     {
         await _svc.LogoutAsync(dto.RefreshToken);
-        return Ok(new { message = "Logged out successfully." });
+        return Ok(new { message = "Đăng xuất thành công." });
     }
 
     //  Lấy thông tin user hiện tại
@@ -130,7 +130,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Forgot(ForgotPasswordDto dto)
     {
         await _svc.RequestPasswordResetAsync(dto.Email);
-        return Ok(new { message = "If this email exists, a reset link has been sent." });
+        return Ok(new { message = "Đã gửi yêu cầu đặt lại mật khẩu (nếu email hợp lệ)" });
     }
 
     // Reset mật khẩu
@@ -139,7 +139,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Reset(ResetPasswordDto dto)
     {
         await _svc.ResetPasswordAsync(dto);
-        return Ok(new { message = "Password reset successfully." });
+        return Ok(new { message = "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại." });
     }
 
     //// Đăng nhập Google (role chọn ngay từ đầu)
