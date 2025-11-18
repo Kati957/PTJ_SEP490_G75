@@ -55,11 +55,11 @@ namespace PTJ_API.Controllers.Post
             if (dto.Salary == null && string.IsNullOrWhiteSpace(dto.SalaryText))
                 return BadRequest(new { success = false, message = "Bạn phải nhập mức lương hoặc để 'thỏa thuận'." });
 
-            if (dto.WorkHourStart != null && dto.WorkHourEnd != null)
-                {
-                if (TimeSpan.Parse(dto.WorkHourStart) >= TimeSpan.Parse(dto.WorkHourEnd))
-                    return BadRequest(new { success = false, message = "Giờ kết thúc phải sau giờ bắt đầu." });
-                }
+            //if (dto.WorkHourStart != null && dto.WorkHourEnd != null)
+            //    {
+            //    if (TimeSpan.Parse(dto.WorkHourStart) >= TimeSpan.Parse(dto.WorkHourEnd))
+            //        return BadRequest(new { success = false, message = "Giờ kết thúc phải sau giờ bắt đầu." });
+            //    }
 
 
             var result = await _service.CreateEmployerPostAsync(dto);
@@ -78,16 +78,17 @@ namespace PTJ_API.Controllers.Post
         }
 
         [HttpGet("by-user/{userId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetByUser(int userId)
         {
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            //if (sub == null)
+            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
+            //var currentUserId = int.Parse(sub.Value);
 
-            if (!User.IsInRole("Admin") && currentUserId != userId)
-                return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            //if (!User.IsInRole("Admin") && currentUserId != userId)
+            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
 
             var result = await _service.GetByUserAsync(userId);
             return Ok(new { success = true, total = result.Count(), data = result });
