@@ -73,6 +73,7 @@ namespace PTJ_API.Controllers.Post
         // =========================================================
         [HttpGet("all")]
         //[Authorize(Roles = "Admin")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
             var result = await _service.GetAllAsync();
@@ -82,13 +83,13 @@ namespace PTJ_API.Controllers.Post
         [HttpGet("by-user/{userId}")]
         public async Task<IActionResult> GetByUser(int userId)
         {
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            //if (sub == null)
+            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && userId != currentUserId)
-                return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && userId != currentUserId)
+            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
 
             var result = await _service.GetByUserAsync(userId);
             return Ok(new { success = true, total = result.Count(), data = result });
@@ -101,13 +102,13 @@ namespace PTJ_API.Controllers.Post
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            //if (sub == null)
+            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
-                return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && post.UserID != currentUserId)
+            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
 
             return Ok(new { success = true, data = post });
         }
