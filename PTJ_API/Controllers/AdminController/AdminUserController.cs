@@ -14,7 +14,7 @@ namespace PTJ_API.Controllers.Admin
         private readonly IAdminUserService _svc;
         public AdminUserController(IAdminUserService svc) => _svc = svc;
 
-        // 🔥 Lấy AdminId từ JWT
+        //  Lấy AdminId từ JWT
         private int AdminId =>
             int.Parse(User.FindFirst("sub")?.Value
                 ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value

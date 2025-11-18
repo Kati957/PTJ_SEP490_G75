@@ -159,9 +159,13 @@ public sealed class AuthService : IAuthService
                 DisplayName = dto.DisplayName ?? user.Username,
                 AvatarUrl = DefaultAvatar,
                 AvatarPublicId = DefaultPublicId,
-                ContactPhone = dto.PhoneNumber,
-                ContactEmail = dto.Email,
+                ContactPhone = dto.ContactPhone,
+                ContactEmail = null,
                 Website = dto.Website,
+                ProvinceId = 0,
+                DistrictId = 0,
+                WardId = 0,
+                FullLocation = null,
                 IsAvatarHidden = false,
                 UpdatedAt = DateTime.UtcNow
             });
@@ -208,146 +212,7 @@ public sealed class AuthService : IAuthService
     }
 
 
-    //public async Task<AuthResponseDto> GoogleLoginAsync(GoogleLoginDto dto, string? ip)
-    //{
-    //    // 1️⃣ Xác thực IdToken với Google
-    //    var payload = await GoogleJsonWebSignature.ValidateAsync(
-    //        dto.IdToken,
-    //        new GoogleJsonWebSignature.ValidationSettings
-    //        {
-    //            Audience = new[] { _cfg["Google:ClientId"] }
-    //        });
-
-    //    var email = payload.Email.Trim().ToLowerInvariant();
-    //    var name = payload.Name ?? email.Split('@')[0];
-    //    var picture = payload.Picture; // Ảnh từ Google (có thể null)
-
-    //    // Ảnh mặc định (nếu Google không có avatar)
-    //    const string DefaultAvatarUrl = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
-    //    const string DefaultPublicId = "avtDefaut_huflze";
-
-    //    // 2️⃣ Tìm user theo email
-    //    var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
-
-    //    // Nếu user bị khóa
-    //    if (user != null && !user.IsActive)
-    //        throw new Exception("Your account has been deactivated by an administrator.");
-
-    //    if (user == null)
-    //    {
-    //        // 2a️⃣ Tạo user mới
-    //        user = new User
-    //        {
-    //            Email = email,
-    //            Username = email.Split('@')[0],
-    //            PasswordHash = null, // đăng nhập Google không có password local
-    //            IsActive = true,
-    //            IsVerified = payload.EmailVerified,
-    //            CreatedAt = DateTime.UtcNow,
-    //            UpdatedAt = DateTime.UtcNow
-    //        };
-    //        _db.Users.Add(user);
-    //        await _db.SaveChangesAsync();
-
-    //        // Liên kết external login
-    //        _db.ExternalLogins.Add(new ExternalLogin
-    //        {
-    //            UserId = user.UserId,
-    //            Provider = "Google",
-    //            ProviderKey = payload.Subject,
-    //            Email = email,
-    //            EmailVerified = payload.EmailVerified
-    //        });
-    //        await _db.SaveChangesAsync();
-
-    //        // Gán role mặc định: JobSeeker
-    //        await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
-
-    //        // Tạo JobSeekerProfile với ảnh Google (nếu có)
-    //        _db.JobSeekerProfiles.Add(new JobSeekerProfile
-    //        {
-    //            UserId = user.UserId,
-    //            FullName = name,
-    //            ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture,
-    //            ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null, // null = ảnh từ Google
-    //            IsPictureHidden = false,
-    //            UpdatedAt = DateTime.UtcNow
-    //        });
-    //        await _db.SaveChangesAsync();
-
-    //        _log.LogInformation("New Google user registered: {Email}", email);
-    //    }
-    //    else
-    //    {
-    //        // 2b️⃣ User đã tồn tại
-    //        var linked = await _db.ExternalLogins.AnyAsync(x =>
-    //            x.UserId == user.UserId &&
-    //            x.Provider == "Google" &&
-    //            x.ProviderKey == payload.Subject);
-
-    //        if (!linked)
-    //        {
-    //            _db.ExternalLogins.Add(new ExternalLogin
-    //            {
-    //                UserId = user.UserId,
-    //                Provider = "Google",
-    //                ProviderKey = payload.Subject,
-    //                Email = email,
-    //                EmailVerified = payload.EmailVerified
-    //            });
-    //            await _db.SaveChangesAsync();
-    //        }
-
-    //        // Nếu Google xác nhận verified mà user chưa verify → cập nhật
-    //        if (payload.EmailVerified && !user.IsVerified)
-    //        {
-    //            user.IsVerified = true;
-    //            user.UpdatedAt = DateTime.UtcNow;
-    //            await _db.SaveChangesAsync();
-    //        }
-
-    //        // Đảm bảo có role JobSeeker
-    //        await RoleHelper.EnsureRoleIfMissingAsync(_db, user.UserId, "JobSeeker");
-
-    //        //  Cập nhật avatar nếu profile rỗng hoặc chưa có ảnh
-    //        var profile = await _db.JobSeekerProfiles.FirstOrDefaultAsync(p => p.UserId == user.UserId);
-    //        if (profile == null)
-    //        {
-    //            // Tạo mới nếu chưa có
-    //            _db.JobSeekerProfiles.Add(new JobSeekerProfile
-    //            {
-    //                UserId = user.UserId,
-    //                FullName = name,
-    //                ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture,
-    //                ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null,
-    //                IsPictureHidden = false,
-    //                UpdatedAt = DateTime.UtcNow
-    //            });
-    //            await _db.SaveChangesAsync();
-    //        }
-    //        else if (string.IsNullOrEmpty(profile.ProfilePicture))
-    //        {
-    //            // Nếu có profile nhưng chưa có ảnh → cập nhật ảnh Google
-    //            profile.ProfilePicture = string.IsNullOrEmpty(picture) ? DefaultAvatarUrl : picture;
-    //            profile.ProfilePicturePublicId = string.IsNullOrEmpty(picture) ? DefaultPublicId : null;
-    //            profile.UpdatedAt = DateTime.UtcNow;
-    //            await _db.SaveChangesAsync();
-    //        }
-
-    //        _log.LogInformation("Existing Google user logged in: {Email}", email);
-    //    }
-
-    //    //  Cập nhật lần đăng nhập cuối
-    //    user.LastLogin = DateTime.UtcNow;
-    //    user.UpdatedAt = DateTime.UtcNow;
-    //    await _db.SaveChangesAsync();
-
-    //    //  Cấp token đăng nhập
-    //    var response = await _tokens.IssueAsync(user, "google", ip);
-    //    return response;
-    //}
-
-    // =================================================
+  
     //   Hai bước đăng nhập với Google: Prepare + Complete
     public async Task<object> GooglePrepareAsync(GoogleLoginDto dto)
     {

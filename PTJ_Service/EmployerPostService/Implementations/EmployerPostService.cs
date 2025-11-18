@@ -13,7 +13,7 @@ using System.Text;
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
 
 namespace PTJ_Service.EmployerPostService.Implementations
-    {
+{
     public class EmployerPostService : IEmployerPostService
         {
         private readonly IEmployerPostRepository _repo;
