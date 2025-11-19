@@ -48,7 +48,7 @@ namespace PTJ_API.Controllers.AuthController
                 return BadRequest("Token không hợp lệ hoặc đã hết hạn.");
 
             // URL FE để nhập mật khẩu mới
-            var feUrl = $"{_cfg["App:FrontendUrl"]}/set-new-password?token={token}";
+            var feUrl = $"{_cfg["Frontend:BaseUrl"]}/set-new-password?token={token}";
             return Redirect(feUrl);
         }
 
