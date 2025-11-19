@@ -56,7 +56,7 @@ namespace PTJ_Service.Admin.Implementations
         public async Task UpdateAsync(AdminUpdateNewsDto dto)
         {
             var detail = await _repo.GetNewsDetailAsync(dto.NewsId)
-                ?? throw new KeyNotFoundException("News not found.");
+                ?? throw new KeyNotFoundException("Không tìm thấy tin tức.");
 
             var entity = new News
             {
@@ -86,7 +86,7 @@ namespace PTJ_Service.Admin.Implementations
         {
             var success = await _repo.TogglePublishStatusAsync(id);
             if (!success)
-                throw new KeyNotFoundException("News not found or deleted.");
+                throw new KeyNotFoundException("Không tìm thấy tin tức hoặc tin tức đã bị xóa.");
         }
 
         //  Xóa mềm
@@ -94,7 +94,7 @@ namespace PTJ_Service.Admin.Implementations
         {
             var success = await _repo.SoftDeleteAsync(id);
             if (!success)
-                throw new KeyNotFoundException("News not found or already deleted.");
+                throw new KeyNotFoundException("Không tìm thấy tin tức hoặc tin tức đã bị xóa.");
         }
     }
 }

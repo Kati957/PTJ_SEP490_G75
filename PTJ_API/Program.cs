@@ -55,7 +55,6 @@ using PTJ_Data.Repositories.Interfaces.ActivityUsers;
 using PTJ_Data.Repositories.Interfaces.NewsPost;
 using PTJ_Service.SystemReportService.Interfaces;
 using PTJ_Service.SystemReportService.Implementations;
-using PTJ_Service.FollowService;
 using PTJ_Service.Interfaces;
 using PTJ_Service.Implementations;
 using PTJ_Service.JobSeekerCvService.Implementations;
@@ -70,6 +69,7 @@ using PTJ_Service.Hubs;
 using PTJ_Data.Repositories.Implementations.Home;
 using PTJ_Data.Repositories.Interfaces.Home;
 using PTJ_Service.HomeService;
+using PTJ_Service.FollowService.Implementations;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -121,6 +121,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IChangePasswordrService, ChangePasswordService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReportService, ReportService>();    
@@ -180,7 +181,7 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IChangePasswordrService, ChangePasswordService>();
 
 
 // 3️⃣ CẤU HÌNH JWT AUTHENTICATION

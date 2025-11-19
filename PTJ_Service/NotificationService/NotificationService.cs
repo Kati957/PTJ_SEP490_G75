@@ -25,7 +25,7 @@ namespace PTJ_Service.Implementations
             // 1. Load Notification Template
             var template = await _repo.GetTemplateAsync(dto.NotificationType);
             if (template == null)
-                throw new Exception($"Notification template not found: {dto.NotificationType}");
+                throw new Exception($"Không tìm thấy mẫu thông báo: {dto.NotificationType}");
 
             // 2. Render Title & Message (replace placeholders)
             string title = RenderTemplate(template.TitleTemplate, dto.Data);

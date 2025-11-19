@@ -102,11 +102,21 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 throw new Exception("Không thể load lại bài đăng vừa tạo.");
 
             // 🧠 Tạo embedding vector
+            var category = await _db.Categories.FindAsync(freshPost.CategoryId);
+
+            string embedText =
+                $"{freshPost.Title}. " +
+                $"{freshPost.Description}. " +
+                $"Yêu cầu: {freshPost.Requirements}. " +
+                $"Lương: {freshPost.Salary}. " +
+                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+
             var (vector, hash) = await EnsureEmbeddingAsync(
                 "EmployerPost",
                 freshPost.EmployerPostId,
-                $"{freshPost.Title}. {freshPost.Description}. Yêu cầu: {freshPost.Requirements}. Lương: {freshPost.Salary}"
+                embedText
             );
+
 
             // 📤 Upsert vector vào Pinecone
             await _ai.UpsertVectorAsync(
@@ -221,6 +231,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return posts.Select(p => new EmployerPostDtoOut
                 {
                 EmployerPostId = p.EmployerPostId,
+                EmployerId = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
                 Salary = p.Salary,
@@ -241,6 +252,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return posts.Select(p => new EmployerPostDtoOut
                 {
                 EmployerPostId = p.EmployerPostId,
+                EmployerId = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
                 Salary = p.Salary,
@@ -318,11 +330,21 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             await _repo.UpdateAsync(post);
 
+            var category = await _db.Categories.FindAsync(post.CategoryId);
+
+            string embedText =
+                $"{post.Title}. " +
+                $"{post.Description}. " +
+                $"Yêu cầu: {post.Requirements}. " +
+                $"Lương: {post.Salary}. " +
+                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+
             var (vector, _) = await EnsureEmbeddingAsync(
                 "EmployerPost",
                 post.EmployerPostId,
-                $"{post.Title}. {post.Description}. Yêu cầu: {post.Requirements}. Lương: {post.Salary}"
+                embedText
             );
+
 
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
@@ -367,11 +389,22 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 throw new Exception("Bài đăng không tồn tại.");
 
             // 🔄 Tạo embedding lại
+            var category = await _db.Categories.FindAsync(post.CategoryId);
+
+            string embedText =
+                $"{post.Title}. " +
+                $"{post.Description}. " +
+                $"Yêu cầu: {post.Requirements}. " +
+                $"Địa điểm: {post.Location}. " +
+                $"Lương: {post.Salary}. " +
+                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+
             var (vector, _) = await EnsureEmbeddingAsync(
                 "EmployerPost",
                 post.EmployerPostId,
-                $"{post.Title}. {post.Description}. Yêu cầu: {post.Requirements}. Địa điểm: {post.Location}. Lương: {post.Salary}"
+                embedText
             );
+
 
             // 🔄 Upsert vector vào Pinecone
             await _ai.UpsertVectorAsync(
@@ -477,10 +510,6 @@ ScoreAndFilterCandidatesAsync(
             {
             var result = new List<(JobSeekerPost, double, int?)>();
 
-            float[] jdEmbedding = await _ai.CreateEmbeddingAsync(
-                $"{employerTitle}. {employerRequirements}. {employerLocation}"
-            );
-
             foreach (var m in matches)
                 {
                 if (!m.Id.StartsWith("JobSeekerPost:"))
@@ -497,120 +526,30 @@ ScoreAndFilterCandidatesAsync(
                 if (seeker == null || seeker.Status != "Active")
                     continue;
 
-                // ❗ CATEGORY FILTER
+                // CATEGORY FILTER
                 if (mustMatchCategoryId.HasValue &&
                     seeker.CategoryId != mustMatchCategoryId.Value)
                     continue;
 
-                // ❗ LẤY CV CỦA BÀI ĐĂNG (ĐÚNG YÊU CẦU)
-                JobSeekerCv? cv = null;
-                if (seeker.SelectedCvId.HasValue)
-                    {
-                    cv = await _db.JobSeekerCvs
-                        .FirstOrDefaultAsync(c =>
-                            c.Cvid == seeker.SelectedCvId.Value &&
-                            c.JobSeekerId == seeker.UserId);
-                    }
+                // LOCATION FILTER (chỉ lọc, không tính điểm)
+                if (!await IsWithinDistanceAsync(employerLocation, seeker.PreferredLocation))
+                    continue;
 
-                int? cvId = seeker.SelectedCvId;
+                // 🎯 ONLY 1 SCORE: embedding score
+                double finalScore = m.Score;
 
-                // === CV EMBEDDING ===
-                float[] cvEmbedding = Array.Empty<float>();
-
-                if (cv != null)
-                    {
-                    var cvEmbeddingRecord = await _db.AiEmbeddingStatuses
-                        .FirstOrDefaultAsync(e =>
-                            e.EntityType == "JobSeekerCV" &&
-                            e.EntityId == cv.Cvid);
-
-                    if (cvEmbeddingRecord != null && cvEmbeddingRecord.VectorData != null)
-                        cvEmbedding = JsonConvert.DeserializeObject<float[]>(cvEmbeddingRecord.VectorData);
-                    }
-
-                double cvCosine = 0;
-                if (cvEmbedding.Length == jdEmbedding.Length)
-                    cvCosine = Cosine(cvEmbedding, jdEmbedding);
-
-                double cvBoost = cvCosine * 0.35;
-
-                // === SKILL BOOST (nếu bài đăng có CV) ===
-                double skillBoost = 0;
-
-                if (cv != null)
-                    {
-                    var cvSkills = (cv.Skills ?? "")
-                        .ToLower()
-                        .Split(',', ';', '.', ' ')
-                        .Where(x => x.Length > 1)
-                        .Distinct()
-                        .ToList();
-
-                    var jdReq = (employerRequirements ?? "")
-                        .ToLower()
-                        .Split(',', ';', '.', ' ')
-                        .Where(x => x.Length > 1)
-                        .Distinct()
-                        .ToList();
-
-                    int matched = cvSkills.Count(x => jdReq.Contains(x));
-
-                    if (cvSkills.Count > 0)
-                        {
-                        double overlap = (double)matched / cvSkills.Count;
-                        skillBoost = overlap * 0.25;
-                        }
-                    }
-
-                // === LOCATION SCORING ===
-                double baseScore = await ComputeHybridScoreAsync(
-                    m.Score,
-                    employerLocation,
-                    seeker.PreferredLocation
-                );
-
-                // === TỔNG ĐIỂM ===
-                double finalScore = Math.Clamp(baseScore + cvBoost + skillBoost, 0, 1);
-
-                result.Add((seeker, finalScore, cvId));
+                result.Add((seeker, finalScore, seeker.SelectedCvId));
                 }
 
             return result;
             }
 
-
-
-
-        private double Cosine(float[] a, float[] b)
+        private async Task<bool> IsWithinDistanceAsync(string employerLocation, string? seekerLocation)
             {
-            double dot = 0, da = 0, db = 0;
-
-            for (int i = 0; i < a.Length; i++)
-                {
-                dot += a[i] * b[i];
-                da += a[i] * a[i];
-                db += b[i] * b[i];
-                }
-
-            return dot / (Math.Sqrt(da) * Math.Sqrt(db) + 1e-9);
-            }
-
-
-
-        private async Task<double> ComputeHybridScoreAsync(
-            double contentMatchScore,
-            string employerLocation,
-            string? seekerLocation)
-            {
-            // === Trọng số ảnh hưởng ===
-            const double WEIGHT_CONTENT_MATCH = 0.7;      // mức độ phù hợp nội dung
-            const double WEIGHT_DISTANCE_FACTOR = 0.3;    // mức độ gần về vị trí
-
-            double locationMatchScore = 0.5; // trung lập nếu không xác định được
-
             try
                 {
-                if (!string.IsNullOrWhiteSpace(employerLocation) && !string.IsNullOrWhiteSpace(seekerLocation))
+                if (!string.IsNullOrWhiteSpace(employerLocation) &&
+                    !string.IsNullOrWhiteSpace(seekerLocation))
                     {
                     var employerCoord = await _map.GetCoordinatesAsync(employerLocation);
                     var seekerCoord = await _map.GetCoordinatesAsync(seekerLocation);
@@ -621,34 +560,15 @@ ScoreAndFilterCandidatesAsync(
                             employerCoord.Value.lat, employerCoord.Value.lng,
                             seekerCoord.Value.lat, seekerCoord.Value.lng);
 
-                        // === Điểm vị trí càng gần càng cao ===
-                        if (distanceKm <= 2)
-                            locationMatchScore = 1.0;
-                        else if (distanceKm <= 10)
-                            locationMatchScore = 0.9;
-                        else if (distanceKm <= 30)
-                            locationMatchScore = 0.6;
-                        else if (distanceKm <= 50)
-                            locationMatchScore = 0.3;
-                        else if (distanceKm <= 100)
-                            locationMatchScore = 0.1;
-                        else
-                            locationMatchScore = 0.0;
+                        return distanceKm <= 100; // ❗ Lọc, không tính điểm
                         }
                     }
                 }
-            catch
-                {
-                locationMatchScore = 0.5; // fallback nếu API lỗi
-                }
+            catch { }
 
-            // === Tổng điểm hybrid ===
-            double totalMatchScore =
-                (contentMatchScore * WEIGHT_CONTENT_MATCH) +
-                (locationMatchScore * WEIGHT_DISTANCE_FACTOR);
-
-            return Math.Clamp(totalMatchScore, 0, 1);
+            return true; // fallback
             }
+
 
 
         // SHORTLIST

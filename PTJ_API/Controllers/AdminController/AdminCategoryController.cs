@@ -46,7 +46,7 @@ namespace PTJ_API.Controllers.AdminController
         public async Task<IActionResult> Update([FromRoute] int id, [FromBody] AdminUpdateCategoryDto dto)
         {
             await _svc.UpdateAsync(id, dto);
-            return Ok(new { message = "Category updated successfully." });
+            return Ok(new { message = "Cập nhật danh mục thành công." });
         }
 
         // Toggle Active
@@ -54,7 +54,7 @@ namespace PTJ_API.Controllers.AdminController
         public async Task<IActionResult> ToggleActive([FromRoute] int id)
         {
             await _svc.ToggleActiveAsync(id);
-            return Ok(new { message = "Category active toggled." });
+            return Ok(new { message = "Đã cập nhật trạng thái hoạt động của danh mục." });
         }
     }
 }

@@ -118,7 +118,7 @@ public sealed class TokenService : ITokenService
             .FirstOrDefaultAsync(x => x.Token == refreshToken);
 
         if (rt == null || rt.IsRevoked || rt.ExpiresAt < DateTime.UtcNow)
-            throw new Exception("Invalid or expired refresh token.");
+            throw new Exception("Refresh token không hợp lệ hoặc đã hết hạn.");
 
         //  Xóa refresh token cũ trước khi cấp mới
         _db.RefreshTokens.Remove(rt);

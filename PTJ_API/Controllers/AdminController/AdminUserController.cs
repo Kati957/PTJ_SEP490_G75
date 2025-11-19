@@ -41,7 +41,7 @@ namespace PTJ_API.Controllers.Admin
         public async Task<IActionResult> ToggleActive(int id)
         {
             await _svc.ToggleActiveAsync(id);
-            return Ok(new { message = "User active toggled successfully." });
+            return Ok(new { message = "Cập nhật trạng thái hoạt động của người dùng thành công." });
         }
 
         //  NEW: Admin khóa user + nhập lý do + gửi thông báo
@@ -49,13 +49,13 @@ namespace PTJ_API.Controllers.Admin
         public async Task<IActionResult> BanUser(int id, [FromBody] BanUserDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Reason))
-                return BadRequest(new { message = "Reason is required." });
+                return BadRequest(new { message = "Vui lòng cung cấp lý do." });
 
             await _svc.BanUserAsync(id, dto.Reason, AdminId);
 
             return Ok(new
             {
-                message = "User has been banned and notified.",
+                message = "Tài khoản người dùng đã bị khóa.",
                 userId = id,
                 reason = dto.Reason
             });
