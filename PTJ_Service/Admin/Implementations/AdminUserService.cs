@@ -40,7 +40,7 @@ public class AdminUserService : IAdminUserService
     public async Task ToggleActiveAsync(int id)
     {
         var user = await _repo.GetUserEntityAsync(id);
-        if (user == null) throw new KeyNotFoundException("User not found.");
+        if (user == null) throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         user.IsActive = !user.IsActive;
         await _repo.SaveChangesAsync();
@@ -50,7 +50,7 @@ public class AdminUserService : IAdminUserService
     public async Task<bool> BanUserAsync(int userId, string reason, int adminId)
     {
         var user = await _repo.GetUserEntityAsync(userId)
-            ?? throw new KeyNotFoundException("User not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         // 1️⃣ Khóa tài khoản
         user.IsActive = false;

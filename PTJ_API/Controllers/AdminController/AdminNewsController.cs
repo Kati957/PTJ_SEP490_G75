@@ -49,7 +49,7 @@ namespace PTJ_API.Controllers.AdminController
         {
             dto.NewsId = id;
             await _svc.UpdateAsync(dto);
-            return Ok(new { message = "News updated successfully." });
+            return Ok(new { message = "Cập nhật tin tức thành công." });
         }
 
         // Publish / Unpublish
@@ -57,7 +57,7 @@ namespace PTJ_API.Controllers.AdminController
         public async Task<IActionResult> TogglePublish(int id)
         {
             await _svc.TogglePublishStatusAsync(id);
-            return Ok(new { message = "Publish status changed successfully." });
+            return Ok(new { message = "Cập nhật trạng thái xuất bản thành công." });
         }
 
         //  Xóa mềm
@@ -65,7 +65,7 @@ namespace PTJ_API.Controllers.AdminController
         public async Task<IActionResult> Delete(int id)
         {
             await _svc.DeleteAsync(id);
-            return Ok(new { message = "News deleted successfully." });
+            return Ok(new { message = "Xóa tin tức thành công." });
         }
     }
 }

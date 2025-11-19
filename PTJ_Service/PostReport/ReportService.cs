@@ -26,15 +26,15 @@ namespace PTJ_Service.Implementations
         public async Task<int> ReportEmployerPostAsync(int reporterId, CreateEmployerPostReportDto dto)
         {
             if (dto.EmployerPostId <= 0)
-                throw new ArgumentException("Invalid EmployerPostId");
+                throw new ArgumentException("EmployerPostId không hợp lệ.");
 
             // Validate tồn tại
             if (!await _repo.EmployerPostExistsAsync(dto.EmployerPostId))
-                throw new KeyNotFoundException("Employer post not found.");
+                throw new KeyNotFoundException("Không tìm thấy bài đăng của nhà tuyển dụng.");
 
             // Chống spam report lặp trong 10 phút
             if (await _repo.HasRecentDuplicateAsync(reporterId, "EmployerPost", dto.EmployerPostId, withinMinutes: 10))
-                throw new InvalidOperationException("You already reported this post recently.");
+                throw new InvalidOperationException("Bạn đã báo cáo bài đăng này gần đây.");
 
             var report = new PostReport
             {
@@ -52,10 +52,10 @@ namespace PTJ_Service.Implementations
             await _repo.AddAsync(report);
             await _repo.SaveChangesAsync();
 
-            // Lấy tiêu đề bài đăng để hiển thị Notification
+            // Lấy tiêu đề bài đăng để gửi Notification
             var postTitle = await _repo.GetEmployerPostTitleAsync(dto.EmployerPostId);
 
-            // 🔔 SEND NOTIFICATION TO ADMIN
+            // 🔔 GỬI NOTIFICATION CHO ADMIN
             var adminId = await _repo.GetAdminUserIdAsync();
             if (adminId > 0)
             {
@@ -66,7 +66,7 @@ namespace PTJ_Service.Implementations
                     RelatedItemId = report.PostReportId,
                     Data = new()
                     {
-                        { "PostTitle", postTitle ?? "Unknown Post" }
+                        { "PostTitle", postTitle ?? "Không xác định" }
                     }
                 });
             }
@@ -80,13 +80,13 @@ namespace PTJ_Service.Implementations
         public async Task<int> ReportJobSeekerPostAsync(int reporterId, CreateJobSeekerPostReportDto dto)
         {
             if (dto.JobSeekerPostId <= 0)
-                throw new ArgumentException("Invalid JobSeekerPostId");
+                throw new ArgumentException("JobSeekerPostId không hợp lệ.");
 
             if (!await _repo.JobSeekerPostExistsAsync(dto.JobSeekerPostId))
-                throw new KeyNotFoundException("Job seeker post not found.");
+                throw new KeyNotFoundException("Không tìm thấy bài đăng của người tìm việc.");
 
             if (await _repo.HasRecentDuplicateAsync(reporterId, "JobSeekerPost", dto.JobSeekerPostId, withinMinutes: 10))
-                throw new InvalidOperationException("You already reported this post recently.");
+                throw new InvalidOperationException("Bạn đã báo cáo bài đăng này gần đây.");
 
             var report = new PostReport
             {
@@ -107,7 +107,7 @@ namespace PTJ_Service.Implementations
             // Lấy tiêu đề bài đăng
             var postTitle = await _repo.GetJobSeekerPostTitleAsync(dto.JobSeekerPostId);
 
-            // 🔔 SEND NOTIFICATION TO ADMIN
+            // 🔔 GỬI THÔNG BÁO CHO ADMIN
             var adminId = await _repo.GetAdminUserIdAsync();
             if (adminId > 0)
             {
@@ -118,7 +118,7 @@ namespace PTJ_Service.Implementations
                     RelatedItemId = report.PostReportId,
                     Data = new()
                     {
-                        { "PostTitle", postTitle ?? "Unknown Post" }
+                        { "PostTitle", postTitle ?? "Không xác định" }
                     }
                 });
             }

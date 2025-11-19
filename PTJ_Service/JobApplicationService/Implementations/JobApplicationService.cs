@@ -198,12 +198,13 @@ namespace PTJ_Service.JobApplicationService.Implementations
         }
 
 
-     
+
         // 5️⃣ EMPLOYER ACCEPT / REJECT APPLICATION
-     
+
         public async Task<bool> UpdateStatusAsync(int submissionId, string status, string? note = null)
-        {
-            var validStatuses = new[] { "Accepted", "Rejected" };
+            {
+            // ⭐ Step 1: Thêm Interviewing vào danh sách hợp lệ
+            var validStatuses = new[] { "Interviewing", "Accepted", "Rejected" };
             if (!validStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
                 throw new ArgumentException("Trạng thái không hợp lệ.");
 
@@ -214,47 +215,63 @@ namespace PTJ_Service.JobApplicationService.Implementations
             if (entity.Status == "Withdrawn")
                 throw new Exception("Không thể cập nhật đơn đã rút.");
 
-            // Cập nhật trạng thái
+            // ⭐ Step 2: Cập nhật trạng thái
             entity.Status = status.Trim();
             entity.Notes = note;
             entity.UpdatedAt = DateTime.Now;
+
             await _repo.UpdateAsync(entity);
 
             // Lấy thông tin JS và bài post
             var seeker = await _db.Users.FirstAsync(u => u.UserId == entity.JobSeekerId);
             var post = await _db.EmployerPosts.FirstAsync(p => p.EmployerPostId == entity.EmployerPostId);
 
-            
-            //  SEND NOTIFICATION TO JOBSEEKER
-           
-            if (status == "Accepted")
-            {
-                await _noti.SendAsync(new CreateNotificationDto
+            // ⭐ Step 3: Gửi thông báo tùy theo trạng thái
+            if (status.Equals("Interviewing", StringComparison.OrdinalIgnoreCase))
                 {
+                await _noti.SendAsync(new CreateNotificationDto
+                    {
+                    UserId = seeker.UserId,
+                    NotificationType = "InterviewRequest",
+                    RelatedItemId = submissionId,
+                    Data = new()
+            {
+                { "PostTitle", post.Title }
+            }
+                    });
+
+                return true;
+                }
+
+            if (status.Equals("Accepted", StringComparison.OrdinalIgnoreCase))
+                {
+                await _noti.SendAsync(new CreateNotificationDto
+                    {
                     UserId = seeker.UserId,
                     NotificationType = "ApplicationAccepted",
                     RelatedItemId = submissionId,
                     Data = new()
-                    {
-                        { "PostTitle", post.Title }
-                    }
-                });
-            }
-            else if (status == "Rejected")
             {
-                await _noti.SendAsync(new CreateNotificationDto
+                { "PostTitle", post.Title }
+            }
+                    });
+                }
+            else if (status.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
+                await _noti.SendAsync(new CreateNotificationDto
+                    {
                     UserId = seeker.UserId,
                     NotificationType = "ApplicationRejected",
                     RelatedItemId = submissionId,
                     Data = new()
-                    {
-                        { "PostTitle", post.Title }
-                    }
-                });
+            {
+                { "PostTitle", post.Title }
             }
+                    });
+                }
 
             return true;
+            }
+
         }
     }
-}

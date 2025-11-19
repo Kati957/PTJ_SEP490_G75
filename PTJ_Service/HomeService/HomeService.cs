@@ -3,16 +3,19 @@ using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models;
 using PTJ_Models.Models;
+using PTJ_Models.DTO.HomePageDTO;
+using PTJ_Data.Repositories.Interfaces.Home;
 
 namespace PTJ_Service.HomeService
 {
     public class HomeService : IHomeService
     {
         private readonly JobMatchingDbContext _context;
-
-        public HomeService(JobMatchingDbContext context)
+        private readonly IHomeRepository _repo;
+        public HomeService(JobMatchingDbContext context, IHomeRepository repo)
         {
             _context = context;
+            _repo = repo;
         }
 
         public async Task<IEnumerable<HomePostDto>> GetLatestPostsAsync(string? keyword, int page, int pageSize)
@@ -75,6 +78,10 @@ namespace PTJ_Service.HomeService
                 .ToList();
 
             return result;
+        }
+        public Task<HomeStatisticsDto> GetHomeStatisticsAsync()
+        {
+            return _repo.GetHomeStatisticsAsync();
         }
     }
 }
