@@ -17,7 +17,13 @@ public partial class SystemReport
 
     public DateTime CreatedAt { get; set; }
 
-    public DateTime UpdatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+
+    public string? AdminNote { get; set; }
+
+    public int? ProcessedByAdminId { get; set; }
+
+    public virtual User? ProcessedByAdmin { get; set; }
 
     public virtual User User { get; set; } = null!;
 }
