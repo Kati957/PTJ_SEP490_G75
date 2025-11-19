@@ -60,13 +60,13 @@ namespace PTJ_Service.Implementations.Admin
                     break;
 
                 default:
-                    throw new InvalidOperationException("Không thể thực hiện hành động này trên báo cáo.");
+                    throw new InvalidOperationException("Không thể thực hiện hành động này.");
             }
 
-            // Cập nhật trạng thái
+            // Cập nhật trạng thái report
             report.Status = "Resolved";
 
-            // Lưu thông tin đã xử lý
+            // Lưu record solved
             var solved = new PostReportSolved
             {
                 PostReportId = report.PostReportId,
@@ -82,15 +82,27 @@ namespace PTJ_Service.Implementations.Admin
             await _repo.AddSolvedReportAsync(solved);
             await _repo.SaveChangesAsync();
 
-            return new AdminSolvedReportDto
+            // LẤY LẠI DỮ LIỆU ĐẦY ĐỦ SAU KHI SAVE (JOIN POST + ADMIN + USER)
+            var solvedPaged = await _repo.GetSolvedReportsPagedAsync(null, null, 1, 1);
+
+            var fullData = solvedPaged.Data.FirstOrDefault(s => s.SolvedReportId == solved.SolvedPostReportId);
+
+            if (fullData == null)
             {
-                SolvedReportId = solved.SolvedPostReportId,
-                ReportId = solved.PostReportId,
-                ActionTaken = solved.ActionTaken,
-                Reason = solved.Reason,
-                SolvedAt = solved.SolvedAt
-            };
+                // fallback nếu hiếm khi join không trả về
+                return new AdminSolvedReportDto
+                {
+                    SolvedReportId = solved.SolvedPostReportId,
+                    ReportId = solved.PostReportId,
+                    ActionTaken = solved.ActionTaken,
+                    Reason = solved.Reason,
+                    SolvedAt = solved.SolvedAt
+                };
+            }
+
+            return fullData;
         }
+
 
 
         // CASE 1️⃣: GỠ HOẶC ẨN BÀI ĐĂNG

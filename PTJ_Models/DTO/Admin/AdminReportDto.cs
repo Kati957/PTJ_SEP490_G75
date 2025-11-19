@@ -6,27 +6,40 @@ namespace PTJ_Models.DTO.Admin
     public class AdminReportDto
     {
         public int ReportId { get; set; }
-        public string ReportType { get; set; } = string.Empty; 
+        public string ReportType { get; set; } = string.Empty;
         public string ReporterEmail { get; set; } = string.Empty;
         public string? TargetUserEmail { get; set; }
         public string? Reason { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+        public int? EmployerPostId { get; set; }
+        public string? EmployerPostTitle { get; set; }
+        public int? JobSeekerPostId { get; set; }
+        public string? JobSeekerPostTitle { get; set; }
+
+        public string? PostType { get; set; } 
     }
+
 
     // 2️⃣ Report đã xử lý (Solved)
     public class AdminSolvedReportDto
     {
         public int SolvedReportId { get; set; }
         public int ReportId { get; set; }
-        public string ActionTaken { get; set; } = string.Empty; 
+        public string ActionTaken { get; set; } = string.Empty;
         public string AdminEmail { get; set; } = string.Empty;
         public string? TargetUserEmail { get; set; }
         public string? ReportType { get; set; }
         public string? ReportReason { get; set; }
-        public string? Reason { get; set; } // Lý do admin xử lý
+        public string? Reason { get; set; }
         public DateTime SolvedAt { get; set; }
+        public int? EmployerPostId { get; set; }
+        public string? EmployerPostTitle { get; set; }
+        public int? JobSeekerPostId { get; set; }
+        public string? JobSeekerPostTitle { get; set; }
+        public string? PostType { get; set; }
     }
+
 
     // 3️⃣ DTO khi admin xử lý report 
     public class AdminResolveReportDto

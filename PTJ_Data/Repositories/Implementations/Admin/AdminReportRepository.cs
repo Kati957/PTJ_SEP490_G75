@@ -15,11 +15,13 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
         // 1️⃣ Danh sách report chưa xử lý (Pending)
         public async Task<PagedResult<AdminReportDto>> GetPendingReportsPagedAsync(
-            string? reportType = null, string? keyword = null, int page = 1, int pageSize = 10)
+    string? reportType = null, string? keyword = null, int page = 1, int pageSize = 10)
         {
             var query = _db.PostReports
                 .Include(r => r.Reporter)
                 .Include(r => r.TargetUser)
+                .Include(r => r.EmployerPost)
+                .Include(r => r.JobSeekerPost)
                 .Where(r => r.Status == "Pending")
                 .AsQueryable();
 
@@ -32,7 +34,10 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 query = query.Where(r =>
                     r.Reporter.Email.ToLower().Contains(kw) ||
                     (r.TargetUser != null && r.TargetUser.Email.ToLower().Contains(kw)) ||
-                    (r.Reason != null && r.Reason.ToLower().Contains(kw)));
+                    (r.Reason != null && r.Reason.ToLower().Contains(kw)) ||
+                    (r.EmployerPost != null && r.EmployerPost.Title.ToLower().Contains(kw)) ||
+                    (r.JobSeekerPost != null && r.JobSeekerPost.Title.ToLower().Contains(kw))
+                );
             }
 
             var total = await query.CountAsync();
@@ -49,21 +54,32 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     TargetUserEmail = r.TargetUser != null ? r.TargetUser.Email : null,
                     Reason = r.Reason,
                     Status = r.Status,
-                    CreatedAt = r.CreatedAt
+                    CreatedAt = r.CreatedAt,
+                    EmployerPostId = r.EmployerPostId,
+                    EmployerPostTitle = r.EmployerPost != null ? r.EmployerPost.Title : null,
+                    JobSeekerPostId = r.JobSeekerPostId,
+                    JobSeekerPostTitle = r.JobSeekerPost != null ? r.JobSeekerPost.Title : null,
+
+                    PostType = r.EmployerPostId != null ? "EmployerPost" :
+                               r.JobSeekerPostId != null ? "JobSeekerPost" : null
                 })
                 .ToListAsync();
 
             return new PagedResult<AdminReportDto>(items, total, page, pageSize);
         }
 
+
         // 2️⃣ Danh sách report đã xử lý (Solved)
         public async Task<PagedResult<AdminSolvedReportDto>> GetSolvedReportsPagedAsync(
-            string? adminEmail = null, string? reportType = null, int page = 1, int pageSize = 10)
+     string? adminEmail = null, string? reportType = null, int page = 1, int pageSize = 10)
         {
             var query = _db.PostReportSolveds
                 .Include(s => s.Admin)
                 .Include(s => s.AffectedUser)
                 .Include(s => s.PostReport)
+                    .ThenInclude(r => r.EmployerPost)
+                .Include(s => s.PostReport)
+                    .ThenInclude(r => r.JobSeekerPost)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(adminEmail))
@@ -88,12 +104,20 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     ReportType = s.PostReport.ReportType,
                     ReportReason = s.PostReport.Reason,
                     Reason = s.Reason,
-                    SolvedAt = s.SolvedAt
+                    SolvedAt = s.SolvedAt,
+                    EmployerPostId = s.PostReport.EmployerPostId,
+                    EmployerPostTitle = s.PostReport.EmployerPost != null ? s.PostReport.EmployerPost.Title : null,
+                    JobSeekerPostId = s.PostReport.JobSeekerPostId,
+                    JobSeekerPostTitle = s.PostReport.JobSeekerPost != null ? s.PostReport.JobSeekerPost.Title : null,
+
+                    PostType = s.PostReport.EmployerPostId != null ? "EmployerPost" :
+                               s.PostReport.JobSeekerPostId != null ? "JobSeekerPost" : null
                 })
                 .ToListAsync();
 
             return new PagedResult<AdminSolvedReportDto>(items, total, page, pageSize);
         }
+
 
         // 3️⃣ Chi tiết report (GET /api/admin/reports/{id})
         public async Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId)
