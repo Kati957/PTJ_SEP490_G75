@@ -1,48 +1,37 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTOs;
+using PTJ_Models.Models;
 using PTJ_Service.SystemReportService.Interfaces;
 
 namespace PTJ_API.Controllers.AdminController
 {
+    [Authorize]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/system-reports")]
     public class SystemReportController : ControllerBase
     {
-        private readonly ISystemReportService _reportService;
+        private readonly ISystemReportService _service;
 
-        public SystemReportController(ISystemReportService reportService)
+        public SystemReportController(ISystemReportService service)
         {
-            _reportService = reportService;
+            _service = service;
         }
 
+        private int GetUserId() => int.Parse(User.FindFirst("UserId")!.Value);
+
         [HttpPost]
-        public async Task<IActionResult> CreateReport([FromBody] SystemReportCreateDto dto)
+        public async Task<IActionResult> Create(SystemReportCreateDto dto)
         {
-            await _reportService.CreateReportAsync(dto);
+            await _service.CreateReportAsync(GetUserId(), dto);
             return Ok(new { message = "Gửi báo cáo thành công." });
         }
 
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetReportsByUser(int userId)
+        [HttpGet("my")]
+        public async Task<IActionResult> MyReports()
         {
-            var reports = await _reportService.GetReportsByUserAsync(userId);
-            return Ok(reports);
-        }
-
-        [HttpGet("all")]
-        public async Task<IActionResult> GetAllReports()
-        {
-            var reports = await _reportService.GetAllReportsAsync();
-            return Ok(reports);
-        }
-
-        [HttpPut("{reportId}")]
-        public async Task<IActionResult> UpdateStatus(int reportId, [FromBody] SystemReportUpdateDto dto)
-        {
-            var success = await _reportService.UpdateStatusAsync(reportId, dto.Status);
-            if (!success) return NotFound(new { message = "Không tìm thấy báo cáo." });
-
-            return Ok(new { message = "Cập nhật trạng thái báo cáo thành công." });
+            var result = await _service.GetReportsByUserAsync(GetUserId());
+            return Ok(result);
         }
     }
 }
