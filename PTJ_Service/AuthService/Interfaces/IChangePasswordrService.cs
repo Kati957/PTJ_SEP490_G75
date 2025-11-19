@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using PTJ_Models.DTO.Auth;
 
 namespace PTJ_Service.AuthService.Interfaces
 {
-    public interface IChangePasswordrService
+    public interface IChangePasswordService
     {
-        Task<bool> ChangePasswordAsync(int userId, ChangePasswordDto dto);
+        Task RequestChangePasswordAsync(int userId, string currentPassword);
+        Task<bool> VerifyChangePasswordRequestAsync(string token);
+        Task<bool> ChangePasswordAsync(ConfirmChangePasswordDto dto);
     }
 }
