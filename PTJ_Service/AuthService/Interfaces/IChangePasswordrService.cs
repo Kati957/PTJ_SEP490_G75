@@ -7,7 +7,7 @@ using PTJ_Models.DTO.Auth;
 
 namespace PTJ_Service.AuthService.Interfaces
 {
-    public interface IUserService
+    public interface IChangePasswordrService
     {
         Task<bool> ChangePasswordAsync(int userId, ChangePasswordDto dto);
     }

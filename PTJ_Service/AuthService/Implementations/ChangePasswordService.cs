@@ -7,11 +7,11 @@ using PTJ_Service.AuthService.Interfaces;
 
 namespace PTJ_Service.AuthService.Implementations
 {
-    public class UserService : IUserService
+    public class ChangePasswordService : IChangePasswordrService
     {
         private readonly JobMatchingDbContext _context;
 
-        public UserService(JobMatchingDbContext context)
+        public ChangePasswordService(JobMatchingDbContext context)
         {
             _context = context;
         }
