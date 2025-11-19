@@ -4,16 +4,16 @@ using PTJ_Models.DTO.Auth;
 using PTJ_Service.AuthService.Interfaces;
 using System.Security.Claims;
 
-namespace PTJ_API.Controllers
+namespace PTJ_API.Controllers.AuthController
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize] // chỉ người đăng nhập mới gọi được
-    public class UserController : ControllerBase
+    public class ChangePasswordController : ControllerBase
     {
-        private readonly IUserService _userService;
+        private readonly IChangePasswordrService _userService;
 
-        public UserController(IUserService userService)
+        public ChangePasswordController(IChangePasswordrService userService)
         {
             _userService = userService;
         }
