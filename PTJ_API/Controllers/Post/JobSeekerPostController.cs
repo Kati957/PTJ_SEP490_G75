@@ -249,19 +249,20 @@ namespace PTJ_API.Controllers.Post
         // AI SUGGESTIONS - GET
         // =========================================================
         [HttpGet("{postId:int}/suggestions")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetSuggestions(int postId, [FromQuery] int take = 10, [FromQuery] int skip = 0)
         {
             var post = await _service.GetByIdAsync(postId);
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            //if (sub == null)
+            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
-                return Forbidden("Bạn không thể xem gợi ý việc làm của bài đăng người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && post.UserID != currentUserId)
+            //    return Forbidden("Bạn không thể xem gợi ý việc làm của bài đăng người khác.");
 
             var items = await _service.GetSuggestionsByPostAsync(postId, take, skip);
             return Ok(new { success = true, total = items.Count(), data = items });

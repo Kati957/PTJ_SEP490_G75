@@ -187,13 +187,13 @@ namespace PTJ_API.Controllers.Post
             if (post == null)
                 return NotFound(new { success = false, message = "Bài đăng không tồn tại." });
 
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            //if (sub == null)
+            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
-                return Forbidden("Bạn không thể làm mới bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
+            //    return Forbidden("Bạn không thể làm mới bài đăng của người khác.");
 
             var result = await _service.RefreshSuggestionsAsync(postId);
             return Ok(new { success = true, message = "Đã làm mới đề xuất ứng viên.", data = result });
@@ -245,13 +245,13 @@ namespace PTJ_API.Controllers.Post
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            //if (sub == null)
+            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
-            var currentUserId = int.Parse(sub.Value);
-            if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
-                return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            //var currentUserId = int.Parse(sub.Value);
+            //if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
+            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
 
             var items = await _service.GetSuggestionsByPostAsync(postId, take, skip);
             return Ok(new { success = true, total = items.Count(), data = items });
