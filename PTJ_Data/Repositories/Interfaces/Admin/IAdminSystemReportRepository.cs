@@ -1,4 +1,5 @@
 ﻿using PTJ_Models.DTO.Admin;
+using PTJ_Models.DTO;
 
 public interface IAdminSystemReportRepository
 {
@@ -8,5 +9,5 @@ public interface IAdminSystemReportRepository
 
     Task<SystemReportDetailDto?> GetSystemReportDetailAsync(int id);
 
-    Task<bool> UpdateReportStatusAsync(int id, int adminId, string status, string? note);
+    Task<bool> UpdateReportStatusAsync(int id, string status);
 }

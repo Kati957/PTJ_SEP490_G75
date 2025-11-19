@@ -784,7 +784,6 @@ public partial class JobMatchingDbContext : DbContext
         modelBuilder.Entity<SystemReport>(entity =>
         {
             entity.Property(e => e.SystemReportId).HasColumnName("SystemReportID");
-            entity.Property(e => e.AdminNote).HasMaxLength(500);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -797,11 +796,7 @@ public partial class JobMatchingDbContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.UserId).HasColumnName("UserID");
 
-            entity.HasOne(d => d.ProcessedByAdmin).WithMany(p => p.SystemReportProcessedByAdmins)
-                .HasForeignKey(d => d.ProcessedByAdminId)
-                .HasConstraintName("FK_SystemReports_ProcessedByAdmin");
-
-            entity.HasOne(d => d.User).WithMany(p => p.SystemReportUsers)
+            entity.HasOne(d => d.User).WithMany(p => p.SystemReports)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__SystemRep__UserI__7849DB76");

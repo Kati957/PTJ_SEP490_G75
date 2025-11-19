@@ -79,9 +79,7 @@ public partial class User
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
-    public virtual ICollection<SystemReport> SystemReportProcessedByAdmins { get; set; } = new List<SystemReport>();
-
-    public virtual ICollection<SystemReport> SystemReportUsers { get; set; } = new List<SystemReport>();
+    public virtual ICollection<SystemReport> SystemReports { get; set; } = new List<SystemReport>();
 
     public virtual ICollection<UserActivityLog> UserActivityLogs { get; set; } = new List<UserActivityLog>();
 

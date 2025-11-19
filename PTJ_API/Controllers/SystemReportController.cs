@@ -1,46 +1,34 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTOs;
+using PTJ_Models.Models;
 using PTJ_Service.SystemReportService.Interfaces;
-using System.Security.Claims;
 
-namespace PTJ_API.Controllers
+[Authorize]
+[ApiController]
+[Route("api/system-reports")]
+public class SystemReportController : ControllerBase
 {
-    [ApiController]
-    [Route("api/system-reports")]
-    [Authorize] // user nào cũng có thể gửi report
-    public class SystemReportController : ControllerBase
+    private readonly ISystemReportService _service;
+
+    public SystemReportController(ISystemReportService service)
     {
-        private readonly ISystemReportService _service;
+        _service = service;
+    }
 
-        public SystemReportController(ISystemReportService service)
-        {
-            _service = service;
-        }
+    private int GetUserId() => int.Parse(User.FindFirst("UserId")!.Value);
 
-        private int GetUserId()
-        {
-            return int.Parse(User.FindFirstValue("UserId"));
-        }
+    [HttpPost]
+    public async Task<IActionResult> Create(SystemReportCreateDto dto)
+    {
+        await _service.CreateReportAsync(GetUserId(), dto);
+        return Ok(new { message = "Gửi báo cáo thành công." });
+    }
 
-        // 1️⃣ USER TẠO SYSTEM REPORT
-        [HttpPost]
-        public async Task<IActionResult> Create(SystemReportCreateDto dto)
-        {
-            int userId = GetUserId();
-            await _service.CreateReportAsync(userId, dto);
-
-            return Ok(new { message = "Gửi báo cáo hệ thống thành công. Cảm ơn bạn đã phản hồi!" });
-        }
-
-        // 2️⃣ USER XEM REPORT CỦA CHÍNH MÌNH
-        [HttpGet("my")]
-        public async Task<IActionResult> GetMyReports()
-        {
-            int userId = GetUserId();
-            var data = await _service.GetReportsByUserAsync(userId);
-
-            return Ok(data);
-        }
+    [HttpGet("my")]
+    public async Task<IActionResult> MyReports()
+    {
+        var result = await _service.GetReportsByUserAsync(GetUserId());
+        return Ok(result);
     }
 }
