@@ -5,8 +5,8 @@ namespace PTJ_Service.AuthService.Interfaces
 {
     public interface IChangePasswordService
     {
-        Task RequestChangePasswordAsync(int userId, string currentPassword);
-        Task<bool> VerifyChangePasswordRequestAsync(string token);
-        Task<bool> ChangePasswordAsync(ConfirmChangePasswordDto dto);
+        Task RequestChangePasswordAsync(int userId, RequestChangePasswordDto dto);
+        Task<bool> VerifyChangePasswordTokenAsync(string token);
+        Task<bool> ConfirmChangePasswordAsync(ConfirmChangePasswordDto dto);
     }
 }
