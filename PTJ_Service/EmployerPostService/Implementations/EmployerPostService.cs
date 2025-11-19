@@ -606,7 +606,7 @@ ScoreAndFilterCandidatesAsync(
             {
             // === Trọng số ảnh hưởng ===
             const double WEIGHT_CONTENT_MATCH = 0.7;      // mức độ phù hợp nội dung
-            const double WEIGHT_DISTANCE_FACTOR = 0.3;    // mức độ gần về vị trí
+            const double WEIGHT_DISTANCE_FACTOR = 0.3;    // mức độ gần về vị trí ko so sanh vtr
 
             double locationMatchScore = 0.5; // trung lập nếu không xác định được
 

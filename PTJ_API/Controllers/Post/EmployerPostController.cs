@@ -70,35 +70,19 @@ namespace PTJ_API.Controllers.Post
         // READ
         // =========================================================
         [HttpGet("all")]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin")] // ⭐ Chỉ Admin mới được truy cập
         public async Task<IActionResult> GetAll()
             {
             var result = await _service.GetAllAsync();
 
-            bool isLoggedIn = User.Identity?.IsAuthenticated == true;
-            bool isAdmin = isLoggedIn && User.IsInRole("Admin");
-
-            // Nếu không phải admin → chỉ lấy bài Active
-            if (!isAdmin)
+            return Ok(new
                 {
-                result = result.Where(p => p.Status == "Active");
-                }
-
-            // Nếu user đăng nhập thì không hiển thị bài của chính mình
-            if (isLoggedIn)
-                {
-                var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-                if (sub != null)
-                    {
-                    int currentUserId = int.Parse(sub.Value);
-
-                    // Loại bài của chính user đó
-                    result = result.Where(p => p.EmployerId != currentUserId);
-                    }
-                }
-
-            return Ok(new { success = true, total = result.Count(), data = result });
+                success = true,
+                total = result.Count(),
+                data = result
+                });
             }
+
 
 
 
@@ -119,24 +103,33 @@ namespace PTJ_API.Controllers.Post
         }
 
         [HttpGet("{id}")]
-        [AllowAnonymous]
+        [Authorize] // ⭐ Bắt buộc đăng nhập
         public async Task<IActionResult> GetById(int id)
             {
-            //var currentUserId = int.Parse(sub.Value);
-            //if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
-            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
             var post = await _service.GetByIdAsync(id);
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            bool isAdmin = User.Identity?.IsAuthenticated == true && User.IsInRole("Admin");
+            bool isLoggedIn = User.Identity?.IsAuthenticated == true;
+            bool isAdmin = isLoggedIn && User.IsInRole("Admin");
 
-            // Nếu bài đã bị xoá → chỉ admin được xem
-            if (!isAdmin && post.Status == "Deleted")
+            // ⭐ Lấy UserID hiện tại từ JWT
+            var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
+                      ?? User.FindFirst("sub");
+
+            int currentUserId = sub != null ? int.Parse(sub.Value) : -1;
+
+            // ⭐ Chỉ cho phép admin hoặc đúng employer (chủ bài)
+            if (!isAdmin && post.EmployerId != currentUserId)
+                return Forbid("Bạn không có quyền xem bài đăng này.");
+
+            // Nếu bài đã xóa (Status = Deleted) → chỉ admin được xem
+            if (post.Status == "Deleted" && !isAdmin)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
             return Ok(new { success = true, data = post });
             }
+
 
 
         // =========================================================
