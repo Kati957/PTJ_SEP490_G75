@@ -28,24 +28,24 @@ namespace PTJ_Service.AuthService.Implementations
             _log = log;
         }
 
-   
-        // 1️⃣ Bước 1: YÊU CẦU ĐỔI MẬT KHẨU → Gửi email xác nhận
-
+        // 1️⃣ Bước 1: YÊU CẦU ĐỔI MẬT KHẨU → gửi email xác nhận
         public async Task RequestChangePasswordAsync(int userId, RequestChangePasswordDto dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(x => x.UserId == userId)
                        ?? throw new Exception("Không tìm thấy người dùng.");
 
+            // Tài khoản Google không có password
             if (string.IsNullOrEmpty(user.PasswordHash))
                 throw new Exception("Tài khoản đăng nhập Google không thể đổi mật khẩu.");
 
+            // Kiểm tra mật khẩu hiện tại
             if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
                 throw new Exception("Mật khẩu hiện tại không đúng.");
 
             // Tạo token
             var token = Guid.NewGuid().ToString("N");
 
-            // Lưu token vào DB (dùng bảng verify email hiện tại)
+            // Lưu token vào bảng EmailVerificationTokens
             var entry = new EmailVerificationToken
             {
                 UserId = userId,
@@ -58,11 +58,11 @@ namespace PTJ_Service.AuthService.Implementations
             _context.EmailVerificationTokens.Add(entry);
             await _context.SaveChangesAsync();
 
-            // Link xác nhận trong email
+            // Link BE verify token (sẽ redirect sang FE)
             var baseUrl = _cfg["App:BaseUrl"]!;
             var confirmUrl = $"{baseUrl}/api/change-password/verify?token={token}";
 
-            // HTML Email
+            // Email HTML
             var body = $@"
                 <h2>PTJ - Xác nhận đổi mật khẩu</h2>
                 <p>Xin chào <b>{user.Username}</b>,</p>
@@ -84,9 +84,7 @@ namespace PTJ_Service.AuthService.Implementations
             }
         }
 
- 
-        // 2️⃣ Bước 2: BE xác nhận token (FE hoặc email call vào)
-
+        // 2️⃣ Bước 2: BE kiểm tra token (true/false)
         public async Task<bool> VerifyChangePasswordTokenAsync(string token)
         {
             var entry = await _context.EmailVerificationTokens
@@ -99,8 +97,7 @@ namespace PTJ_Service.AuthService.Implementations
             return true;
         }
 
-        // 3️⃣ Bước 3: Xác nhận đổi mật khẩu (đặt password mới)
-
+        // 3️⃣ Bước 3: đặt mật khẩu mới
         public async Task<bool> ConfirmChangePasswordAsync(ConfirmChangePasswordDto dto)
         {
             var entry = await _context.EmailVerificationTokens
@@ -115,7 +112,6 @@ namespace PTJ_Service.AuthService.Implementations
             if (dto.NewPassword != dto.ConfirmNewPassword)
                 throw new Exception("Mật khẩu xác nhận không khớp.");
 
-            // Cập nhật mật khẩu
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             user.UpdatedAt = DateTime.UtcNow;
 

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using PTJ_Models.DTO.Auth;
 using PTJ_Service.AuthService.Interfaces;
 using System.Security.Claims;
@@ -11,10 +12,12 @@ namespace PTJ_API.Controllers.AuthController
     public class ChangePasswordController : ControllerBase
     {
         private readonly IChangePasswordService _svc;
+        private readonly IConfiguration _cfg;
 
-        public ChangePasswordController(IChangePasswordService svc)
+        public ChangePasswordController(IChangePasswordService svc, IConfiguration cfg)
         {
             _svc = svc;
+            _cfg = cfg;
         }
 
         private int GetUserId()
@@ -34,16 +37,22 @@ namespace PTJ_API.Controllers.AuthController
             return Ok(new { message = "Đã gửi email xác nhận đổi mật khẩu." });
         }
 
-        // 2️⃣ Xác minh token từ email
+        // 2️⃣ Người dùng bấm link trong email → BE verify → redirect sang FE
         [AllowAnonymous]
         [HttpGet("verify")]
         public async Task<IActionResult> VerifyToken([FromQuery] string token)
         {
             var allowed = await _svc.VerifyChangePasswordTokenAsync(token);
-            return Ok(new { allowed });
+
+            if (!allowed)
+                return BadRequest("Token không hợp lệ hoặc đã hết hạn.");
+
+            // URL FE để nhập mật khẩu mới
+            var feUrl = $"{_cfg["App:FrontendUrl"]}/set-new-password?token={token}";
+            return Redirect(feUrl);
         }
 
-        // 3️⃣ Xác nhận đổi mật khẩu (đặt pw mới)
+        // 3️⃣ FE gọi API này để đặt mật khẩu mới
         [AllowAnonymous]
         [HttpPost("confirm")]
         public async Task<IActionResult> Confirm([FromBody] ConfirmChangePasswordDto dto)
