@@ -1,11 +1,14 @@
 ﻿using PTJ_Models.DTO.Admin;
 
-public interface IAdminSystemReportService
+namespace PTJ_Service.Interfaces.Admin
 {
-    Task<PagedResult<AdminSystemReportDto>> GetSystemReportsAsync(
-        string? status, string? keyword, int page, int pageSize);
+    public interface IAdminSystemReportService
+    {
+        Task<PagedResult<AdminSystemReportDto>> GetSystemReportsAsync(
+            string? status, string? keyword, int page, int pageSize);
 
-    Task<SystemReportDetailDto?> GetSystemReportDetailAsync(int id);
+        Task<SystemReportDetailDto?> GetSystemReportDetailAsync(int id);
 
-    Task<bool> UpdateReportStatusAsync(int reportId, int adminId, string status, string? note);
+        Task<bool> MarkReportSolvedAsync(int id, string? note = null);
+    }
 }
