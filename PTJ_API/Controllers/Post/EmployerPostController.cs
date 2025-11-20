@@ -70,14 +70,15 @@ namespace PTJ_API.Controllers.Post
         // READ
         // =========================================================
         [HttpGet("all")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
             {
             var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            int currentUserId = int.Parse(sub.Value);
+            int? currentUserId = sub != null ? int.Parse(sub.Value) : null;
 
             bool isAdmin = User.IsInRole("Admin");
             bool isEmployer = User.IsInRole("Employer");
-            bool isJobSeeker = User.IsInRole("JobSeeker");
+            bool isJobSeeker = User.IsInRole("JobSeeker") || currentUserId == null;
 
             // ❌ Employer không được xem danh sách tất cả
             if (isEmployer)
@@ -100,14 +101,15 @@ namespace PTJ_API.Controllers.Post
 
 
         [HttpGet("by-user/{userId}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetByUser(int userId)
             {
             var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            int currentUserId = int.Parse(sub.Value);
+            int? currentUserId = sub != null ? int.Parse(sub.Value) : null;
 
             bool isAdmin = User.IsInRole("Admin");
             bool isEmployer = User.IsInRole("Employer");
-            bool isJobSeeker = User.IsInRole("JobSeeker");
+            bool isJobSeeker = User.IsInRole("JobSeeker") || currentUserId == null;
 
             // ✔ Employer chỉ xem bài của chính họ
             if (isEmployer && currentUserId != userId)
@@ -131,6 +133,7 @@ namespace PTJ_API.Controllers.Post
 
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(int id)
             {
             var post = await _service.GetByIdAsync(id);
@@ -138,11 +141,11 @@ namespace PTJ_API.Controllers.Post
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
             var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            int currentUserId = int.Parse(sub.Value);
+            int? currentUserId = sub != null ? int.Parse(sub.Value) : null;
 
             bool isAdmin = User.IsInRole("Admin");
             bool isEmployer = User.IsInRole("Employer");
-            bool isJobSeeker = User.IsInRole("JobSeeker");
+            bool isJobSeeker = User.IsInRole("JobSeeker") || currentUserId == null;
 
             // ✔ Employer chỉ xem bài của họ
             if (isEmployer && post.EmployerId != currentUserId)
