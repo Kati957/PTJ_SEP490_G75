@@ -2,24 +2,24 @@
 {
     public class SystemReportCreateDto
     {
-        public int UserId { get; set; }
-        public string Title { get; set; } = null!;
-        public string Description { get; set; } = null!;
+        public string Title { get; set; }
+        public string Description { get; set; }
     }
 
     public class SystemReportViewDto
     {
-        public int SystemReportId { get; set; }
-        public int UserId { get; set; }
-        public string Username { get; set; } = null!;
-        public string Title { get; set; } = null!;
-        public string Description { get; set; } = null!;
-        public string Status { get; set; } = null!;
+        public int ReportId { get; set; }
+        public string UserEmail { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string Status { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 
     public class SystemReportUpdateDto
     {
-        public string Status { get; set; } = null!;
+        public string Status { get; set; }
     }
 }
+

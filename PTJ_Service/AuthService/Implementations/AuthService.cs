@@ -537,4 +537,5 @@ public sealed class AuthService : IAuthService
         token.User.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
+
 }
