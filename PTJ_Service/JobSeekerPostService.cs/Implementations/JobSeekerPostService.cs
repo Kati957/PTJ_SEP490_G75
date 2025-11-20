@@ -200,6 +200,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 freshPost.CategoryId,
+                freshPost.SubCategoryId,
                 freshPost.PreferredLocation ?? "",
                 freshPost.Title,
                 freshPost.UserId,
@@ -498,6 +499,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 post.CategoryId,
+                post.SubCategoryId,
                 post.PreferredLocation ?? "",
                 post.Title ?? "",
                 post.UserId,
@@ -554,6 +556,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             ScoreAndFilterJobsAsync(
                 List<(string Id, double Score)> matches,
                 int? mustMatchCategoryId,
+                int? mustMatchSubCategoryId,
                 string preferredLocation,
                 string seekerTitle,
                 int seekerUserId,
@@ -582,6 +585,13 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 if (mustMatchCategoryId.HasValue &&
                     job.CategoryId != mustMatchCategoryId.Value)
                     continue;
+
+                // SubCategory Filter
+                if (mustMatchSubCategoryId.HasValue &&
+                    job.SubCategoryId != mustMatchSubCategoryId.Value)
+                    continue;
+
+
 
                 // Location Filter: chỉ lọc, không cộng điểm
                 if (!await IsWithinDistanceAsync(preferredLocation, job.Location))

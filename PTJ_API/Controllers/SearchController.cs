@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Models.DTO.SearchDTO;
+using PTJ_Models.DTO.ReportDTO.SearchDTO;
 using PTJ_Models.Models;
+using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Interfaces;
 using PTJ_Service.SearchService.Services;
 using System.Security.Claims;

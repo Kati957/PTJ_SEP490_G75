@@ -160,6 +160,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var scored = await ScoreAndFilterCandidatesAsync(
                         matches,
                         freshPost.CategoryId,
+                        freshPost.SubCategoryId,
                         freshPost.Location ?? "",
                         freshPost.Title ?? "",
                         freshPost.Requirements ?? ""    // thêm tham số 5
@@ -438,6 +439,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var scored = await ScoreAndFilterCandidatesAsync(
                 matches,
                 post.CategoryId,
+                post.SubCategoryId,
                 post.Location ?? "",
                 post.Title ?? "",
                 post.Requirements ?? ""
@@ -506,6 +508,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 ScoreAndFilterCandidatesAsync(
     List<(string Id, double Score)> matches,
     int? mustMatchCategoryId,
+    int? mustMatchSubCategoryId,
     string employerLocation,
     string employerTitle,
     string employerRequirements)
@@ -531,6 +534,10 @@ ScoreAndFilterCandidatesAsync(
                 // CATEGORY FILTER
                 if (mustMatchCategoryId.HasValue &&
                     seeker.CategoryId != mustMatchCategoryId.Value)
+                    continue;
+
+                if (mustMatchSubCategoryId.HasValue &&
+                    seeker.SubCategoryId != mustMatchSubCategoryId.Value)
                     continue;
 
                 // LOCATION FILTER (chỉ lọc, không tính điểm)

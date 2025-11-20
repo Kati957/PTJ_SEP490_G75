@@ -1,16 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.CategoryDTO;
-using PTJ_Service.SearchService.Interfaces;
-using PTJ_Service.SearchService.Services;
-using System.Threading.Tasks;
-using static PTJ_Models.DTO.CategoryDTO.CategoryDTO;
+using PTJ_Service.CategoryService.Interfaces;
 
 namespace PTJ_API.Controllers
     {
-    [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Route("api/category")]
     public class CategoryController : ControllerBase
         {
         private readonly ICategoryService _service;
@@ -21,53 +16,43 @@ namespace PTJ_API.Controllers
             }
 
         [HttpGet]
-        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
             {
-            var categories = await _service.GetCategoriesAsync();
-            return Ok(categories);
+            return Ok(await _service.GetCategoriesAsync());
             }
 
         [HttpGet("{id}")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> Get(int id)
             {
-            var category = await _service.GetByIdAsync(id);
-            if (category == null) return NotFound();
-            return Ok(category);
+            var result = await _service.GetByIdAsync(id);
+            return result == null ? NotFound() : Ok(result);
             }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Create([FromBody] CategoryDTO.Create dto)
+        public async Task<IActionResult> Create(CategoryDTO.CategoryCreateDto dto)
             {
             var created = await _service.CreateAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = created.CategoryId }, created);
+            return Ok(created);
             }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Update(int id, [FromBody] CategoryDTO.Update dto)
+        public async Task<IActionResult> Update(int id, CategoryDTO.CategoryUpdateDto dto)
             {
-            var updated = await _service.UpdateAsync(id, dto);
-            if (!updated) return NotFound();
-            return Ok(new { message = "Cập nhật danh mục thành công." });
+            bool success = await _service.UpdateAsync(id, dto);
+            return success ? Ok() : NotFound();
             }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
             {
-            var deleted = await _service.DeleteAsync(id);
-            if (!deleted) return NotFound();
-            return Ok(new { message = "Xóa danh mục thành công." });
+            bool success = await _service.DeleteAsync(id);
+            return success ? Ok() : NotFound();
             }
-        // API filter riêng
-        [HttpGet("filter")]
-        public async Task<IActionResult> FilterCategories([FromQuery] CategoryFilterDto filter)
+
+        [HttpPost("filter")]
+        public async Task<IActionResult> Filter(CategoryDTO.CategoryFilterDto dto)
             {
-            var result = await _service.FilterAsync(filter);
-            return Ok(result);
+            return Ok(await _service.FilterAsync(dto));
             }
         }
     }

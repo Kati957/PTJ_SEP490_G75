@@ -2,7 +2,7 @@
 using PTJ_Data.Repositories.Interfaces.JPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
-using PTJ_Models.DTO.SearchDTO;
+using PTJ_Models.DTO.ReportDTO.SearchDTO;
 using PTJ_Models.Models;
 
 
