@@ -150,7 +150,7 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
-
+builder.Services.AddScoped<IAdminEmployerRegistrationService, AdminEmployerRegistrationService>();
 
 // Repository
 builder.Services.AddScoped<IAdminStatisticsRepository, AdminStatisticsRepository>();
@@ -174,6 +174,7 @@ builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
+
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
