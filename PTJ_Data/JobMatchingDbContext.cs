@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Models.Models;
 
-namespace PTJ_Models.Models;
+namespace PTJ_Data;
 
 public partial class JobMatchingDbContext : DbContext
 {
@@ -32,6 +33,8 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<EmployerPost> EmployerPosts { get; set; }
 
     public virtual DbSet<EmployerProfile> EmployerProfiles { get; set; }
+
+    public virtual DbSet<EmployerRegistrationRequest> EmployerRegistrationRequests { get; set; }
 
     public virtual DbSet<EmployerShortlistedCandidate> EmployerShortlistedCandidates { get; set; }
 
@@ -312,6 +315,31 @@ public partial class JobMatchingDbContext : DbContext
                 .HasForeignKey<EmployerProfile>(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__EmployerP__UserI__5CA1C101");
+        });
+
+        modelBuilder.Entity<EmployerRegistrationRequest>(entity =>
+        {
+            entity.HasKey(e => e.RequestId).HasName("PK__Employer__33A8517AC41CDA76");
+
+            entity.HasIndex(e => e.Email, "IX_EmployerRegRequests_Email").IsUnique();
+
+            entity.HasIndex(e => e.Username, "IX_EmployerRegRequests_Username").IsUnique();
+
+            entity.Property(e => e.Address).HasMaxLength(255);
+            entity.Property(e => e.CompanyName).HasMaxLength(255);
+            entity.Property(e => e.ContactEmail).HasMaxLength(255);
+            entity.Property(e => e.ContactPerson).HasMaxLength(255);
+            entity.Property(e => e.ContactPhone).HasMaxLength(20);
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Email).HasMaxLength(255);
+            entity.Property(e => e.ReviewedAt).HasColumnType("datetime");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("Pending");
+            entity.Property(e => e.Username).HasMaxLength(100);
+            entity.Property(e => e.Website).HasMaxLength(255);
         });
 
         modelBuilder.Entity<EmployerShortlistedCandidate>(entity =>
