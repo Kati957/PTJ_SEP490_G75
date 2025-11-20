@@ -142,7 +142,6 @@ namespace PTJ_Service.SearchService.Implementations
                     .ToListAsync();
                 }
 
-            // Không role → gộp luôn
             var employer = await _db.EmployerPosts
                 .Where(p => p.Status == "Active")
                 .Select(p => p.Title)
@@ -157,5 +156,6 @@ namespace PTJ_Service.SearchService.Implementations
 
             return employer.Concat(seeker).Distinct().Take(10);
             }
+
         }
     }

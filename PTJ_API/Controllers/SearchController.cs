@@ -47,11 +47,15 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
+        // 🔹 Suggest API → cần HTTP method
+        [HttpGet("suggest")]
+        [Authorize] // nếu cần
         public async Task<IActionResult> Suggest(string keyword)
             {
             var result = await _suggestionService.GetSuggestionsAsync(keyword);
             return Ok(result);
             }
+
 
 
         // 🔹 Từ khóa phổ biến — lấy role tự động
@@ -60,9 +64,8 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> GetPopularKeywords()
             {
             var role = User.FindFirstValue(ClaimTypes.Role);
-            var popular = await _suggestionService.GetPopularKeywordsAsync(role);
-
-            return Ok(popular);
+            var result = await _suggestionService.GetPopularKeywordsAsync(role);
+            return Ok(result);
             }
         }
     }
