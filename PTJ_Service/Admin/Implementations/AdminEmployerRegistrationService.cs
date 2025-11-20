@@ -1,10 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.WebUtilities;
+using System.Security.Cryptography;
+using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
 using PTJ_Service.Admin.Interfaces;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Service.Interfaces.Admin;
+using Microsoft.Extensions.Configuration;
 
 namespace PTJ_Service.Implementations.Admin
 {
@@ -12,11 +15,14 @@ namespace PTJ_Service.Implementations.Admin
     {
         private readonly JobMatchingDbContext _db;
         private readonly IEmailSender _email;
-
-        public AdminEmployerRegistrationService(JobMatchingDbContext db, IEmailSender email)
+        private readonly IConfiguration _cfg;
+        public AdminEmployerRegistrationService( JobMatchingDbContext db,
+            IEmailSender email,
+            IConfiguration cfg)
         {
             _db = db;
             _email = email;
+            _cfg = cfg;
         }
 
         public async Task<PagedResult<AdminEmployerRegListItemDto>> GetRequestsAsync(
@@ -80,19 +86,22 @@ namespace PTJ_Service.Implementations.Admin
         public async Task ApproveAsync(int requestId, int adminId)
         {
             var req = await _db.EmployerRegistrationRequests
-                        .FirstOrDefaultAsync(x => x.RequestId == requestId)
-                        ?? throw new Exception("Không tìm thấy hồ sơ.");
+                .FirstOrDefaultAsync(x => x.RequestId == requestId)
+                ?? throw new Exception("Không tìm thấy hồ sơ.");
 
             if (req.Status != "Pending")
-                throw new Exception("Hồ sơ này đã được xử lý.");
+                throw new Exception("Hồ sơ đã được xử lý trước đó.");
 
+            // 1️⃣ Tạo User nhưng KHÔNG verify
             var user = new User
             {
                 Email = req.Email,
                 Username = req.Username,
                 PasswordHash = req.PasswordHash,
+
                 IsActive = true,
-                IsVerified = true,
+                IsVerified = false,     // ❗ KHÔNG verify tự động theo logic mới
+
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -100,21 +109,17 @@ namespace PTJ_Service.Implementations.Admin
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            // Lấy role Employer
+            // 2️⃣ Gán role Employer
             var employerRole = await _db.Roles
                 .FirstOrDefaultAsync(r => r.RoleName == "Employer")
                 ?? throw new Exception("Không tìm thấy role Employer.");
 
-            // Gán role thông qua navigation --> EF tự tạo UserRole
             user.Roles.Add(employerRole);
             await _db.SaveChangesAsync();
 
-            const string DefaultLogo =
-                "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
+            // 3️⃣ Tạo EmployerProfile
+            const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
 
-            const string DefaultLogoPublicId = "default_company_logo";
-
-            // Tạo profile Employer
             var profile = new EmployerProfile
             {
                 UserId = user.UserId,
@@ -123,29 +128,53 @@ namespace PTJ_Service.Implementations.Admin
                 ContactName = req.ContactPerson,
                 ContactPhone = req.ContactPhone,
                 ContactEmail = req.ContactEmail,
-                Website = req.Website,
                 FullLocation = req.Address,
+
                 AvatarUrl = DefaultLogo,
-                AvatarPublicId = DefaultLogoPublicId,
+                AvatarPublicId = null,
                 IsAvatarHidden = false,
                 UpdatedAt = DateTime.UtcNow
             };
 
             _db.EmployerProfiles.Add(profile);
 
+            // 4️⃣ Cập nhật trạng thái request
             req.Status = "Approved";
             req.ReviewedAt = DateTime.UtcNow;
-            req.AdminNote = req.AdminNote ?? $"Duyệt bởi admin #{adminId}";
+            req.AdminNote = $"Duyệt bởi admin {adminId}";
 
             await _db.SaveChangesAsync();
 
+            // 5️⃣ Tạo verify token
+            var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
+
+            _db.EmailVerificationTokens.Add(new EmailVerificationToken
+            {
+                UserId = user.UserId,
+                Token = token,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+            });
+
+            await _db.SaveChangesAsync();
+
+            // 6️⃣ Gửi email verify
+            var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+
             await _email.SendEmailAsync(
-                req.Email,
-                "PTJ - Hồ sơ của bạn đã được duyệt",
-                "<p>Hồ sơ đăng ký nhà tuyển dụng của bạn đã được phê duyệt.</p>" +
-                "<p>Bạn có thể đăng nhập và sử dụng hệ thống.</p>"
-            );
+                user.Email,
+                "PTJ - Xác minh tài khoản nhà tuyển dụng",
+                $@"
+            <h3>Tài khoản của bạn đã được duyệt!</h3>
+            <p>Vui lòng nhấn nút bên dưới để xác minh email và kích hoạt tài khoản:</p>
+            <a href='{verifyUrl}' 
+                style='background:#007bff;color:#fff;padding:10px 14px;border-radius:5px;text-decoration:none;'>
+                Xác minh tài khoản
+            </a>
+            <p>Liên kết có hiệu lực trong 30 phút.</p>
+        ");
+
         }
+
 
         public async Task RejectAsync(int requestId, AdminEmployerRegRejectDto dto)
         {
