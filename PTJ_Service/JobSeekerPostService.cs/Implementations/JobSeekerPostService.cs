@@ -228,6 +228,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     ExtraInfo = new
                         {
                         x.Job.EmployerPostId,
+                        EmployerID = x.Job.UserId,
                         x.Job.Title,
                         x.Job.Description,
                         x.Job.Requirements,
@@ -524,6 +525,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     ExtraInfo = new
                         {
                         x.Job.EmployerPostId,
+                        EmployerID = x.Job.UserId,
                         x.Job.Title,
                         x.Job.Description,
                         x.Job.Requirements,
@@ -582,16 +584,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 if (!await IsWithinDistanceAsync(preferredLocation, job.Location))
                     continue;
 
-                // --- INDUSTRY FILTER ---
-                var seekerIndustry = await GetIndustryEmbeddingAsync(seekerTitle);
-                var jobIndustry = await GetIndustryEmbeddingAsync(job.Title + " " + job.Requirements);
-
-                double industrySim = CosineSimilarity(seekerIndustry, jobIndustry);
-
-                if (industrySim < 0.50)
-                    continue;
-
-
                 // FINAL SCORE = Pinecone similarity
                 double finalScore = m.Score;
 
@@ -600,23 +592,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             return results;
             }
-
-        private double CosineSimilarity(float[] a, float[] b)
-            {
-            if (a.Length == 0 || b.Length == 0) return 0;
-
-            double dot = 0, magA = 0, magB = 0;
-
-            for (int i = 0; i < a.Length; i++)
-                {
-                dot += a[i] * b[i];
-                magA += a[i] * a[i];
-                magB += b[i] * b[i];
-                }
-
-            return dot / (Math.Sqrt(magA) * Math.Sqrt(magB));
-            }
-
 
         // LOCATION FILTER HELPER – lọc <= 100km, không tính điểm
         private async Task<bool> IsWithinDistanceAsync(string fromLocation, string? toLocation)
@@ -727,7 +702,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     {
                     EmployerPostId = ep.EmployerPostId,
                     EmployerUserId = ep.UserId,
-
                     Title = ep.Title ?? string.Empty,
                     Description = ep.Description ?? string.Empty,
                     Requirements = ep.Requirements,

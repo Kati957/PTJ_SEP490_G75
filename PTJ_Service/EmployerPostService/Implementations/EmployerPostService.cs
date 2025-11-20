@@ -196,7 +196,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         ExtraInfo = new
             {
             x.Seeker.JobSeekerPostId,
-            x.Seeker.UserId,
+            SeekerID = x.Seeker.UserId,
             x.Seeker.Title,
             x.Seeker.Description,
             x.Seeker.Age,
@@ -535,17 +535,6 @@ ScoreAndFilterCandidatesAsync(
                 if (!await IsWithinDistanceAsync(employerLocation, seeker.PreferredLocation))
                     continue;
 
-                // --- INDUSTRY FILTER USING TEXT EMBEDDING ---
-                var employerIndustry = await GetIndustryEmbeddingAsync(employerTitle + " " + employerRequirements);
-                var seekerIndustry = await GetIndustryEmbeddingAsync(seeker.Title + " " + seeker.Description);
-
-                double industrySim = CosineSimilarity(employerIndustry, seekerIndustry);
-
-                // ❗ strict filter
-                if (industrySim < 0.50)
-                    continue;
-
-
                 // 🎯 ONLY 1 SCORE: embedding score
                 double finalScore = m.Score;
 
@@ -554,23 +543,6 @@ ScoreAndFilterCandidatesAsync(
 
             return result;
             }
-
-        private double CosineSimilarity(float[] a, float[] b)
-            {
-            if (a.Length == 0 || b.Length == 0) return 0;
-
-            double dot = 0, magA = 0, magB = 0;
-
-            for (int i = 0; i < a.Length; i++)
-                {
-                dot += a[i] * b[i];
-                magA += a[i] * a[i];
-                magB += b[i] * b[i];
-                }
-
-            return dot / (Math.Sqrt(magA) * Math.Sqrt(magB));
-            }
-
 
         private async Task<bool> IsWithinDistanceAsync(string employerLocation, string? seekerLocation)
             {
