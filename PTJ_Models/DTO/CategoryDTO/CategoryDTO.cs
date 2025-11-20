@@ -2,8 +2,7 @@
     {
     public class CategoryDTO
         {
-        // ✅ DTO cho việc đọc dữ liệu (Response)
-        public class Read
+        public class CategoryReadDto
             {
             public int CategoryId { get; set; }
             public string Name { get; set; } = string.Empty;
@@ -12,8 +11,7 @@
             public bool IsActive { get; set; }
             }
 
-        // ✅ DTO cho việc tạo mới (Create)
-        public class Create
+        public class CategoryCreateDto
             {
             public string Name { get; set; } = string.Empty;
             public string Type { get; set; } = string.Empty;
@@ -21,13 +19,17 @@
             public bool IsActive { get; set; } = true;
             }
 
-        // ✅ DTO cho việc cập nhật (Update)
-        public class Update
+        public class CategoryUpdateDto
             {
             public string? Name { get; set; }
             public string? Type { get; set; }
             public string? Description { get; set; }
             public bool? IsActive { get; set; }
+            }
+
+        public class CategoryFilterDto
+            {
+            public string? Name { get; set; }
             }
         }
     }

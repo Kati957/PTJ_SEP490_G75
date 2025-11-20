@@ -39,9 +39,13 @@ public partial class JobSeekerPost
 
     public int WardId { get; set; }
 
+    public int? SubCategoryId { get; set; }
+
     public virtual Category? Category { get; set; }
 
     public virtual ICollection<PostReport> PostReports { get; set; } = new List<PostReport>();
+
+    public virtual SubCategory? SubCategory { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

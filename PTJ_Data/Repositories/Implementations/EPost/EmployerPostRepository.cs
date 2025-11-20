@@ -19,6 +19,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
             return await _db.EmployerPosts
                 .Include(p => p.User)
                 .Include(p => p.Category)
+                .Include(p => p.SubCategory)
                 .Where(p => p.Status == "Active")
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
@@ -29,6 +30,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
             return await _db.EmployerPosts
                 .Include(p => p.User)
                 .Include(p => p.Category)
+                .Include(p => p.SubCategory)
                 .Where(p => p.UserId == userId && p.Status == "Active")
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
@@ -39,6 +41,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
             return await _db.EmployerPosts
                 .Include(p => p.User)
                 .Include(p => p.Category)
+                .Include(p => p.SubCategory)
                 .FirstOrDefaultAsync(p => p.EmployerPostId == id);
         }
 

@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using PTJ_Models.DTO.Auth;
 using System.Net;
+using PTJ_Models.DTO.Auth;
 using PTJ_Service.AuthService.Interfaces;
 
 namespace PTJ_API.Controllers.AuthController;
@@ -13,6 +13,7 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _svc;
     private readonly IConfiguration _cfg;
+
     private string? IP => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     public AuthController(IAuthService svc, IConfiguration cfg)
@@ -21,7 +22,6 @@ public class AuthController : ControllerBase
         _cfg = cfg;
     }
 
-    //  Đăng ký Job Seeker
     [HttpPost("register/jobseeker")]
     [AllowAnonymous]
     public async Task<IActionResult> RegisterJobSeeker(RegisterJobSeekerDto dto)
@@ -30,16 +30,14 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Vui lòng kiểm tra email để xác minh tài khoản của bạn." });
     }
 
-    //  Đăng ký Employer (chọn role ngay từ đầu)
     [HttpPost("register/employer")]
     [AllowAnonymous]
     public async Task<IActionResult> RegisterEmployer(RegisterEmployerDto dto)
     {
-        await _svc.RegisterEmployerAsync(dto);
-        return Ok(new { message = "Vui lòng kiểm tra email để xác minh tài khoản của bạn." });
+        var result = await _svc.SubmitEmployerRegistrationAsync(dto);
+        return Ok(result);
     }
 
-    //  Xác thực email (Swagger hoặc FE gọi POST)
     [HttpPost("verify-email")]
     [AllowAnonymous]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest dto)
@@ -60,7 +58,6 @@ public class AuthController : ControllerBase
         public string Token { get; set; } = string.Empty;
     }
 
-    //  Xác thực email (qua link trong email)
     [HttpGet("verify-email")]
     [AllowAnonymous]
     public async Task<IActionResult> VerifyEmailLink([FromQuery] string token)
@@ -69,18 +66,14 @@ public class AuthController : ControllerBase
         {
             var decoded = WebUtility.UrlDecode(token);
             await _svc.VerifyEmailAsync(decoded);
-
-            var redirectUrl = $"{_cfg["Frontend:BaseUrl"]}/verify-success";
-            return Redirect(redirectUrl);
+            return Redirect($"{_cfg["Frontend:BaseUrl"]}/verify-success");
         }
         catch (Exception ex)
         {
-            var redirectUrl = $"{_cfg["Frontend:BaseUrl"]}/verify-failed?error={Uri.EscapeDataString(ex.Message)}";
-            return Redirect(redirectUrl);
+            return Redirect($"{_cfg["Frontend:BaseUrl"]}/verify-failed?error={Uri.EscapeDataString(ex.Message)}");
         }
     }
 
-    //  Gửi lại email xác thực
     [HttpPost("resend-verification")]
     [AllowAnonymous]
     public async Task<IActionResult> ResendVerification([FromBody] ResendVerifyDto dto)
@@ -89,19 +82,16 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Email xác minh đã được gửi lại." });
     }
 
-    //  Đăng nhập
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> Login(LoginDto dto)
         => Ok(await _svc.LoginAsync(dto, IP));
 
-    //  Refresh Token
     [HttpPost("refresh")]
     [AllowAnonymous]
     public async Task<ActionResult<AuthResponseDto>> Refresh([FromBody] RefreshDto dto)
         => Ok(await _svc.RefreshAsync(dto.RefreshToken, dto.DeviceInfo, IP));
 
-    //  Logout
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout([FromBody] RefreshDto dto)
@@ -110,7 +100,6 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Đăng xuất thành công." });
     }
 
-    //  Lấy thông tin user hiện tại
     [Authorize]
     [HttpGet("me")]
     public IActionResult Me()
@@ -124,44 +113,29 @@ public class AuthController : ControllerBase
         return Ok(new { id, email, username, verified, roles });
     }
 
-    // Quên mật khẩu
     [HttpPost("forgot-password")]
     [AllowAnonymous]
     public async Task<IActionResult> Forgot(ForgotPasswordDto dto)
     {
         await _svc.RequestPasswordResetAsync(dto.Email);
-        return Ok(new { message = "Đã gửi yêu cầu đặt lại mật khẩu (nếu email hợp lệ)" });
+        return Ok(new { message = "Đã gửi yêu cầu đặt lại mật khẩu (nếu email hợp lệ)." });
     }
 
-    // Reset mật khẩu
     [HttpPost("reset-password")]
     [AllowAnonymous]
     public async Task<IActionResult> Reset(ResetPasswordDto dto)
     {
         await _svc.ResetPasswordAsync(dto);
-        return Ok(new { message = "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại." });
+        return Ok(new { message = "Đặt lại mật khẩu thành công. Vui lòng đăng nhập." });
     }
 
-    //// Đăng nhập Google (role chọn ngay từ đầu)
-    //[HttpPost("google")]
-    //[AllowAnonymous]
-    //public async Task<ActionResult<AuthResponseDto>> Google(
-    //    [FromQuery] string? role,
-    //    [FromBody] GoogleLoginDto dto)
-    //    => Ok(await _svc.GoogleLoginAsync(dto, IP, role));
-    // =====================================================
-
-    // Đăng nhập Google (2 bước cho phép chọn role sau)
-    // Xác thực Google token, kiểm tra user tồn tại hay chưa
     [HttpPost("google/prepare")]
     [AllowAnonymous]
     public async Task<IActionResult> GooglePrepare(GoogleLoginDto dto)
         => Ok(await _svc.GooglePrepareAsync(dto));
 
-    // Hoàn tất đăng ký sau khi chọn role
     [HttpPost("google/complete")]
     [AllowAnonymous]
     public async Task<IActionResult> GoogleComplete(GoogleCompleteDto dto)
         => Ok(await _svc.GoogleCompleteAsync(dto, IP));
-
 }

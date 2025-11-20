@@ -2,7 +2,7 @@
 using PTJ_Data.Repositories.Interfaces.JPost;
 using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
-using PTJ_Models.DTO.SearchDTO;
+using PTJ_Models.DTO.ReportDTO.SearchDTO;
 using PTJ_Models.Models;
 
 
@@ -22,6 +22,7 @@ namespace PTJ_Data.Repositories.Implementations.JPost
             var query = _db.EmployerPosts
                 .Include(p => p.Category)
                 .Include(p => p.User)
+                .Include(p => p.SubCategory)
                 .Where(p => p.Status == "Active")
                 .AsQueryable();
 

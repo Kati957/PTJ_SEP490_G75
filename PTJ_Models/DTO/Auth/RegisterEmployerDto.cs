@@ -2,22 +2,31 @@
 
 public class RegisterEmployerDto
 {
-    [Required(ErrorMessage = "DisplayName is required.")]
-    [StringLength(100, MinimumLength = 2, ErrorMessage = "DisplayName must be between 2 and 100 characters.")]
-    public string DisplayName { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Tên công ty là bắt buộc.")]
+    [StringLength(200)]
+    public string CompanyName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Email is required.")]
-    [EmailAddress(ErrorMessage = "Invalid email format.")]
-    public string Email { get; set; } = string.Empty;
+    [StringLength(2000)]
+    public string? CompanyDescription { get; set; }
 
-    [Required(ErrorMessage = "Password is required.")]
-    [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
-    public string Password { get; set; } = string.Empty;
+    [StringLength(200)]
+    public string? ContactPerson { get; set; }
 
-    [Phone(ErrorMessage = "Invalid phone number.")]
-    [RegularExpression(@"^(0[0-9]{9})$", ErrorMessage = "ContactPhone must be a 10-digit VN phone number.")]
+    [Required(ErrorMessage = "Số điện thoại là bắt buộc.")]
     public string ContactPhone { get; set; } = string.Empty;
 
-    [Url(ErrorMessage = "Website must be a valid URL.")]
-    public string? Website { get; set; }
+    [EmailAddress(ErrorMessage = "Email liên hệ không hợp lệ.")]
+    public string? ContactEmail { get; set; }
+
+    [StringLength(500)]
+    public string? Address { get; set; }
+
+    // Tài khoản đăng nhập
+    [Required(ErrorMessage = "Email tài khoản là bắt buộc.")]
+    [EmailAddress(ErrorMessage = "Email tài khoản không hợp lệ.")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
+    [MinLength(6, ErrorMessage = "Mật khẩu phải ít nhất 6 ký tự.")]
+    public string Password { get; set; } = string.Empty;
 }
