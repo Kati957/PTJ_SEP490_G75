@@ -37,6 +37,8 @@ public partial class EmployerPost
 
     public int WardId { get; set; }
 
+    public int? SubCategoryId { get; set; }
+
     public virtual Category? Category { get; set; }
 
     public virtual ICollection<EmployerCandidatesList> EmployerCandidatesLists { get; set; } = new List<EmployerCandidatesList>();
@@ -48,6 +50,8 @@ public partial class EmployerPost
     public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
 
     public virtual ICollection<PostReport> PostReports { get; set; } = new List<PostReport>();
+
+    public virtual SubCategory? SubCategory { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

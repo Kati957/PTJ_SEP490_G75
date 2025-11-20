@@ -2,6 +2,7 @@
 using PTJ_Data;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.DTOs;
+using PTJ_Models.Models;
 
 public class AdminSystemReportService : IAdminSystemReportService
 {

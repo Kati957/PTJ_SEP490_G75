@@ -80,6 +80,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 WardId = dto.WardId,
 
                 CategoryId = dto.CategoryID,
+                SubCategoryId = dto.SubCategoryId,
                 PhoneContact = dto.PhoneContact,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
@@ -324,6 +325,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             post.WardId = dto.WardId;
             post.WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}";
             post.CategoryId = dto.CategoryID;
+            post.SubCategoryId = dto.SubCategoryId;
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;
 
@@ -634,7 +636,10 @@ ScoreAndFilterCandidatesAsync(
                 where s.SourceType == "EmployerPost"
                    && s.SourceId == employerPostId
                    && s.TargetType == "JobSeekerPost"
-                join jsp in _db.JobSeekerPosts.Include(x => x.User)
+                join jsp in _db.JobSeekerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category)
+                .Include(x => x.SubCategory)
                      on s.TargetId equals jsp.JobSeekerPostId
                 where jsp.Status == "Active"
                 orderby s.MatchPercent descending, s.RawScore descending, s.CreatedAt descending
@@ -668,7 +673,7 @@ ScoreAndFilterCandidatesAsync(
                 PreferredWorkHours = x.Post.PreferredWorkHours,
                 PhoneContact = x.Post.PhoneContact,
                 CategoryName = x.Category?.Name,
-
+                SubCategoryName = x.Post.SubCategory != null ? x.Post.SubCategory.Name : null,
                 SeekerName = x.User.Username,
 
                 MatchPercent = x.Suggest.MatchPercent,
@@ -785,7 +790,7 @@ ScoreAndFilterCandidatesAsync(
             {
             var category = await _db.Categories.FindAsync(post.CategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
-
+            var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             return new EmployerPostDtoOut
                 {
                 EmployerPostId = post.EmployerPostId,
@@ -813,6 +818,7 @@ ScoreAndFilterCandidatesAsync(
 
                 PhoneContact = post.PhoneContact,
                 CategoryName = category?.Name,
+                SubCategoryName = sub?.Name,
                 EmployerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status

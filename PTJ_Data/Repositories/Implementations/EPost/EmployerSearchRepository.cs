@@ -20,6 +20,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
         {
             var query = _db.JobSeekerPosts
                 .Include(p => p.Category)
+                .Include(p => p.SubCategory)
                 .Include(p => p.User)
                 .Where(p => p.Status == "Active")
                 .AsQueryable();

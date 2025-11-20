@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
+using PTJ_Models.Models;
 using PTJ_Service.SearchService.Interfaces;
 using System.Security.Claims;
 

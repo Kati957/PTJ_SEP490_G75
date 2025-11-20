@@ -22,6 +22,7 @@ namespace PTJ_Data.Repositories.Implementations.JPost
             var query = _db.EmployerPosts
                 .Include(p => p.Category)
                 .Include(p => p.User)
+                .Include(p => p.SubCategory)
                 .Where(p => p.Status == "Active")
                 .AsQueryable();
 

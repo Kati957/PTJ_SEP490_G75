@@ -94,6 +94,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 WardId = dto.WardId,
 
                 CategoryId = dto.CategoryID,
+                SubCategoryId = dto.SubCategoryId,
+
                 PhoneContact = dto.PhoneContact,
                 SelectedCvId = dto.SelectedCvId,   // GẮN CV VÀO BÀI ĐĂNG
                 CreatedAt = DateTime.Now,
@@ -354,6 +356,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             );
 
             post.CategoryId = dto.CategoryID;
+            post.SubCategoryId = dto.SubCategoryId;
             post.PhoneContact = dto.PhoneContact;
             post.SelectedCvId = dto.SelectedCvId;
             post.UpdatedAt = DateTime.Now;
@@ -710,7 +713,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     WorkHours = ep.WorkHours,
                     PhoneContact = ep.PhoneContact,
                     CategoryName = ep.Category != null ? ep.Category.Name : null,
-
+                    SubCategoryName = ep.SubCategory != null ? ep.SubCategory.Name : null,
                     EmployerName = ep.User.Username,
 
                     MatchPercent = s.MatchPercent,
@@ -811,31 +814,29 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         private async Task<JobSeekerPostDtoOut> BuildCleanPostDto(JobSeekerPostModel post)
             {
             var category = await _db.Categories.FindAsync(post.CategoryId);
+            var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
 
             return new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = post.JobSeekerPostId,
                 UserID = post.UserId,
-
                 Title = post.Title,
                 Description = post.Description,
                 PreferredLocation = post.PreferredLocation,
-
                 PreferredWorkHours = post.PreferredWorkHours,
-
                 PreferredWorkHourStart = post.PreferredWorkHours?.Split('-')[0].Trim(),
                 PreferredWorkHourEnd = post.PreferredWorkHours?.Split('-').Length > 1
-                            ? post.PreferredWorkHours.Split('-')[1].Trim()
-                            : null,
+                    ? post.PreferredWorkHours.Split('-')[1].Trim()
+                    : null,
 
                 CategoryName = category?.Name,
+                SubCategoryName = sub?.Name,
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
                 };
             }
-
 
         private async Task UpsertSuggestionsAsync(
             string sourceType,

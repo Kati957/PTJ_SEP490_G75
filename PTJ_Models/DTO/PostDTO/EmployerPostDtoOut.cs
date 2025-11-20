@@ -29,8 +29,8 @@ namespace PTJ_Models.DTO.PostDTO
 
         public string? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
+        public string? SubCategoryName { get; set; }
         public string EmployerName { get; set; } = string.Empty;
-
         public DateTime CreatedAt { get; set; }
         public string Status { get; set; } = string.Empty;
     }

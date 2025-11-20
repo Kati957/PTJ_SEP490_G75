@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using PTJ_Models.Models;    
-namespace PTJ_Data;
+
+namespace PTJ_Models.Models;
 
 public partial class JobMatchingDbContext : DbContext
 {
@@ -73,6 +73,8 @@ public partial class JobMatchingDbContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
+    public virtual DbSet<SubCategory> SubCategories { get; set; }
+
     public virtual DbSet<SystemReport> SystemReports { get; set; }
 
     public virtual DbSet<SystemStatistic> SystemStatistics { get; set; }
@@ -82,7 +84,9 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database = JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiContentForEmbedding>(entity =>
@@ -272,6 +276,10 @@ public partial class JobMatchingDbContext : DbContext
                 .HasForeignKey(d => d.CategoryId)
                 .HasConstraintName("FK__EmployerP__Categ__5AB9788F");
 
+            entity.HasOne(d => d.SubCategory).WithMany(p => p.EmployerPosts)
+                .HasForeignKey(d => d.SubCategoryId)
+                .HasConstraintName("FK_EmployerPosts_SubCategories");
+
             entity.HasOne(d => d.User).WithMany(p => p.EmployerPosts)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
@@ -374,7 +382,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<Image>(entity =>
         {
-            entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F4EC5C1BE583");
+            entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F4EC19291B74");
 
             entity.Property(e => e.ImageId).HasColumnName("ImageID");
             entity.Property(e => e.CreatedAt)
@@ -394,7 +402,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<JobSeekerCv>(entity =>
         {
-            entity.HasKey(e => e.Cvid).HasName("PK__JobSeeke__A04CFC4346274163");
+            entity.HasKey(e => e.Cvid).HasName("PK__JobSeeke__A04CFC43DD1256F3");
 
             entity.ToTable("JobSeekerCVs");
 
@@ -446,6 +454,10 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasOne(d => d.Category).WithMany(p => p.JobSeekerPosts)
                 .HasForeignKey(d => d.CategoryId)
                 .HasConstraintName("FK__JobSeeker__Categ__662B2B3B");
+
+            entity.HasOne(d => d.SubCategory).WithMany(p => p.JobSeekerPosts)
+                .HasForeignKey(d => d.SubCategoryId)
+                .HasConstraintName("FK_JobSeekerPosts_SubCategories");
 
             entity.HasOne(d => d.User).WithMany(p => p.JobSeekerPosts)
                 .HasForeignKey(d => d.UserId)
@@ -542,7 +554,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<LocationCache>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC072C85A09F");
+            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC0765252704");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.LastUpdated).HasColumnType("datetime");
@@ -780,6 +792,14 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.RoleName).HasMaxLength(20);
         });
 
+        modelBuilder.Entity<SubCategory>(entity =>
+        {
+            entity.HasKey(e => e.SubCategoryId).HasName("PK__SubCateg__26BE5B197DBCD9BB");
+
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.Name).HasMaxLength(255);
+        });
+
         modelBuilder.Entity<SystemReport>(entity =>
         {
             entity.Property(e => e.SystemReportId).HasColumnName("SystemReportID");
@@ -822,6 +842,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasIndex(e => e.Username, "UQ_Users_Username").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
+            entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -830,6 +851,9 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.LastLogin).HasColumnType("datetime");
             entity.Property(e => e.LockoutEnd).HasColumnType("datetime");
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
+            entity.Property(e => e.PhoneNumber)
+                .HasMaxLength(20)
+                .IsUnicode(false);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");

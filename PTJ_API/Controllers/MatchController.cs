@@ -5,6 +5,7 @@ using PTJ_Data;
 using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Models.DTO.FilterDTO;
 using PTJ_Service.JobSeekerPostService.Implementations;
+using PTJ_Models.Models;
 
 namespace YourProject.Controllers
     {
