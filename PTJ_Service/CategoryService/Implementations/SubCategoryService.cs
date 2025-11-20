@@ -3,7 +3,6 @@ using PTJ_Data;
 using PTJ_Models.Models;
 using PTJ_Models.DTO.CategoryDTO;
 using PTJ_Service.SearchService.Interfaces;
-using PTJ_Service.CategoryService.Interfaces;
 
 namespace PTJ_Service.SearchService.Services
     {
@@ -16,37 +15,49 @@ namespace PTJ_Service.SearchService.Services
             _context = context;
             }
 
-        // GET ALL (only active)
-        public async Task<IEnumerable<SubCategory>> GetAllAsync()
+        // GET ALL (admin: all, others: only active)
+        public async Task<IEnumerable<SubCategory>> GetAllAsync(bool isAdmin)
             {
-            return await _context.SubCategories
-                .Where(s => s.IsActive == true)
-                .OrderBy(s => s.Name)
-                .ToListAsync();
+            var query = _context.SubCategories.AsQueryable();
+
+            if (!isAdmin)
+                query = query.Where(s => s.IsActive == true);
+
+            return await query.OrderBy(s => s.Name).ToListAsync();
             }
 
-        // GET BY ID
-        public async Task<SubCategory?> GetByIdAsync(int id)
+        // GET BY ID (admin: all, others: only active)
+        public async Task<SubCategory?> GetByIdAsync(int id, bool isAdmin)
             {
-            return await _context.SubCategories
-                .FirstOrDefaultAsync(s => s.SubCategoryId == id);
+            var sub = await _context.SubCategories.FindAsync(id);
+            if (sub == null)
+                return null;
+
+            if (!isAdmin && sub.IsActive != true)
+                return null;
+
+            return sub;
             }
 
         // LIST BY CATEGORY ID
-        public async Task<IEnumerable<SubCategory>> GetByCategoryIdAsync(int categoryId)
+        public async Task<IEnumerable<SubCategory>> GetByCategoryIdAsync(int categoryId, bool isAdmin)
             {
-            return await _context.SubCategories
-                .Where(s => s.CategoryId == categoryId && s.IsActive == true)
-                .OrderBy(s => s.Name)
-                .ToListAsync();
+            var query = _context.SubCategories
+                .Where(s => s.CategoryId == categoryId);
+
+            if (!isAdmin)
+                query = query.Where(s => s.IsActive == true);
+
+            return await query.OrderBy(s => s.Name).ToListAsync();
             }
 
         // FILTER BY NAME + CATEGORY
-        public async Task<IEnumerable<SubCategory>> FilterAsync(SubCategoryDTO.SubCategoryFilterDto filter)
+        public async Task<IEnumerable<SubCategory>> FilterAsync(SubCategoryDTO.SubCategoryFilterDto filter, bool isAdmin)
             {
-            var query = _context.SubCategories
-                .Where(s => s.IsActive == true)
-                .AsQueryable();
+            var query = _context.SubCategories.AsQueryable();
+
+            if (!isAdmin)
+                query = query.Where(s => s.IsActive == true);
 
             if (!string.IsNullOrWhiteSpace(filter.Name))
                 {
@@ -63,16 +74,28 @@ namespace PTJ_Service.SearchService.Services
             }
 
         // CREATE
-        public async Task<SubCategory> CreateAsync(SubCategoryDTO.SubCategoryCreateDto dto)
+        public async Task<SubCategory?> CreateAsync(SubCategoryDTO.SubCategoryCreateDto dto)
             {
-            // Check CategoryId tồn tại
-            bool exists = await _context.Categories.AnyAsync(c => c.CategoryId == dto.CategoryId);
+            // Check CategoryId tồn tại + active
+            bool exists = await _context.Categories
+                .AnyAsync(c => c.CategoryId == dto.CategoryId && c.IsActive == true);
             if (!exists)
-                throw new Exception("CategoryId không tồn tại.");
+                throw new Exception("CategoryId không tồn tại hoặc đã bị vô hiệu hoá.");
+
+            // Check trùng tên trong cùng Category (chỉ check với SubCategory active)
+            string normalized = dto.Name.Trim().ToLower();
+
+            bool duplicate = await _context.SubCategories
+                .AnyAsync(s => s.CategoryId == dto.CategoryId &&
+                               s.Name.ToLower() == normalized &&
+                               s.IsActive == true);
+
+            if (duplicate)
+                return null;
 
             var sub = new SubCategory
                 {
-                Name = dto.Name,
+                Name = dto.Name.Trim(),
                 CategoryId = dto.CategoryId,
                 Keywords = dto.Description, // model không có Description → map sang Keywords
                 IsActive = dto.IsActive
@@ -91,8 +114,21 @@ namespace PTJ_Service.SearchService.Services
             if (sub == null)
                 return false;
 
-            if (dto.Name != null)
-                sub.Name = dto.Name;
+            // Nếu đổi tên → check trùng
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                {
+                string normalized = dto.Name.Trim().ToLower();
+                bool duplicate = await _context.SubCategories
+                    .AnyAsync(s => s.SubCategoryId != id &&
+                                   s.CategoryId == sub.CategoryId &&
+                                   s.Name.ToLower() == normalized &&
+                                   s.IsActive == true);
+
+                if (duplicate)
+                    return false;
+
+                sub.Name = dto.Name.Trim();
+                }
 
             if (dto.CategoryId.HasValue)
                 sub.CategoryId = dto.CategoryId.Value;
@@ -107,14 +143,15 @@ namespace PTJ_Service.SearchService.Services
             return true;
             }
 
-        // DELETE
+        // SOFT DELETE
         public async Task<bool> DeleteAsync(int id)
             {
             var sub = await _context.SubCategories.FindAsync(id);
             if (sub == null)
                 return false;
 
-            _context.SubCategories.Remove(sub);
+            sub.IsActive = false; // soft delete
+
             await _context.SaveChangesAsync();
             return true;
             }
