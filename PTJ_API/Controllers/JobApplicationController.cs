@@ -20,9 +20,8 @@ namespace PTJ_API.Controllers
             _service = service;
             }
 
-        // =========================================================
         // ỨNG VIÊN NỘP ĐƠN
-        // =========================================================
+
         [Authorize(Roles = "JobSeeker,Admin")]
         [HttpPost("apply")]
         public async Task<IActionResult> Apply([FromBody] JobApplicationCreateDto dto)

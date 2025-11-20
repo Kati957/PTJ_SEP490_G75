@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.CategoryDTO;
 using PTJ_Service.CategoryService.Interfaces;
 
@@ -6,6 +7,7 @@ namespace PTJ_API.Controllers
     {
     [ApiController]
     [Route("api/category")]
+    [Authorize(Roles = "Admin")]
     public class CategoryController : ControllerBase
         {
         private readonly ICategoryService _service;
@@ -16,12 +18,14 @@ namespace PTJ_API.Controllers
             }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
             {
             return Ok(await _service.GetCategoriesAsync());
             }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<IActionResult> Get(int id)
             {
             var result = await _service.GetByIdAsync(id);
@@ -50,6 +54,7 @@ namespace PTJ_API.Controllers
             }
 
         [HttpPost("filter")]
+        [AllowAnonymous]
         public async Task<IActionResult> Filter(CategoryDTO.CategoryFilterDto dto)
             {
             return Ok(await _service.FilterAsync(dto));
