@@ -49,7 +49,7 @@ namespace PTJ_API.Controllers
 
         // 🔹 Suggest API → cần HTTP method
         [HttpGet("suggest")]
-        [Authorize] // nếu cần
+        [AllowAnonymous]
         public async Task<IActionResult> Suggest(string keyword)
             {
             var result = await _suggestionService.GetSuggestionsAsync(keyword);
@@ -60,7 +60,7 @@ namespace PTJ_API.Controllers
 
         // 🔹 Từ khóa phổ biến — lấy role tự động
         [HttpGet("popular")]
-        [Authorize(Roles = "JobSeeker,Employer")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetPopularKeywords()
             {
             var role = User.FindFirstValue(ClaimTypes.Role);

@@ -18,21 +18,19 @@ namespace PTJ_Service.SearchService.Implementations
             }
 
         // Lấy role từ token
-        private string? GetUserRole()
+        private string GetUserRole()
             {
             var user = _contextAccessor.HttpContext?.User;
 
-            if (user == null) return null;
+            if (user == null || !user.Identity!.IsAuthenticated)
+                return "JobSeeker"; // default for anonymous
 
-            // Nếu token chứa claim "role"
-            var role = user.FindFirst("role")?.Value;
+            var role = user.FindFirst("role")?.Value
+                    ?? user.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Hoặc dùng tiêu chuẩn .NET
-            if (string.IsNullOrEmpty(role))
-                role = user.FindFirst(ClaimTypes.Role)?.Value;
-
-            return role;
+            return role ?? "JobSeeker"; // fallback
             }
+
 
         public async Task<IEnumerable<string>> GetSuggestionsAsync(string? keyword)
             {
@@ -48,7 +46,8 @@ namespace PTJ_Service.SearchService.Implementations
             if (role == "Employer")
                 {
                 var fromTitle = await _db.JobSeekerPosts
-                    .Where(p => p.Status == "Active" && p.Title.ToLower().Contains(keyword))
+                    .Where(p => p.Status == "Active" && EF.Functions.Like(p.Title, $"%{keyword}%")
+)
                     .Select(p => p.Title)
                     .Distinct()
                     .Take(10)
@@ -68,7 +67,8 @@ namespace PTJ_Service.SearchService.Implementations
             else if (role == "JobSeeker")
                 {
                 var fromTitle = await _db.EmployerPosts
-                    .Where(p => p.Status == "Active" && p.Title.ToLower().Contains(keyword))
+                    .Where(p => p.Status == "Active" && EF.Functions.Like(p.Title, $"%{keyword}%")
+)
                     .Select(p => p.Title)
                     .Distinct()
                     .Take(10)
@@ -88,14 +88,14 @@ namespace PTJ_Service.SearchService.Implementations
             else
                 {
                 var fromEmployer = await _db.EmployerPosts
-                    .Where(p => p.Status == "Active" && p.Title.ToLower().Contains(keyword))
+                    .Where(p => p.Status == "Active" && EF.Functions.Like(p.Title, $"%{keyword}%"))
                     .Select(p => p.Title)
                     .Distinct()
                     .Take(10)
                     .ToListAsync();
 
                 var fromSeeker = await _db.JobSeekerPosts
-                    .Where(p => p.Status == "Active" && p.Title.ToLower().Contains(keyword))
+                    .Where(p => p.Status == "Active" && EF.Functions.Like(p.Title, $"%{keyword}%"))
                     .Select(p => p.Title)
                     .Distinct()
                     .Take(10)
