@@ -5,6 +5,7 @@ using PTJ_Models.DTO.CategoryDTO;
 using PTJ_Service.SearchService.Interfaces;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using static PTJ_Models.DTO.CategoryDTO.CategoryDTO;
 
 namespace PTJ_Service.SearchService.Services
     {
@@ -68,5 +69,26 @@ namespace PTJ_Service.SearchService.Services
             await _context.SaveChangesAsync();
             return true;
             }
+
+        public async Task<IEnumerable<Category>> FilterAsync(CategoryFilterDto filter)
+            {
+            var query = _context.Categories
+                .Where(c => c.IsActive)  // 🔥 Mặc định chỉ lấy Active
+                .AsQueryable();
+
+            // 🔍 Filter theo tên
+            if (!string.IsNullOrWhiteSpace(filter.Name))
+                {
+                string keyword = filter.Name.Trim().ToLower();
+                query = query.Where(c => c.Name.ToLower().Contains(keyword));
+                }
+
+            // 🔤 Sort theo tên
+            query = query.OrderBy(c => c.Name);
+
+            return await query.ToListAsync();
+            }
+
+
         }
     }

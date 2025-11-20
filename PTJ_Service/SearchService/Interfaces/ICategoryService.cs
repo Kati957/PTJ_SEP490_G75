@@ -2,6 +2,7 @@
 using PTJ_Models.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using static PTJ_Models.DTO.CategoryDTO.CategoryDTO;
 
 namespace PTJ_Service.SearchService.Interfaces
     {
@@ -31,5 +32,6 @@ namespace PTJ_Service.SearchService.Interfaces
         /// Xóa danh mục
         /// </summary>
         Task<bool> DeleteAsync(int id);
+        Task<IEnumerable<Category>> FilterAsync(CategoryFilterDto filter);
         }
     }

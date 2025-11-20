@@ -1,32 +1,51 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
-using PTJ_Models;
-using PTJ_Models.Models;
 using PTJ_Service.SearchService.Interfaces;
+using System.Security.Claims;
 
 namespace PTJ_Service.SearchService.Implementations
     {
     public class SearchSuggestionService : ISearchSuggestionService
         {
         private readonly JobMatchingDbContext _db;
+        private readonly IHttpContextAccessor _contextAccessor;
 
-        public SearchSuggestionService(JobMatchingDbContext db)
+        public SearchSuggestionService(JobMatchingDbContext db, IHttpContextAccessor accessor)
             {
             _db = db;
+            _contextAccessor = accessor;
             }
 
-        // Gợi ý theo keyword + role
-        public async Task<IEnumerable<string>> GetSuggestionsAsync(string? keyword, int? roleId)
+        // Lấy role từ token
+        private string? GetUserRole()
             {
-            // Nếu chưa nhập keyword → lấy phổ biến theo role
+            var user = _contextAccessor.HttpContext?.User;
+
+            if (user == null) return null;
+
+            // Nếu token chứa claim "role"
+            var role = user.FindFirst("role")?.Value;
+
+            // Hoặc dùng tiêu chuẩn .NET
+            if (string.IsNullOrEmpty(role))
+                role = user.FindFirst(ClaimTypes.Role)?.Value;
+
+            return role;
+            }
+
+        public async Task<IEnumerable<string>> GetSuggestionsAsync(string? keyword)
+            {
+            var role = GetUserRole(); // Lấy role từ ID Token
+
             if (string.IsNullOrWhiteSpace(keyword))
-                return await GetPopularKeywordsAsync(roleId);
+                return await GetPopularKeywordsAsync(role);
 
             keyword = keyword.ToLower();
             List<string> results = new();
 
             // Employer → tìm ứng viên
-            if (roleId == 2)
+            if (role == "Employer")
                 {
                 var fromTitle = await _db.JobSeekerPosts
                     .Where(p => p.Status == "Active" && p.Title.ToLower().Contains(keyword))
@@ -46,7 +65,7 @@ namespace PTJ_Service.SearchService.Implementations
                 results.AddRange(fromCategory);
                 }
             // JobSeeker → tìm bài tuyển dụng
-            else if (roleId == 1)
+            else if (role == "JobSeeker")
                 {
                 var fromTitle = await _db.EmployerPosts
                     .Where(p => p.Status == "Active" && p.Title.ToLower().Contains(keyword))
@@ -65,7 +84,7 @@ namespace PTJ_Service.SearchService.Implementations
                 results.AddRange(fromTitle);
                 results.AddRange(fromCategory);
                 }
-            // Nếu role không xác định → gộp cả hai
+            // Không có role → tìm tất cả
             else
                 {
                 var fromEmployer = await _db.EmployerPosts
@@ -97,49 +116,46 @@ namespace PTJ_Service.SearchService.Implementations
             return results.Distinct().Take(10);
             }
 
-        // Từ khóa phổ biến theo role
-        public async Task<IEnumerable<string>> GetPopularKeywordsAsync(int? roleId)
+
+        // Từ khóa phổ biến theo role token
+        public async Task<IEnumerable<string>> GetPopularKeywordsAsync(string? role)
             {
-            if (roleId == 2)
+            if (role == "Employer")
                 {
-                // Employer → lấy từ JobSeekerPosts
                 return await _db.JobSeekerPosts
                     .Where(p => p.Status == "Active")
                     .GroupBy(p => p.Title)
-                    .Select(g => new { Keyword = g.Key, Count = g.Count() })
-                    .OrderByDescending(g => g.Count)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
                     .Take(10)
-                    .Select(g => g.Keyword)
                     .ToListAsync();
                 }
 
-            if (roleId == 3)
+            if (role == "JobSeeker")
                 {
-                // JobSeeker → lấy từ EmployerPosts
                 return await _db.EmployerPosts
                     .Where(p => p.Status == "Active")
                     .GroupBy(p => p.Title)
-                    .Select(g => new { Keyword = g.Key, Count = g.Count() })
-                    .OrderByDescending(g => g.Count)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
                     .Take(10)
-                    .Select(g => g.Keyword)
                     .ToListAsync();
                 }
 
-            // Default → gộp cả hai
-            var fromEmployer = await _db.EmployerPosts
+            // Không role → gộp luôn
+            var employer = await _db.EmployerPosts
                 .Where(p => p.Status == "Active")
                 .Select(p => p.Title)
                 .Take(10)
                 .ToListAsync();
 
-            var fromSeeker = await _db.JobSeekerPosts
+            var seeker = await _db.JobSeekerPosts
                 .Where(p => p.Status == "Active")
                 .Select(p => p.Title)
                 .Take(10)
                 .ToListAsync();
 
-            return fromEmployer.Concat(fromSeeker).Distinct().Take(10);
+            return employer.Concat(seeker).Distinct().Take(10);
             }
         }
     }

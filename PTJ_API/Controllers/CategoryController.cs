@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.CategoryDTO;
 using PTJ_Service.SearchService.Interfaces;
+using PTJ_Service.SearchService.Services;
 using System.Threading.Tasks;
+using static PTJ_Models.DTO.CategoryDTO.CategoryDTO;
 
 namespace PTJ_API.Controllers
     {
@@ -59,6 +61,13 @@ namespace PTJ_API.Controllers
             var deleted = await _service.DeleteAsync(id);
             if (!deleted) return NotFound();
             return Ok(new { message = "Xóa danh mục thành công." });
+            }
+        // API filter riêng
+        [HttpGet("filter")]
+        public async Task<IActionResult> FilterCategories([FromQuery] CategoryFilterDto filter)
+            {
+            var result = await _service.FilterAsync(filter);
+            return Ok(result);
             }
         }
     }

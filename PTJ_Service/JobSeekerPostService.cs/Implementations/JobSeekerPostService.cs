@@ -582,6 +582,16 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 if (!await IsWithinDistanceAsync(preferredLocation, job.Location))
                     continue;
 
+                // --- INDUSTRY FILTER ---
+                var seekerIndustry = await GetIndustryEmbeddingAsync(seekerTitle);
+                var jobIndustry = await GetIndustryEmbeddingAsync(job.Title + " " + job.Requirements);
+
+                double industrySim = CosineSimilarity(seekerIndustry, jobIndustry);
+
+                if (industrySim < 0.50)
+                    continue;
+
+
                 // FINAL SCORE = Pinecone similarity
                 double finalScore = m.Score;
 
@@ -589,6 +599,22 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 }
 
             return results;
+            }
+
+        private double CosineSimilarity(float[] a, float[] b)
+            {
+            if (a.Length == 0 || b.Length == 0) return 0;
+
+            double dot = 0, magA = 0, magB = 0;
+
+            for (int i = 0; i < a.Length; i++)
+                {
+                dot += a[i] * b[i];
+                magA += a[i] * a[i];
+                magB += b[i] * b[i];
+                }
+
+            return dot / (Math.Sqrt(magA) * Math.Sqrt(magB));
             }
 
 
@@ -896,5 +922,41 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             await _db.SaveChangesAsync();
             }
+        private async Task<float[]> GetIndustryEmbeddingAsync(string text)
+            {
+            if (string.IsNullOrWhiteSpace(text))
+                return Array.Empty<float>();
+
+            if (text.Length > 300)
+                text = text.Substring(0, 300);
+
+            string hash = Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes("industry:" + text.ToLower()))
+            );
+
+            var cache = await _db.AiEmbeddingStatuses
+                .FirstOrDefaultAsync(x => x.EntityType == "Industry" && x.ContentHash == hash);
+
+            if (cache != null && !string.IsNullOrEmpty(cache.VectorData))
+                return JsonConvert.DeserializeObject<float[]>(cache.VectorData)!;
+
+            var vec = await _ai.CreateEmbeddingAsync(text);
+
+            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
+                {
+                EntityType = "Industry",
+                EntityId = 0,
+                ContentHash = hash,
+                Model = "text-embedding-3-large",
+                VectorDim = vec.Length,
+                VectorData = JsonConvert.SerializeObject(vec),
+                UpdatedAt = DateTime.Now,
+                });
+
+            await _db.SaveChangesAsync();
+
+            return vec;
+            }
+
         }
     }

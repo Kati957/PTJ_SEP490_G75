@@ -47,36 +47,22 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // 🔹 Gợi ý từ khóa — lấy role tự động
-        [HttpGet("suggestions")]
-        [Authorize(Roles = "JobSeeker,Employer")]
-        public async Task<IActionResult> GetSuggestions([FromQuery] string? keyword)
+        public async Task<IActionResult> Suggest(string keyword)
             {
-            int? roleId = GetRoleIdFromClaims();
-            var suggestions = await _suggestionService.GetSuggestionsAsync(keyword, roleId);
-            return Ok(suggestions);
+            var result = await _suggestionService.GetSuggestionsAsync(keyword);
+            return Ok(result);
             }
+
 
         // 🔹 Từ khóa phổ biến — lấy role tự động
         [HttpGet("popular")]
         [Authorize(Roles = "JobSeeker,Employer")]
         public async Task<IActionResult> GetPopularKeywords()
             {
-            int? roleId = GetRoleIdFromClaims();
-            var popular = await _suggestionService.GetPopularKeywordsAsync(roleId);
-            return Ok(popular);
-            }
-
-        // 🧠 Helper: Lấy roleId từ JWT
-        private int? GetRoleIdFromClaims()
-            {
             var role = User.FindFirstValue(ClaimTypes.Role);
-            return role switch
-                {
-                    "Employer" => 2,  // Nhà tuyển dụng
-                    "JobSeeker" => 3, // Ứng viên
-                    _ => null
-                    };
+            var popular = await _suggestionService.GetPopularKeywordsAsync(role);
+
+            return Ok(popular);
             }
         }
     }
