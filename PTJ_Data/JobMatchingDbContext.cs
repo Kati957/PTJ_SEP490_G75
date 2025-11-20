@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using PTJ_Models.Models;
 
-namespace PTJ_Data;
+namespace PTJ_Models.Models;
 
 public partial class JobMatchingDbContext : DbContext
 {
@@ -319,11 +318,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<EmployerRegistrationRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__Employer__33A8517AC41CDA76");
-
-            entity.HasIndex(e => e.Email, "IX_EmployerRegRequests_Email").IsUnique();
-
-            entity.HasIndex(e => e.Username, "IX_EmployerRegRequests_Username").IsUnique();
+            entity.HasKey(e => e.RequestId).HasName("PK__Employer__33A8517A31471ED2");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CompanyName).HasMaxLength(255);
@@ -870,7 +865,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasIndex(e => e.Username, "UQ_Users_Username").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
-            entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -879,9 +873,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.LastLogin).HasColumnType("datetime");
             entity.Property(e => e.LockoutEnd).HasColumnType("datetime");
             entity.Property(e => e.PasswordHash).HasMaxLength(255);
-            entity.Property(e => e.PhoneNumber)
-                .HasMaxLength(20)
-                .IsUnicode(false);
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
