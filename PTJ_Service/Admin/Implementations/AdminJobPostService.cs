@@ -45,15 +45,15 @@ public class AdminJobPostService : IAdminJobPostService
         // 1️⃣ Lấy bài đăng
         var post = await _repo.GetEmployerPostByIdAsync(id);
         if (post == null)
-            throw new KeyNotFoundException("Employer post not found.");
+            throw new KeyNotFoundException("Không tìm thấy bài đăng của nhà tuyển dụng.");
 
         bool wasBlocked = post.Status == "Blocked";
 
         // 2️⃣ Toggle trạng thái
         var ok = await _repo.ToggleEmployerPostBlockedAsync(id);
-        if (!ok) throw new KeyNotFoundException("Unable to toggle employer post status.");
+        if (!ok) throw new KeyNotFoundException("Không thể thay đổi trạng thái của bài đăng.");
 
-        string actionText = wasBlocked ? "được mở lại" : "đã bị khóa";
+        string actionText = wasBlocked ? "Đã mở lại" : "Đã khóa";
 
         // 3️⃣ Gửi Notification
         await _noti.SendAsync(new CreateNotificationDto
@@ -93,15 +93,15 @@ public class AdminJobPostService : IAdminJobPostService
         // 1️⃣ Lấy bài đăng
         var post = await _repo.GetJobSeekerPostByIdAsync(id);
         if (post == null)
-            throw new KeyNotFoundException("JobSeeker post not found.");
+            throw new KeyNotFoundException("Không tìm thấy bài đăng của người tìm việc.");
 
         bool wasArchived = post.Status == "Archived";
 
         // 2️⃣ Toggle
         var ok = await _repo.ToggleJobSeekerPostArchivedAsync(id);
-        if (!ok) throw new KeyNotFoundException("Unable to toggle job seeker post status.");
+        if (!ok) throw new KeyNotFoundException("Không thể thay đổi trạng thái bài đăng.");
 
-        string actionText = wasArchived ? "được khôi phục" : "đã bị lưu trữ";
+        string actionText = wasArchived ? "Đã khôi phục" : "Đã lưu trữ";
 
         // 3️⃣ Gửi Notification
         await _noti.SendAsync(new CreateNotificationDto

@@ -19,13 +19,13 @@ namespace PTJ_Service.Helpers.Implementations
             var user = await db.Users
                 .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.UserId == userId)
-                ?? throw new Exception($"User #{userId} not found.");
+                ?? throw new Exception($"Không tìm thấy người dùng #{userId}.");
 
             var role = await db.Roles
                 .FirstOrDefaultAsync(r => r.RoleName == roleName);
 
             if (role == null)
-                throw new Exception($"Role '{roleName}' not found. Seed Roles table first.");
+                throw new Exception($"Không tìm thấy role '{roleName}'. Vui lòng seed bảng Roles trước.");
 
             user.Roles.Clear();
             user.Roles.Add(role);
@@ -40,13 +40,13 @@ namespace PTJ_Service.Helpers.Implementations
             var user = await db.Users
                 .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.UserId == userId)
-                ?? throw new Exception($"User #{userId} not found.");
+                ?? throw new Exception($"Không tìm thấy người dùng #{userId}.");
 
             if (user.Roles.Count == 0)
             {
                 var role = await db.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName);
                 if (role == null)
-                    throw new Exception($"Role '{roleName}' not found. Seed Roles table first.");
+                    throw new Exception($"Không tìm thấy role '{roleName}'. Vui lòng seed bảng Roles trước.");
 
                 user.Roles.Add(role);
                 await db.SaveChangesAsync();

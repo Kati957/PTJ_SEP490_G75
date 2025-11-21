@@ -6,9 +6,14 @@ using System.Threading.Tasks;
 
 namespace PTJ_Models.DTO.Auth
 {
-    public class ChangePasswordDto
+    public class RequestChangePasswordDto
     {
-        public string CurrentPassword { get; set; } = string.Empty;
-        public string NewPassword { get; set; } = string.Empty;
+        public string CurrentPassword { get; set; } = null!;
+    }
+    public class ConfirmChangePasswordDto
+    {
+        public string Token { get; set; } = null!;
+        public string NewPassword { get; set; } = null!;
+        public string ConfirmNewPassword { get; set; } = null!;
     }
 }

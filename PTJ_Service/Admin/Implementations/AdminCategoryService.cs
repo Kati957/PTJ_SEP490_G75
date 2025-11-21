@@ -24,7 +24,7 @@ namespace PTJ_Service.Admin.Implementations
         public async Task<int> CreateAsync(AdminCreateCategoryDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Name))
-                throw new ArgumentException("Category name is required.");
+                throw new ArgumentException("Vui lòng nhập tên danh mục.");
 
             var entity = new Category
             {
@@ -40,13 +40,13 @@ namespace PTJ_Service.Admin.Implementations
         public async Task UpdateAsync(int id, AdminUpdateCategoryDto dto)
         {
             var ok = await _repo.UpdateAsync(id, dto);
-            if (!ok) throw new KeyNotFoundException("Category not found.");
+            if (!ok) throw new KeyNotFoundException("Không tìm thấy danh mục.");
         }
 
         public async Task ToggleActiveAsync(int id)
         {
             var ok = await _repo.ToggleActiveAsync(id);
-            if (!ok) throw new KeyNotFoundException("Category not found.");
+            if (!ok) throw new KeyNotFoundException("Không tìm thấy danh mục.");
         }
     }
 }

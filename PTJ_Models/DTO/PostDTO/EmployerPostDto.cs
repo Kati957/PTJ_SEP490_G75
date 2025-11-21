@@ -1,9 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
 namespace PTJ_Models.DTO.PostDTO
-    {
+{
     public class EmployerPostDto
-        {
+    {
         public int UserID { get; set; }
 
         [Required(ErrorMessage = "Tiêu đề không được để trống.")]
@@ -53,11 +53,11 @@ namespace PTJ_Models.DTO.PostDTO
     ErrorMessage = "Số điện thoại không đúng định dạng Việt Nam.")]
         public string? PhoneContact { get; set; }
 
-        }
+    }
 
     public class EmployerPostResultDto
-        {
+    {
         public EmployerPostDtoOut Post { get; set; } = new();
         public List<AIResultDto> SuggestedCandidates { get; set; } = new();
-        }
     }
+}

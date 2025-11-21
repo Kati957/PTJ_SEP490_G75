@@ -1,46 +1,40 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Service.Interfaces.Admin;
-using PTJ_Models.DTO.Admin;
+using PTJ_Models.DTOs;
 
-namespace PTJ_API.Controllers.Admin
+[Authorize(Roles = "Admin")]
+[ApiController]
+[Route("api/admin/system-reports")]
+public class AdminSystemReportController : ControllerBase
 {
-    [ApiController]
-    [Route("api/admin/system-reports")]
-    [Authorize(Roles = "Admin")]
-    public class AdminSystemReportController : ControllerBase
+    private readonly IAdminSystemReportService _service;
+
+    public AdminSystemReportController(IAdminSystemReportService service)
     {
-        private readonly IAdminSystemReportService _svc;
-        public AdminSystemReportController(IAdminSystemReportService svc) => _svc = svc;
+        _service = service;
+    }
 
-        // 1️⃣ Danh sách báo cáo hệ thống
-        [HttpGet]
-        public async Task<IActionResult> GetSystemReports(
-            [FromQuery] string? status = null,
-            [FromQuery] string? keyword = null,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var data = await _svc.GetSystemReportsAsync(status, keyword, page, pageSize);
-            return Ok(data);
-        }
+    [HttpGet]
+    public async Task<IActionResult> GetReports(
+        string? status, string? keyword, int page = 1, int pageSize = 10)
+    {
+        var result = await _service.GetSystemReportsAsync(status, keyword, page, pageSize);
+        return Ok(result);
+    }
 
-        // 2️⃣ Chi tiết báo cáo
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetSystemReportDetail(int id)
-        {
-            var data = await _svc.GetSystemReportDetailAsync(id);
-            return data is null ? NotFound() : Ok(data);
-        }
+    [HttpGet("{id}")]
+    public async Task<IActionResult> Detail(int id)
+    {
+        var result = await _service.GetSystemReportDetailAsync(id);
+        if (result == null) return NotFound(new { message = "Không tìm thấy báo cáo." });
+        return Ok(result);
+    }
 
-        // 3️⃣ Đánh dấu đã xử lý
-        [HttpPost("{id:int}/resolve")]
-        public async Task<IActionResult> ResolveSystemReport(int id, [FromBody] AdminResolveSystemReportDto dto)
-        {
-            var ok = await _svc.MarkReportSolvedAsync(id, dto.Note);
-            return ok
-                ? Ok(new { message = $"System report {id} marked as solved." })
-                : NotFound(new { message = "Report not found." });
-        }
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateStatus(int id, SystemReportUpdateDto dto)
+    {
+        var success = await _service.UpdateStatusAsync(id, dto.Status);
+        if (!success) return NotFound(new { message = "Không tìm thấy báo cáo." });
+        return Ok(new { message = "Cập nhật trạng thái thành công." });
     }
 }

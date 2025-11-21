@@ -64,7 +64,7 @@ namespace PTJ_API.Controllers
             if (jobSeekerId <= 0 || employerPostId <= 0)
                 return BadRequest(new { success = false, message = "Thiếu thông tin để rút đơn." });
 
-            var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
             if (sub == null)
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin user." });
 
@@ -75,7 +75,7 @@ namespace PTJ_API.Controllers
 
             var result = await _service.WithdrawAsync(jobSeekerId, employerPostId);
             if (!result)
-                return NotFound(new { success = false, message = "Không tìm thấy đơn ứng tuyển hoặc đã bị rút." });
+                return NotFound(new { success = false, message = "Không tìm thấy đơn ứng tuyển hoặc đơn đã được rút." });
 
             return Ok(new { success = true, message = "Rút đơn thành công." });
             }
@@ -95,24 +95,21 @@ namespace PTJ_API.Controllers
             }
 
         // =========================================================
-        // JOBSEEKER XEM DANH SÁCH BÀI ĐÃ ỨNG TUYỂN
+        // JOBSEEKER XEM ĐƠN ĐÃ ỨNG TUYỂN CỦA CHÍNH HỌ
         // =========================================================
         [Authorize(Roles = "JobSeeker,Admin")]
         [HttpGet("by-seeker/{jobSeekerId}")]
         public async Task<IActionResult> GetBySeeker(int jobSeekerId)
             {
-            // ✅ Lấy userId an toàn từ JWT
-            var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
             if (sub == null)
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin user." });
 
             var currentUserId = int.Parse(sub.Value);
 
-            // ✅ Check quyền
             if (!User.IsInRole("Admin") && jobSeekerId != currentUserId)
                 return Forbid("Bạn không thể xem đơn ứng tuyển của người khác.");
 
-            // ✅ Gọi service
             var result = await _service.GetApplicationsBySeekerAsync(jobSeekerId);
 
             return Ok(new
@@ -136,9 +133,15 @@ namespace PTJ_API.Controllers
             if (dto == null || string.IsNullOrWhiteSpace(dto.Status))
                 return BadRequest(new { success = false, message = "Thiếu trạng thái cập nhật." });
 
-            var validStatuses = new[] { "Accepted", "Rejected" };
+            // ⭐ THÊM TRẠNG THÁI MỚI
+            var validStatuses = new[] { "Interviewing", "Accepted", "Rejected" };
+
             if (!validStatuses.Contains(dto.Status, System.StringComparer.OrdinalIgnoreCase))
-                return BadRequest(new { success = false, message = "Trạng thái không hợp lệ. Chỉ chấp nhận 'Accepted' hoặc 'Rejected'." });
+                return BadRequest(new
+                    {
+                    success = false,
+                    message = "Trạng thái không hợp lệ. Chỉ chấp nhận: 'Interviewing', 'Accepted', 'Rejected'."
+                    });
 
             var result = await _service.UpdateStatusAsync(id, dto.Status, dto.Note);
             if (!result)
@@ -148,12 +151,21 @@ namespace PTJ_API.Controllers
             }
 
         // =========================================================
-        // LẤY DANH SÁCH TRẠNG THÁI HỢP LỆ
+        // DANH SÁCH TRẠNG THÁI HỢP LỆ
         // =========================================================
         [HttpGet("valid-statuses")]
         public IActionResult GetValidStatuses()
             {
-            var statuses = new[] { "Pending", "Accepted", "Rejected", "Withdrawn" };
+            // ⭐ cập nhật theo status mới
+            var statuses = new[]
+            {
+                "Đang chờ xử lý",
+                "Đang phỏng vấn",
+                "Đã chấp nhận",
+                "Đã từ chối",
+                "Đã rút lại"
+            };
+
             return Ok(new { success = true, data = statuses });
             }
         }

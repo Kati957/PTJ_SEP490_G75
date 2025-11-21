@@ -40,10 +40,10 @@ namespace PTJ_Service.Implementations.Admin
         public async Task<AdminSolvedReportDto> ResolveReportAsync(int reportId, AdminResolveReportDto dto, int adminId)
         {
             var report = await _repo.GetReportByIdAsync(reportId)
-                ?? throw new KeyNotFoundException("Report not found.");
+                ?? throw new KeyNotFoundException("Không tìm thấy báo cáo.");
 
             if (report.Status != "Pending")
-                throw new InvalidOperationException("Report has already been processed.");
+                throw new InvalidOperationException("Báo cáo đã được xử lý trước đó.");
 
             switch (dto.ActionTaken)
             {
@@ -60,13 +60,13 @@ namespace PTJ_Service.Implementations.Admin
                     break;
 
                 default:
-                    throw new InvalidOperationException("Invalid report action.");
+                    throw new InvalidOperationException("Không thể thực hiện hành động này.");
             }
 
-            // Cập nhật trạng thái
+            // Cập nhật trạng thái report
             report.Status = "Resolved";
 
-            // Lưu thông tin đã xử lý
+            // Lưu record solved
             var solved = new PostReportSolved
             {
                 PostReportId = report.PostReportId,
@@ -82,23 +82,35 @@ namespace PTJ_Service.Implementations.Admin
             await _repo.AddSolvedReportAsync(solved);
             await _repo.SaveChangesAsync();
 
-            return new AdminSolvedReportDto
+            // LẤY LẠI DỮ LIỆU ĐẦY ĐỦ SAU KHI SAVE (JOIN POST + ADMIN + USER)
+            var solvedPaged = await _repo.GetSolvedReportsPagedAsync(null, null, 1, 1);
+
+            var fullData = solvedPaged.Data.FirstOrDefault(s => s.SolvedReportId == solved.SolvedPostReportId);
+
+            if (fullData == null)
             {
-                SolvedReportId = solved.SolvedPostReportId,
-                ReportId = solved.PostReportId,
-                ActionTaken = solved.ActionTaken,
-                Reason = solved.Reason,
-                SolvedAt = solved.SolvedAt
-            };
+                // fallback nếu hiếm khi join không trả về
+                return new AdminSolvedReportDto
+                {
+                    SolvedReportId = solved.SolvedPostReportId,
+                    ReportId = solved.PostReportId,
+                    ActionTaken = solved.ActionTaken,
+                    Reason = solved.Reason,
+                    SolvedAt = solved.SolvedAt
+                };
+            }
+
+            return fullData;
         }
 
 
+
         // CASE 1️⃣: GỠ HOẶC ẨN BÀI ĐĂNG
-       
+
         private async Task HandleDeletePostAsync(AdminResolveReportDto dto, PostReport report)
         {
             if (dto.AffectedPostId == null || dto.AffectedPostType == null)
-                throw new InvalidOperationException("Missing post info.");
+                throw new InvalidOperationException("Thiếu thông tin bài đăng.");
 
             if (dto.AffectedPostType == "EmployerPost")
             {
@@ -108,7 +120,7 @@ namespace PTJ_Service.Implementations.Admin
                     post.Status = "Hidden";
                     post.UpdatedAt = DateTime.UtcNow;
 
-                    //  SEND NOTIFICATION
+                    // GỬI THÔNG BÁO
                     await _noti.SendAsync(new CreateNotificationDto
                     {
                         UserId = post.UserId,
@@ -146,9 +158,8 @@ namespace PTJ_Service.Implementations.Admin
         }
 
 
-        
         // CASE 2️⃣: CẢNH CÁO USER
-        
+
         private async Task HandleWarnAsync(AdminResolveReportDto dto, PostReport report)
         {
             int userId = report.TargetUserId ?? report.ReporterId;
@@ -160,14 +171,14 @@ namespace PTJ_Service.Implementations.Admin
                 RelatedItemId = report.PostReportId,
                 Data = new()
                 {
-                    { "Reason", dto.Reason ?? "No reason specified" }
+                    { "Reason", dto.Reason ?? "Không có lý do cụ thể." }
                 }
             });
         }
 
-       
+
         // CASE 3️⃣: BỎ QUA REPORT
-       
+
         private async Task HandleIgnoreAsync(PostReport report)
         {
             await _noti.SendAsync(new CreateNotificationDto
@@ -177,7 +188,7 @@ namespace PTJ_Service.Implementations.Admin
                 RelatedItemId = report.PostReportId,
                 Data = new()
                 {
-                    { "Reason", "Report reviewed, no issues found." }
+                    { "Reason", "Báo cáo đã được xem xét và không phát hiện vấn đề." }
                 }
             });
         }

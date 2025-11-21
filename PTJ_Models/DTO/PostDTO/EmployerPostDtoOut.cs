@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace PTJ_Models.DTO.PostDTO
 {
     public class EmployerPostDtoOut
-        {
+    {
         public int EmployerPostId { get; set; }
         public int EmployerId { get; set; }
 
@@ -33,6 +33,6 @@ namespace PTJ_Models.DTO.PostDTO
 
         public DateTime CreatedAt { get; set; }
         public string Status { get; set; } = string.Empty;
-        }
-
     }
+
+}

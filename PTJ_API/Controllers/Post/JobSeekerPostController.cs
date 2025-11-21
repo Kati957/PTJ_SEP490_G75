@@ -8,7 +8,7 @@ namespace PTJ_API.Controllers.Post
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "JobSeeker,Admin")]
+    [Authorize]
     public class JobSeekerPostController : ControllerBase
     {
         private readonly IJobSeekerPostService _service;
@@ -72,46 +72,97 @@ namespace PTJ_API.Controllers.Post
         // READ
         // =========================================================
         [HttpGet("all")]
-        //[Authorize(Roles = "Admin")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
-        {
+            {
             var result = await _service.GetAllAsync();
-            return Ok(new { success = true, total = result.Count(), data = result });
-        }
+
+            bool isAdmin = User.IsInRole("Admin");
+            bool isEmployer = User.IsInRole("Employer");
+            bool isJobSeeker = User.IsInRole("JobSeeker");
+
+            // JobSeeker không được xem tất cả
+            if (isJobSeeker)
+                return Forbid("JobSeeker không có quyền xem danh sách tất cả bài đăng.");
+
+            // Employer chỉ được xem bài Active
+            if (isEmployer)
+                {
+                result = result.Where(x => x.Status == "Active");
+                return Ok(new
+                    {
+                    success = true,
+                    total = result.Count(),
+                    data = result
+                    });
+                }
+
+            // Admin → xem tất cả
+            return Ok(new
+                {
+                success = true,
+                total = result.Count(),
+                data = result
+                });
+            }
+
 
         [HttpGet("by-user/{userId}")]
         public async Task<IActionResult> GetByUser(int userId)
-        {
-            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            //if (sub == null)
-            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            {
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            int currentUserId = int.Parse(sub.Value);
 
-            //var currentUserId = int.Parse(sub.Value);
-            //if (!User.IsInRole("Admin") && userId != currentUserId)
-            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            bool isAdmin = User.IsInRole("Admin");
+            bool isEmployer = User.IsInRole("Employer");
+            bool isJobSeeker = User.IsInRole("JobSeeker");
 
             var result = await _service.GetByUserAsync(userId);
-            return Ok(new { success = true, total = result.Count(), data = result });
-        }
+
+            // JobSeeker chỉ xem bài của CHÍNH họ
+            if (isJobSeeker && userId != currentUserId)
+                return Forbid("Bạn không thể xem bài đăng của người khác.");
+
+            // Employer → chỉ xem bài Active
+            if (isEmployer)
+                result = result.Where(x => x.Status == "Active");
+
+            return Ok(new
+                {
+                success = true,
+                total = result.Count(),
+                data = result
+                });
+            }
+
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
-        {
+            {
             var post = await _service.GetByIdAsync(id);
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
-            //var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
-            //if (sub == null)
-            //    return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            int currentUserId = int.Parse(sub.Value);
 
-            //var currentUserId = int.Parse(sub.Value);
-            //if (!User.IsInRole("Admin") && post.UserID != currentUserId)
-            //    return Forbidden("Bạn không thể xem bài đăng của người khác.");
+            bool isAdmin = User.IsInRole("Admin");
+            bool isEmployer = User.IsInRole("Employer");
+            bool isJobSeeker = User.IsInRole("JobSeeker");
 
+            // JobSeeker → chỉ xem bài của họ
+            if (isJobSeeker && post.UserID != currentUserId)
+                return Forbid("Bạn không thể xem bài đăng của người khác.");
+
+            // Employer → chỉ xem bài Active
+            if (isEmployer && post.Status != "Active")
+                return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
+
+            // Admin → xem tất cả
             return Ok(new { success = true, data = post });
-        }
+            }
+
+
+
 
         // =========================================================
         // UPDATE
