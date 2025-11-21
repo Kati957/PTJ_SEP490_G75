@@ -289,7 +289,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = post.Location,
                 PhoneContact = post.PhoneContact,
                 CategoryName = post.Category?.Name,
-                SubCategoryName = p.SubCategory.Name,
+                SubCategoryName = post.SubCategory.Name,
                 EmployerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
