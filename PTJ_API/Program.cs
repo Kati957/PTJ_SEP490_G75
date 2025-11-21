@@ -72,6 +72,7 @@ using PTJ_Service.HomeService;
 using PTJ_Service.CategoryService.Implementations;
 using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Services;
+using System.Security.Claims;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -206,6 +207,50 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30)
             };
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var db = context.HttpContext.RequestServices
+                    .GetRequiredService<JobMatchingDbContext>();
+
+                var claims = context.Principal.Claims;
+
+                // Lấy đúng claim chứa UserId
+                var userIdClaim =
+                       claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)
+                    ?? claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
+
+                if (userIdClaim == null)
+                {
+                    context.Fail("Invalid token: no user ID.");
+                    return;
+                }
+
+                int userId = int.Parse(userIdClaim.Value);
+
+                var user = await db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+
+                if (user == null)
+                {
+                    context.Fail("User does not exist.");
+                    return;
+                }
+
+                if (!user.IsActive)
+                {
+                    context.Fail("Your account has been deactivated.");
+                    return;
+                }
+
+                if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+                {
+                    context.Fail("Your account has been locked.");
+                    return;
+                }
+            }
+        };
+
     });
 
 // 4️⃣ SIGNALR

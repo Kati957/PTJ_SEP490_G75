@@ -147,5 +147,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             => _db.Users.FirstOrDefaultAsync(x => x.UserId == id);
 
         public Task SaveChangesAsync() => _db.SaveChangesAsync();
+
     }
+
 }
