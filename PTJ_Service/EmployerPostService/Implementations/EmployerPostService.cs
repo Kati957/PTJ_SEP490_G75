@@ -80,6 +80,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 WardId = dto.WardId,
 
                 CategoryId = dto.CategoryID,
+                SubCategoryId = dto.SubCategoryId,
                 PhoneContact = dto.PhoneContact,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
@@ -159,6 +160,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var scored = await ScoreAndFilterCandidatesAsync(
                         matches,
                         freshPost.CategoryId,
+                        freshPost.SubCategoryId,
                         freshPost.Location ?? "",
                         freshPost.Title ?? "",
                         freshPost.Requirements ?? ""    // thêm tham số 5
@@ -196,7 +198,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         ExtraInfo = new
             {
             x.Seeker.JobSeekerPostId,
-            x.Seeker.UserId,
+            SeekerID = x.Seeker.UserId,
             x.Seeker.Title,
             x.Seeker.Description,
             x.Seeker.Age,
@@ -324,6 +326,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             post.WardId = dto.WardId;
             post.WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}";
             post.CategoryId = dto.CategoryID;
+            post.SubCategoryId = dto.SubCategoryId;
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;
 
@@ -436,6 +439,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var scored = await ScoreAndFilterCandidatesAsync(
                 matches,
                 post.CategoryId,
+                post.SubCategoryId,
                 post.Location ?? "",
                 post.Title ?? "",
                 post.Requirements ?? ""
@@ -504,6 +508,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 ScoreAndFilterCandidatesAsync(
     List<(string Id, double Score)> matches,
     int? mustMatchCategoryId,
+    int? mustMatchSubCategoryId,
     string employerLocation,
     string employerTitle,
     string employerRequirements)
@@ -529,6 +534,10 @@ ScoreAndFilterCandidatesAsync(
                 // CATEGORY FILTER
                 if (mustMatchCategoryId.HasValue &&
                     seeker.CategoryId != mustMatchCategoryId.Value)
+                    continue;
+
+                if (mustMatchSubCategoryId.HasValue &&
+                    seeker.SubCategoryId != mustMatchSubCategoryId.Value)
                     continue;
 
                 // LOCATION FILTER (chỉ lọc, không tính điểm)
@@ -634,7 +643,10 @@ ScoreAndFilterCandidatesAsync(
                 where s.SourceType == "EmployerPost"
                    && s.SourceId == employerPostId
                    && s.TargetType == "JobSeekerPost"
-                join jsp in _db.JobSeekerPosts.Include(x => x.User)
+                join jsp in _db.JobSeekerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category)
+                .Include(x => x.SubCategory)
                      on s.TargetId equals jsp.JobSeekerPostId
                 where jsp.Status == "Active"
                 orderby s.MatchPercent descending, s.RawScore descending, s.CreatedAt descending
@@ -668,7 +680,7 @@ ScoreAndFilterCandidatesAsync(
                 PreferredWorkHours = x.Post.PreferredWorkHours,
                 PhoneContact = x.Post.PhoneContact,
                 CategoryName = x.Category?.Name,
-
+                SubCategoryName = x.Post.SubCategory != null ? x.Post.SubCategory.Name : null,
                 SeekerName = x.User.Username,
 
                 MatchPercent = x.Suggest.MatchPercent,
@@ -785,7 +797,7 @@ ScoreAndFilterCandidatesAsync(
             {
             var category = await _db.Categories.FindAsync(post.CategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
-
+            var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             return new EmployerPostDtoOut
                 {
                 EmployerPostId = post.EmployerPostId,
@@ -813,6 +825,7 @@ ScoreAndFilterCandidatesAsync(
 
                 PhoneContact = post.PhoneContact,
                 CategoryName = category?.Name,
+                SubCategoryName = sub?.Name,
                 EmployerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
@@ -890,6 +903,41 @@ ScoreAndFilterCandidatesAsync(
                 _db.AiMatchSuggestions.RemoveRange(obsolete);
 
             await _db.SaveChangesAsync();
+            }
+        private async Task<float[]> GetIndustryEmbeddingAsync(string text)
+            {
+            if (string.IsNullOrWhiteSpace(text))
+                return Array.Empty<float>();
+
+            if (text.Length > 300)
+                text = text.Substring(0, 300);
+
+            string hash = Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes("industry:" + text.ToLower()))
+            );
+
+            var cache = await _db.AiEmbeddingStatuses
+                .FirstOrDefaultAsync(x => x.EntityType == "Industry" && x.ContentHash == hash);
+
+            if (cache != null && !string.IsNullOrEmpty(cache.VectorData))
+                return JsonConvert.DeserializeObject<float[]>(cache.VectorData)!;
+
+            var vec = await _ai.CreateEmbeddingAsync(text);
+
+            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
+                {
+                EntityType = "Industry",
+                EntityId = 0,
+                ContentHash = hash,
+                Model = "text-embedding-3-large",
+                VectorDim = vec.Length,
+                VectorData = JsonConvert.SerializeObject(vec),
+                UpdatedAt = DateTime.Now,
+                });
+
+            await _db.SaveChangesAsync();
+
+            return vec;
             }
 
         }

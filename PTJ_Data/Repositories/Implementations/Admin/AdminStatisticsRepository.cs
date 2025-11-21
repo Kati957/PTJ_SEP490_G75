@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
+using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Implementations.Admin
 {

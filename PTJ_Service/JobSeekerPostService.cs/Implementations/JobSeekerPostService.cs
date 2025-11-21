@@ -94,6 +94,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 WardId = dto.WardId,
 
                 CategoryId = dto.CategoryID,
+                SubCategoryId = dto.SubCategoryId,
+
                 PhoneContact = dto.PhoneContact,
                 SelectedCvId = dto.SelectedCvId,   // GẮN CV VÀO BÀI ĐĂNG
                 CreatedAt = DateTime.Now,
@@ -198,6 +200,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 freshPost.CategoryId,
+                freshPost.SubCategoryId,
                 freshPost.PreferredLocation ?? "",
                 freshPost.Title,
                 freshPost.UserId,
@@ -228,6 +231,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     ExtraInfo = new
                         {
                         x.Job.EmployerPostId,
+                        EmployerID = x.Job.UserId,
                         x.Job.Title,
                         x.Job.Description,
                         x.Job.Requirements,
@@ -364,6 +368,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             );
 
             post.CategoryId = dto.CategoryID;
+            post.SubCategoryId = dto.SubCategoryId;
             post.PhoneContact = dto.PhoneContact;
             post.SelectedCvId = dto.SelectedCvId;
             post.UpdatedAt = DateTime.Now;
@@ -505,6 +510,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 post.CategoryId,
+                post.SubCategoryId,
                 post.PreferredLocation ?? "",
                 post.Title ?? "",
                 post.UserId,
@@ -535,6 +541,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     ExtraInfo = new
                         {
                         x.Job.EmployerPostId,
+                        EmployerID = x.Job.UserId,
                         x.Job.Title,
                         x.Job.Description,
                         x.Job.Requirements,
@@ -560,6 +567,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             ScoreAndFilterJobsAsync(
                 List<(string Id, double Score)> matches,
                 int? mustMatchCategoryId,
+                int? mustMatchSubCategoryId,
                 string preferredLocation,
                 string seekerTitle,
                 int seekerUserId,
@@ -589,6 +597,13 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     job.CategoryId != mustMatchCategoryId.Value)
                     continue;
 
+                // SubCategory Filter
+                if (mustMatchSubCategoryId.HasValue &&
+                    job.SubCategoryId != mustMatchSubCategoryId.Value)
+                    continue;
+
+
+
                 // Location Filter: chỉ lọc, không cộng điểm
                 if (!await IsWithinDistanceAsync(preferredLocation, job.Location))
                     continue;
@@ -601,7 +616,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             return results;
             }
-
 
         // LOCATION FILTER HELPER – lọc <= 100km, không tính điểm
         private async Task<bool> IsWithinDistanceAsync(string fromLocation, string? toLocation)
@@ -712,7 +726,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     {
                     EmployerPostId = ep.EmployerPostId,
                     EmployerUserId = ep.UserId,
-
                     Title = ep.Title ?? string.Empty,
                     Description = ep.Description ?? string.Empty,
                     Requirements = ep.Requirements,
@@ -721,7 +734,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     WorkHours = ep.WorkHours,
                     PhoneContact = ep.PhoneContact,
                     CategoryName = ep.Category != null ? ep.Category.Name : null,
-
+                    SubCategoryName = ep.SubCategory != null ? ep.SubCategory.Name : null,
                     EmployerName = ep.User.Username,
 
                     MatchPercent = s.MatchPercent,
@@ -822,31 +835,29 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         private async Task<JobSeekerPostDtoOut> BuildCleanPostDto(JobSeekerPostModel post)
             {
             var category = await _db.Categories.FindAsync(post.CategoryId);
+            var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
 
             return new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = post.JobSeekerPostId,
                 UserID = post.UserId,
-
                 Title = post.Title,
                 Description = post.Description,
                 PreferredLocation = post.PreferredLocation,
-
                 PreferredWorkHours = post.PreferredWorkHours,
-
                 PreferredWorkHourStart = post.PreferredWorkHours?.Split('-')[0].Trim(),
                 PreferredWorkHourEnd = post.PreferredWorkHours?.Split('-').Length > 1
-                            ? post.PreferredWorkHours.Split('-')[1].Trim()
-                            : null,
+                    ? post.PreferredWorkHours.Split('-')[1].Trim()
+                    : null,
 
                 CategoryName = category?.Name,
+                SubCategoryName = sub?.Name,
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
                 };
             }
-
 
         private async Task UpsertSuggestionsAsync(
             string sourceType,
@@ -907,5 +918,41 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             await _db.SaveChangesAsync();
             }
+        private async Task<float[]> GetIndustryEmbeddingAsync(string text)
+            {
+            if (string.IsNullOrWhiteSpace(text))
+                return Array.Empty<float>();
+
+            if (text.Length > 300)
+                text = text.Substring(0, 300);
+
+            string hash = Convert.ToHexString(
+                SHA256.HashData(Encoding.UTF8.GetBytes("industry:" + text.ToLower()))
+            );
+
+            var cache = await _db.AiEmbeddingStatuses
+                .FirstOrDefaultAsync(x => x.EntityType == "Industry" && x.ContentHash == hash);
+
+            if (cache != null && !string.IsNullOrEmpty(cache.VectorData))
+                return JsonConvert.DeserializeObject<float[]>(cache.VectorData)!;
+
+            var vec = await _ai.CreateEmbeddingAsync(text);
+
+            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
+                {
+                EntityType = "Industry",
+                EntityId = 0,
+                ContentHash = hash,
+                Model = "text-embedding-3-large",
+                VectorDim = vec.Length,
+                VectorData = JsonConvert.SerializeObject(vec),
+                UpdatedAt = DateTime.Now,
+                });
+
+            await _db.SaveChangesAsync();
+
+            return vec;
+            }
+
         }
     }

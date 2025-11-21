@@ -1,9 +1,12 @@
 ﻿using PTJ_Models.DTO;
 
-public interface IFollowService
+namespace PTJ_Service.FollowService
 {
-    Task<bool> FollowEmployerAsync(int jobSeekerId, int employerId);
-    Task<bool> UnfollowEmployerAsync(int jobSeekerId, int employerId);
-    Task<bool> IsFollowingAsync(int jobSeekerId, int employerId);
-    Task<IEnumerable<EmployerFollowDto>> GetFollowingListAsync(int jobSeekerId);
+    public interface IFollowService
+    {
+        Task<bool> FollowEmployerAsync(int jobSeekerId, int employerId);
+        Task<bool> UnfollowEmployerAsync(int jobSeekerId, int employerId);
+        Task<bool> IsFollowingAsync(int jobSeekerId, int employerId);
+        Task<IEnumerable<EmployerFollowDto>> GetFollowingListAsync(int jobSeekerId);
+    }
 }

@@ -35,7 +35,6 @@ using PTJ_Services.Implementations;
 using PTJ_Services.Interfaces;
 using PTJ_Repositories.Implementations;
 using PTJ_Repositories.Interfaces;
-using PTJ_Service.SearchService.Services;
 using PTJ_Service.ImageService;
 using PTJ_Service.NewsService;
 using CloudinaryDotNet;
@@ -55,6 +54,7 @@ using PTJ_Data.Repositories.Interfaces.ActivityUsers;
 using PTJ_Data.Repositories.Interfaces.NewsPost;
 using PTJ_Service.SystemReportService.Interfaces;
 using PTJ_Service.SystemReportService.Implementations;
+using PTJ_Service.FollowService;
 using PTJ_Service.Interfaces;
 using PTJ_Service.Implementations;
 using PTJ_Service.JobSeekerCvService.Implementations;
@@ -69,7 +69,9 @@ using PTJ_Service.Hubs;
 using PTJ_Data.Repositories.Implementations.Home;
 using PTJ_Data.Repositories.Interfaces.Home;
 using PTJ_Service.HomeService;
-using PTJ_Service.FollowService.Implementations;
+using PTJ_Service.CategoryService.Implementations;
+using PTJ_Service.CategoryService.Interfaces;
+using PTJ_Service.SearchService.Services;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -141,6 +143,7 @@ builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
 builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ISubCategoryService, SubCategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
@@ -150,7 +153,7 @@ builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
-
+builder.Services.AddScoped<IAdminEmployerRegistrationService, AdminEmployerRegistrationService>();
 
 // Repository
 builder.Services.AddScoped<IAdminStatisticsRepository, AdminStatisticsRepository>();
@@ -174,6 +177,7 @@ builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
+
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();

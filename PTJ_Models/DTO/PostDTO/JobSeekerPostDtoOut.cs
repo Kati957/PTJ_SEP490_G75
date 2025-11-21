@@ -28,6 +28,7 @@ namespace PTJ_Models.DTO.PostDTO
         public string? PhoneContact { get; set; }
         public int CategoryID { get; set; }
         public string? CategoryName { get; set; }
+        public string? SubCategoryName { get; set; }
         public string? SeekerName { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? Status { get; set; }

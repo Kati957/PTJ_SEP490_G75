@@ -1,4 +1,4 @@
-﻿namespace PTJ_Models.DTO.SearchDTO
+﻿namespace PTJ_Models.DTO.ReportDTO.SearchDTO
     {
     public class EmployerSearchFilterDto
         {

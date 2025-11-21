@@ -2,8 +2,9 @@
 using PTJ_Models.DTO;
 using PTJ_Models.Models;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Models;
 
-namespace PTJ_Service.FollowService.Implementations
+namespace PTJ_Service.FollowService
 {
     public class FollowService : IFollowService
     {
@@ -22,16 +23,16 @@ namespace PTJ_Service.FollowService.Implementations
             if (existing != null)
             {
                 existing.IsActive = true;
-                existing.FollowDate = DateTime.UtcNow;
+                existing.FollowDate = DateTime.Now;
             }
             else
             {
-                await _context.EmployerFollowers.AddAsync(new EmployerFollower
+                _context.EmployerFollowers.Add(new EmployerFollower
                 {
                     JobSeekerId = jobSeekerId,
                     EmployerId = employerId,
                     IsActive = true,
-                    FollowDate = DateTime.UtcNow
+                    FollowDate = DateTime.Now
                 });
             }
 
