@@ -46,6 +46,10 @@ namespace PTJ_Service.JobApplicationService.Implementations
             if (post.Status == "Deleted" || post.Status == "Closed")
                 return (false, "Bài đăng đã đóng tuyển.");
 
+            var employer = await _db.Users.FirstAsync(u => u.UserId == post.UserId);
+            if (!employer.IsActive)
+                return (false, "Nhà tuyển dụng đã bị khóa, bài đăng này không khả dụng.");
+
             // Lấy thông tin Employer
             var employerId = post.UserId;
 

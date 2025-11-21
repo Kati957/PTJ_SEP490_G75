@@ -229,7 +229,16 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
             {
-            var posts = await _repo.GetAllAsync();
+            var posts = await _db.EmployerPosts
+                .Include(p => p.User)
+                .Include(p => p.Category)
+                .Include(p => p.SubCategory)
+                .Where(p =>
+                    p.Status == "Active" &&
+                    p.User.IsActive == true     // ⭐ Lọc tại đây
+                )
+                .ToListAsync();
+
             return posts.Select(p => new EmployerPostDtoOut
                 {
                 EmployerPostId = p.EmployerPostId,
@@ -242,12 +251,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory.Name,
+                SubCategoryName = p.SubCategory?.Name,
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
                 });
             }
+
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
             {

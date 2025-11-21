@@ -258,7 +258,12 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
         public async Task<IEnumerable<JobSeekerPostDtoOut>> GetAllAsync()
             {
-            var posts = await _repo.GetAllAsync();
+            var posts = await _db.JobSeekerPosts
+            .Include(x => x.User)
+            .Include(x => x.Category)
+            .Include(x => x.SubCategory)
+            .Where(x => x.Status == "Active" && x.User.IsActive)
+            .ToListAsync();
             return posts.Select(p => new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = p.JobSeekerPostId,
