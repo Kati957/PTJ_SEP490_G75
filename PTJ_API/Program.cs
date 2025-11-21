@@ -72,6 +72,7 @@ using PTJ_Service.HomeService;
 using PTJ_Service.CategoryService.Implementations;
 using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Services;
+using System.Security.Claims;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -213,11 +214,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var db = context.HttpContext.RequestServices
                     .GetRequiredService<JobMatchingDbContext>();
 
-                var userIdClaim = context.Principal?.FindFirst("id");
+                var claims = context.Principal.Claims;
+
+                // Lấy đúng claim chứa UserId
+                var userIdClaim =
+                       claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)
+                    ?? claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
 
                 if (userIdClaim == null)
                 {
-                    context.Fail("Invalid token: missing user ID");
+                    context.Fail("Invalid token: no user ID.");
                     return;
                 }
 
@@ -236,7 +242,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     context.Fail("Your account has been deactivated.");
                     return;
                 }
-      
+
                 if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
                 {
                     context.Fail("Your account has been locked.");
@@ -244,6 +250,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 }
             }
         };
+
     });
 
 // 4️⃣ SIGNALR
