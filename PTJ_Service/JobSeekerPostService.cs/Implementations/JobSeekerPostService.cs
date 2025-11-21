@@ -267,6 +267,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = p.Description,
                 PreferredLocation = p.PreferredLocation,
                 CategoryName = p.Category?.Name,
+                SubCategoryName = p.SubCategory?.Name,
                 SeekerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
@@ -284,6 +285,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = p.Description,
                 PreferredLocation = p.PreferredLocation,
                 CategoryName = p.Category?.Name,
+                SubCategoryName = p.SubCategory?.Name,
                 SeekerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
@@ -304,6 +306,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = post.Description,
                 PreferredLocation = post.PreferredLocation,
                 CategoryName = post.Category?.Name,
+                SubCategoryName = post.SubCategory?.Name,
                 SeekerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
