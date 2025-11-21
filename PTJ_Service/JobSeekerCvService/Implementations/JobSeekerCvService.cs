@@ -119,12 +119,16 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
         public async Task<bool> DeleteAsync(int jobSeekerId, int cvId)
             {
             var cv = await _repo.GetByIdAsync(cvId);
+
+            // Nếu không tồn tại hoặc không phải CV của JobSeeker hiện tại
             if (cv == null || cv.JobSeekerId != jobSeekerId)
                 return false;
 
-            await _repo.DeleteAsync(cv);
+            // Gọi Soft Delete
+            await _repo.SoftDeleteAsync(cvId);
             return true;
             }
+
 
         // =========================================================
         // Helper convert entity → DTO
