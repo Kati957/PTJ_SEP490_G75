@@ -206,6 +206,44 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30)
             };
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var db = context.HttpContext.RequestServices
+                    .GetRequiredService<JobMatchingDbContext>();
+
+                var userIdClaim = context.Principal?.FindFirst("id");
+
+                if (userIdClaim == null)
+                {
+                    context.Fail("Invalid token: missing user ID");
+                    return;
+                }
+
+                int userId = int.Parse(userIdClaim.Value);
+
+                var user = await db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+
+                if (user == null)
+                {
+                    context.Fail("User does not exist.");
+                    return;
+                }
+
+                if (!user.IsActive)
+                {
+                    context.Fail("Your account has been deactivated.");
+                    return;
+                }
+      
+                if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+                {
+                    context.Fail("Your account has been locked.");
+                    return;
+                }
+            }
+        };
     });
 
 // 4️⃣ SIGNALR
