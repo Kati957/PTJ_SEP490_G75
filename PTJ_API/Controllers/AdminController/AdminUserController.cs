@@ -21,6 +21,7 @@ namespace PTJ_API.Controllers.Admin
                 ?? throw new Exception("Token missing userId"));
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetUsers(
             [FromQuery] string? role = null,
             [FromQuery] bool? isActive = null,
