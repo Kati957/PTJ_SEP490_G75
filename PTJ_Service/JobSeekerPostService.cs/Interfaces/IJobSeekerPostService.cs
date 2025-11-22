@@ -21,5 +21,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Interfaces
         Task UnsaveJobAsync(SaveJobDto dto);
         Task<IEnumerable<object>> GetSavedJobsAsync(int jobSeekerId);
         Task<IEnumerable<JobSeekerJobSuggestionDto>> GetSuggestionsByPostAsync(int jobSeekerPostId, int take = 10, int skip = 0);
+
+        Task<bool> CloseJobSeekerPostAsync(int id);
+        Task<bool> ReopenJobSeekerPostAsync(int id);
+
         }
     }

@@ -317,5 +317,46 @@ namespace PTJ_API.Controllers.Post
             var items = await _service.GetSuggestionsByPostAsync(postId, take, skip);
             return Ok(new { success = true, total = items.Count(), data = items });
         }
+        // =============================================
+        // CLOSE
+        // =============================================
+        [HttpPut("{id}/close")]
+        public async Task<IActionResult> Close(int id)
+            {
+            var post = await _service.GetByIdAsync(id);
+            if (post == null)
+                return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
+
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            int currentUserId = int.Parse(sub.Value);
+
+            // Chỉ owner hoặc admin mới được đóng bài
+            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
+                return Forbid("Bạn không thể đóng bài đăng của người khác.");
+
+            var ok = await _service.CloseJobSeekerPostAsync(id);
+            return Ok(new { success = ok, message = "Đã đóng bài đăng." });
+            }
+
+
+        // =============================================
+        // REOPEN
+        // =============================================
+        [HttpPut("{id}/reopen")]
+        public async Task<IActionResult> Reopen(int id)
+            {
+            var post = await _service.GetByIdAsync(id);
+            if (post == null)
+                return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
+
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            int currentUserId = int.Parse(sub.Value);
+
+            if (!User.IsInRole("Admin") && post.UserID != currentUserId)
+                return Forbid("Bạn không thể mở lại bài đăng của người khác.");
+
+            var ok = await _service.ReopenJobSeekerPostAsync(id);
+            return Ok(new { success = ok, message = "Đã mở lại bài đăng." });
+            }
+        }
     }
-}

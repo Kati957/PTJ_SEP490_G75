@@ -99,7 +99,6 @@ namespace PTJ_API.Controllers.Post
                 });
             }
 
-
         [HttpGet("by-user/{userId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetByUser(int userId)
@@ -117,7 +116,7 @@ namespace PTJ_API.Controllers.Post
 
             var result = await _service.GetByUserAsync(userId);
 
-            // ✔ JobSeeker chỉ xem Active
+            // ✔ JobSeeker CHỈ thấy bài Active
             if (isJobSeeker)
                 result = result.Where(x => x.Status == "Active");
 
@@ -305,5 +304,22 @@ namespace PTJ_API.Controllers.Post
             var items = await _service.GetSuggestionsByPostAsync(postId, take, skip);
             return Ok(new { success = true, total = items.Count(), data = items });
         }
+
+        [HttpPut("{id}/close")]
+        public async Task<IActionResult> Close(int id)
+            {
+            var result = await _service.CloseEmployerPostAsync(id);
+            if (!result) return NotFound();
+            return Ok(new { message = "Đã đóng bài đăng" });
+            }
+
+        [HttpPut("{id}/reopen")]
+        public async Task<IActionResult> Reopen(int id)
+            {
+            var result = await _service.ReopenEmployerPostAsync(id);
+            if (!result) return NotFound();
+            return Ok(new { message = "Đã mở lại bài đăng" });
+            }
+
+        }
     }
-}

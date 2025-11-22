@@ -282,6 +282,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         public async Task<IEnumerable<JobSeekerPostDtoOut>> GetByUserAsync(int userId)
             {
             var posts = await _repo.GetByUserAsync(userId);
+
+            // Không bao giờ trả bài Deleted
+            posts = posts.Where(x => x.Status != "Deleted");
+
             return posts.Select(p => new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = p.JobSeekerPostId,
@@ -296,6 +300,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Status = p.Status
                 });
             }
+
 
         public async Task<JobSeekerPostDtoOut?> GetByIdAsync(int id)
             {
@@ -949,6 +954,34 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             await _db.SaveChangesAsync();
 
             return vec;
+            }
+
+        // CLOSE (Inactive)
+        public async Task<bool> CloseJobSeekerPostAsync(int id)
+            {
+            var post = await _repo.GetByIdAsync(id);
+            if (post == null || post.Status == "Deleted")
+                return false;
+
+            post.Status = "Inactive";
+            post.UpdatedAt = DateTime.Now;
+
+            await _repo.UpdateAsync(post);
+            return true;
+            }
+
+        // REOPEN (Active)
+        public async Task<bool> ReopenJobSeekerPostAsync(int id)
+            {
+            var post = await _repo.GetByIdAsync(id);
+            if (post == null || post.Status == "Deleted")
+                return false;
+
+            post.Status = "Active";
+            post.UpdatedAt = DateTime.Now;
+
+            await _repo.UpdateAsync(post);
+            return true;
             }
 
         }

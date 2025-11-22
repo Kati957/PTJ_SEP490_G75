@@ -262,6 +262,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
             {
             var posts = await _repo.GetByUserAsync(userId);
+
+            // ❗ Không bao giờ trả về bài Deleted
+            posts = posts.Where(x => x.Status != "Deleted");
+
             return posts.Select(p => new EmployerPostDtoOut
                 {
                 EmployerPostId = p.EmployerPostId,
@@ -280,6 +284,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Status = p.Status
                 });
             }
+
 
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
             {
@@ -952,6 +957,33 @@ ScoreAndFilterCandidatesAsync(
 
             return vec;
             }
+
+        public async Task<bool> CloseEmployerPostAsync(int id)
+            {
+            var post = await _repo.GetByIdAsync(id);
+            if (post == null || post.Status == "Deleted")
+                return false;
+
+            post.Status = "Inactive";
+            post.UpdatedAt = DateTime.Now;
+
+            await _repo.UpdateAsync(post);
+            return true;
+            }
+
+        public async Task<bool> ReopenEmployerPostAsync(int id)
+            {
+            var post = await _repo.GetByIdAsync(id);
+            if (post == null || post.Status == "Deleted")
+                return false;
+
+            post.Status = "Active";
+            post.UpdatedAt = DateTime.Now;
+
+            await _repo.UpdateAsync(post);
+            return true;
+            }
+
 
         }
     }
