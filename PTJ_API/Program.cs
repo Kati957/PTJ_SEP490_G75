@@ -216,7 +216,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 var claims = context.Principal.Claims;
 
-                // Lấy đúng claim chứa UserId
                 var userIdClaim =
                        claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)
                     ?? claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
@@ -248,8 +247,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     context.Fail("Your account has been locked.");
                     return;
                 }
+            },
+            OnChallenge = context =>
+            {
+                context.HandleResponse(); 
+
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/json";
+
+                string msg = context.ErrorDescription;
+
+                if (msg == "Your account has been locked.")
+                    msg = "Tài khoản của bạn đã bị khóa bởi quản trị viên.";
+
+                if (msg == "Your account has been deactivated.")
+                    msg = "Tài khoản của bạn đã bị vô hiệu hóa.";
+
+                return context.Response.WriteAsync($$"""
+        {
+            "success": false,
+            "message": "{{msg}}"
+        }
+        """);
             }
         };
+
 
     });
 
@@ -309,5 +331,5 @@ app.UseAuthorization();
 // SignalR Hub Registration
 app.MapHub<NotificationHub>("/hubs/notification");
 app.MapControllers();
-
+app.UseMiddleware<ErrorHandlingMiddleware>();
 app.Run();
