@@ -242,7 +242,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory.Name,
+                SubCategoryName = p.SubCategory?.Name,
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
@@ -264,7 +264,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory.Name,
+                SubCategoryName = p.SubCategory?.Name,
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
@@ -289,7 +289,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = post.Location,
                 PhoneContact = post.PhoneContact,
                 CategoryName = post.Category?.Name,
-                SubCategoryName = post.SubCategory.Name,
+                SubCategoryName = post.SubCategory?.Name,
                 EmployerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
