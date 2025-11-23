@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using PTJ_Models.Models;
 using System.Linq;
+using System;
 
 public class AdminUserService : IAdminUserService
     {
@@ -45,48 +46,125 @@ public class AdminUserService : IAdminUserService
         return dto;
         }
 
+    // ============================
+    // ⭐ Toggle Active / Inactive
+    // ============================
     public async Task ToggleActiveAsync(int id)
         {
-        var user = await _repo.GetUserEntityAsync(id);
-        if (user == null) throw new KeyNotFoundException("Không tìm thấy người dùng.");
+        var user = await _repo.GetUserEntityAsync(id)
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
+        bool wasActive = user.IsActive;
+
+        // Toggle
         user.IsActive = !user.IsActive;
         user.UpdatedAt = DateTime.Now;
-
         await _repo.SaveChangesAsync();
+
+        // Nếu user được mở khóa -> khôi phục bài đăng
+        if (!wasActive)
+            {
+            await RestorePostsAsync(user);
+            return;
+            }
+
+        // Nếu user bị khóa -> xử lý ban
+        await HandleUserDeactivationAsync(user, "Tài khoản của bạn đã bị khóa bởi quản trị viên.");
         }
 
     // =======================================================
-    // ⭐ KHÓA USER (EMPLOYER hoặc JOBSEEKER)
+    //  ⭐ API BAN USER THỦ CÔNG
     // =======================================================
     public async Task<bool> BanUserAsync(int userId, string reason, int adminId)
         {
         var user = await _repo.GetUserEntityAsync(userId)
             ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
-        // 1️⃣ Khóa tài khoản
         user.IsActive = false;
         user.UpdatedAt = DateTime.Now;
         await _repo.SaveChangesAsync();
 
-        // 2️⃣ Lấy Role của user (User có ICollection<Role>)
-        var roleName = user.Roles.FirstOrDefault()?.RoleName;
+        await HandleUserDeactivationAsync(user, reason);
 
-        // =======================================================
-        // 🔥 NẾU USER LÀ EMPLOYER
-        // =======================================================
-        if (roleName == "Employer")
+        return true;
+        }
+
+    // =======================================================
+    //  🔧 RESTORE POSTS KHI USER ĐƯỢC MỞ KHÓA
+    // =======================================================
+    private async Task RestorePostsAsync(User user)
+        {
+        var roleName = user.Roles
+            .Select(r => r.RoleName.ToLower().Replace(" ", ""))
+            .FirstOrDefault();
+
+        int userId = user.UserId;
+
+        // EMPLOYER
+        if (roleName == "employer")
             {
-            // 2.1) Lấy tất cả bài đăng Active của Employer
             var posts = await _db.EmployerPosts
-                .Where(p => p.UserId == userId && p.Status == "Active")
+                .Where(p => p.UserId == userId && p.Status.ToLower() == "blocked")
                 .ToListAsync();
+
+            foreach (var p in posts)
+                {
+                p.Status = "Active";
+                p.UpdatedAt = DateTime.Now;
+                }
+
+            await _db.SaveChangesAsync();
+            }
+
+        // JOB SEEKER
+        if (roleName == "jobseeker")
+            {
+            var jsPosts = await _db.JobSeekerPosts
+                .Where(p => p.UserId == userId && p.Status.ToLower() == "blocked")
+                .ToListAsync();
+
+            foreach (var p in jsPosts)
+                {
+                p.Status = "Active";
+                p.UpdatedAt = DateTime.Now;
+                }
+
+            await _db.SaveChangesAsync();
+            }
+        }
+
+    // =======================================================
+    //  🔧 KHÓA ACCOUNT: Block bài + Xóa AI + Hủy đơn...
+    // =======================================================
+    private async Task HandleUserDeactivationAsync(User user, string? reason)
+        {
+        var roleName = user.Roles
+            .Select(r => r.RoleName.ToLower().Replace(" ", ""))
+            .FirstOrDefault();
+
+        int userId = user.UserId;
+
+        // ================= EMPLOYER =================
+        if (roleName == "employer")
+            {
+            var posts = await _db.EmployerPosts
+                .Where(p => p.UserId == userId &&
+                            p.Status != null &&
+                            p.Status.ToLower().Contains("active"))
+                .ToListAsync();
+
+            foreach (var post in posts)
+                {
+                post.Status = "Blocked";
+                post.UpdatedAt = DateTime.Now;
+                }
+            await _db.SaveChangesAsync();
 
             var postIds = posts.Select(p => p.EmployerPostId).ToList();
 
-            // 2.2) Lấy tất cả đơn ứng tuyển Pending vào các bài này
             var apps = await _db.JobSeekerSubmissions
-                .Where(a => postIds.Contains(a.EmployerPostId) && a.Status == "Pending")
+                .Where(a => postIds.Contains(a.EmployerPostId) &&
+                            a.Status.ToLower() == "pending")
                 .ToListAsync();
 
             foreach (var app in apps)
@@ -94,54 +172,52 @@ public class AdminUserService : IAdminUserService
                 app.Status = "Cancelled";
                 app.UpdatedAt = DateTime.Now;
 
-                // Gửi thông báo tới JobSeeker
                 await _noti.SendAsync(new CreateNotificationDto
                     {
                     UserId = app.JobSeekerId,
                     NotificationType = "ApplicationCancelled",
                     RelatedItemId = app.SubmissionId,
-                    Data = new()
-                    {
-                        { "Message", "Nhà tuyển dụng đã bị khóa, đơn ứng tuyển của bạn không còn khả dụng." }
-                    }
+                    Data = new() { { "Message", "Nhà tuyển dụng đã bị khóa, đơn của bạn không còn hiệu lực." } }
                     });
                 }
 
-            // 2.3) Xóa toàn bộ gợi ý AI liên quan đến các EmployerPost
-            var employerAISuggestions = await _db.AiMatchSuggestions
+            var ai = await _db.AiMatchSuggestions
                 .Where(s =>
                     (s.SourceType == "EmployerPost" && postIds.Contains(s.SourceId)) ||
                     (s.TargetType == "EmployerPost" && postIds.Contains(s.TargetId)))
                 .ToListAsync();
 
-            _db.AiMatchSuggestions.RemoveRange(employerAISuggestions);
-
+            _db.AiMatchSuggestions.RemoveRange(ai);
             await _db.SaveChangesAsync();
             }
 
-        // =======================================================
-        // 🔥 NẾU USER LÀ JOBSEEKER
-        // =======================================================
-        if (roleName == "JobSeeker")
+        // ================= JOB SEEKER =================
+        if (roleName == "jobseeker")
             {
-            // 3.1) Lấy tất cả bài JobSeekerPost Active của user này
-            var jsPosts = await _db.JobSeekerPosts
-                .Where(p => p.UserId == userId && p.Status == "Active")
+            var posts = await _db.JobSeekerPosts
+                .Where(p => p.UserId == userId &&
+                            p.Status != null &&
+                            p.Status.ToLower().Contains("active"))
                 .ToListAsync();
 
-            var jsPostIds = jsPosts.Select(x => x.JobSeekerPostId).ToList();
-
-            // 3.2) Xóa toàn bộ gợi ý AI liên quan tới các JobSeekerPost
-            var jsAISuggestions = await _db.AiMatchSuggestions
-                .Where(s =>
-                    (s.SourceType == "JobSeekerPost" && jsPostIds.Contains(s.SourceId)) ||
-                    (s.TargetType == "JobSeekerPost" && jsPostIds.Contains(s.TargetId)))
-                .ToListAsync();
-
-            _db.AiMatchSuggestions.RemoveRange(jsAISuggestions);
+            foreach (var post in posts)
+                {
+                post.Status = "Blocked";
+                post.UpdatedAt = DateTime.Now;
+                }
             await _db.SaveChangesAsync();
 
-            // 3.3) Gửi thông báo cho các Employer đã shortlist ứng viên này
+            var postIds = posts.Select(x => x.JobSeekerPostId).ToList();
+
+            var ai = await _db.AiMatchSuggestions
+                .Where(s =>
+                    (s.SourceType == "JobSeekerPost" && postIds.Contains(s.SourceId)) ||
+                    (s.TargetType == "JobSeekerPost" && postIds.Contains(s.TargetId)))
+                .ToListAsync();
+
+            _db.AiMatchSuggestions.RemoveRange(ai);
+            await _db.SaveChangesAsync();
+
             var employers = await _db.EmployerShortlistedCandidates
                 .Where(x => x.JobSeekerId == userId)
                 .Select(x => x.EmployerId)
@@ -155,28 +231,24 @@ public class AdminUserService : IAdminUserService
                     UserId = empId,
                     NotificationType = "JobSeekerSuspended",
                     RelatedItemId = userId,
-                    Data = new()
-                    {
-                        { "Message", "Ứng viên bạn đã lưu/quan tâm đã bị khóa tài khoản và không còn khả dụng." }
-                    }
+                    Data = new() { { "Message", "Ứng viên bạn lưu đã bị khóa tài khoản." } }
                     });
                 }
             }
 
-        // =======================================================
-        // 🔥 GỬI THÔNG BÁO CHO USER BỊ KHÓA
-        // =======================================================
+        // ======= NOTIFICATION TO USER ======
+        var data = new Dictionary<string, string>();
+        if (!string.IsNullOrWhiteSpace(reason))
+            data["Reason"] = reason;
+        else
+            data["Message"] = "Tài khoản của bạn đã bị khóa.";
+
         await _noti.SendAsync(new CreateNotificationDto
             {
             UserId = userId,
             NotificationType = "AccountSuspended",
             RelatedItemId = userId,
-            Data = new Dictionary<string, string>
-            {
-                { "Reason", reason }
-            }
+            Data = data
             });
-
-        return true;
         }
     }

@@ -144,7 +144,11 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         }
 
         public Task<User?> GetUserEntityAsync(int id)
-            => _db.Users.FirstOrDefaultAsync(x => x.UserId == id);
+            {
+            return _db.Users
+                .Include(u => u.Roles)      // <-- ĐÚNG
+                .FirstOrDefaultAsync(x => x.UserId == id);
+            }
 
         public Task SaveChangesAsync() => _db.SaveChangesAsync();
 

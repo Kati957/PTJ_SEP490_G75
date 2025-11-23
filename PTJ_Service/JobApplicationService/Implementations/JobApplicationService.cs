@@ -167,6 +167,13 @@ namespace PTJ_Service.JobApplicationService.Implementations
         {
             var list = await _repo.GetByJobSeekerWithPostDetailAsync(jobSeekerId);
 
+            list = list.Where(x =>
+                x.EmployerPost != null &&
+                x.EmployerPost.Status == "Active" &&
+                x.EmployerPost.User.IsActive == true
+            ).ToList();
+
+
             return list.Select(x =>
             {
                 var post = x.EmployerPost;

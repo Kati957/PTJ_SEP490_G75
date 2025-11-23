@@ -308,6 +308,14 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             if (post == null)
                 return null;
 
+            // ❌ Bị Blocked / Inactive / Deleted → không trả về
+            if (post.Status == "Blocked" || post.Status == "Inactive" || post.Status == "Deleted")
+                return null;
+
+            // ❌ User bị khóa → không trả về
+            if (post.User == null || post.User.IsActive == false)
+                return null;
+
             return new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = post.JobSeekerPostId,
@@ -322,6 +330,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Status = post.Status
                 };
             }
+
 
 
         // UPDATE
@@ -594,6 +603,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 if (job == null || job.Status != "Active")
                     continue;
 
+                if (job.User == null || job.User.IsActive == false)
+                    continue;
+
+
                 // Category Filter
                 if (mustMatchCategoryId.HasValue &&
                     job.CategoryId != mustMatchCategoryId.Value)
@@ -682,6 +695,14 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         public async Task<IEnumerable<object>> GetSavedJobsAsync(int jobSeekerId)
             {
             return await _db.JobSeekerShortlistedJobs
+                 .Include(x => x.EmployerPost)
+                 .ThenInclude(e => e.User)
+                 .Where(x =>
+                     x.JobSeekerId == jobSeekerId &&
+                     x.EmployerPost.Status == "Active" &&
+                     x.EmployerPost.User.IsActive == true
+                 )
+
                 .Include(x => x.EmployerPost)
                 .ThenInclude(e => e.User)
                 .Where(x => x.JobSeekerId == jobSeekerId)
@@ -723,6 +744,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 join ep in _db.EmployerPosts.Include(e => e.User)
                      on s.TargetId equals ep.EmployerPostId
                 where ep.Status == "Active"
+                   && ep.User.IsActive == true
+
                 orderby s.MatchPercent descending, s.RawScore descending, s.CreatedAt descending
                 select new JobSeekerJobSuggestionDto
                     {

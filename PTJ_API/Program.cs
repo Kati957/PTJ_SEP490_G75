@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
+using PTJ_Service.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;

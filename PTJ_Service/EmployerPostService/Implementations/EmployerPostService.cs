@@ -287,13 +287,21 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
 
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
-        {
+            {
             var post = await _repo.GetByIdAsync(id);
             if (post == null)
                 return null;
 
+            // ❌ Nếu bài đăng bị Blocked → không trả về
+            if (post.Status == "Blocked" || post.Status == "Inactive" || post.Status == "Deleted")
+                return null;
+
+            // ❌ Nếu employer bị khóa → không trả về
+            if (post.User == null || post.User.IsActive == false)
+                return null;
+
             return new EmployerPostDtoOut
-            {
+                {
                 EmployerPostId = post.EmployerPostId,
                 EmployerId = post.UserId,
                 Title = post.Title,
@@ -308,8 +316,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 EmployerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
-            };
-        }
+                };
+            }
+
 
 
         // UPDATE
