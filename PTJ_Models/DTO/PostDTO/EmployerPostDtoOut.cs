@@ -32,6 +32,8 @@ namespace PTJ_Models.DTO.PostDTO
         public string? SubCategoryName { get; set; }
         public string EmployerName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
+
+        public List<string>? ImageUrls { get; set; }
         public string Status { get; set; } = string.Empty;
     }
 

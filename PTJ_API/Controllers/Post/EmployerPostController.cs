@@ -32,8 +32,8 @@ namespace PTJ_API.Controllers.Post
         // CREATE
         // =========================================================
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromBody] EmployerPostDto dto)
-        {
+        public async Task<IActionResult> Create([FromForm] EmployerPostDto dto)
+            {
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
 
@@ -61,10 +61,10 @@ namespace PTJ_API.Controllers.Post
                     return BadRequest(new { success = false, message = "Giờ kết thúc phải sau giờ bắt đầu." });
                 }
 
-
             var result = await _service.CreateEmployerPostAsync(dto);
             return Ok(new { success = true, message = "Đăng bài tuyển dụng thành công.", data = result });
-        }
+            }
+
 
         // =========================================================
         // READ
@@ -165,29 +165,24 @@ namespace PTJ_API.Controllers.Post
         // UPDATE
         // =========================================================
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] EmployerPostDto dto)
+        public async Task<IActionResult> Update(int id, [FromForm] EmployerPostDto dto)
             {
-            // Validate model theo DataAnnotations
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
 
-            // Kiểm tra bài đăng tồn tại
             var post = await _service.GetByIdAsync(id);
             if (post == null)
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng để cập nhật." });
 
-            // Lấy userId từ token
             var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
             if (sub == null)
                 return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
 
             var currentUserId = int.Parse(sub.Value);
 
-            // Không phải admin → không được sửa bài của người khác
             if (!User.IsInRole("Admin") && post.EmployerId != currentUserId)
                 return Forbidden("Bạn không thể chỉnh sửa bài đăng của người khác.");
 
-            // Validate chuyên sâu hơn
             if (dto.Salary == null && string.IsNullOrWhiteSpace(dto.SalaryText))
                 return BadRequest(new { success = false, message = "Bạn phải nhập mức lương hoặc để 'thỏa thuận'." });
 
@@ -197,10 +192,10 @@ namespace PTJ_API.Controllers.Post
                     return BadRequest(new { success = false, message = "Giờ kết thúc phải sau giờ bắt đầu." });
                 }
 
-            // Thực hiện update
             var result = await _service.UpdateAsync(id, dto);
             return Ok(new { success = true, message = "Cập nhật thành công.", data = result });
             }
+
 
 
         // =========================================================

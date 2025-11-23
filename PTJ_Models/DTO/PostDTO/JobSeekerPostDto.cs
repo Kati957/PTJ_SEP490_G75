@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace PTJ_Models.DTO.PostDTO
 {
@@ -51,7 +52,10 @@ namespace PTJ_Models.DTO.PostDTO
         [Range(1, int.MaxValue, ErrorMessage = "SelectedCvId không hợp lệ.")]
         public int? SelectedCvId { get; set; }
 
-    }
+        public List<IFormFile>? Images { get; set; }
+        public List<int>? DeleteImageIds { get; set; }
+
+        }
 
     public class JobSeekerPostResultDto
     {

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace PTJ_Models.DTO.PostDTO
 {
@@ -55,7 +56,10 @@ namespace PTJ_Models.DTO.PostDTO
     ErrorMessage = "Số điện thoại không đúng định dạng Việt Nam.")]
         public string? PhoneContact { get; set; }
 
-    }
+        public List<IFormFile>? Images { get; set; }
+        public List<int>? DeleteImageIds { get; set; }
+
+        }
 
     public class EmployerPostResultDto
     {

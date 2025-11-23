@@ -7,6 +7,7 @@ using PTJ_Models;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
 using PTJ_Service.AiService;
+using PTJ_Service.ImageService;
 using PTJ_Service.LocationService;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,6 +22,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         private readonly IAIService _ai;
         private readonly OpenMapService _map;
         private readonly LocationDisplayService _locDisplay;
+        private readonly IImageService _imageService;
 
 
         public EmployerPostService(
@@ -28,14 +30,17 @@ namespace PTJ_Service.EmployerPostService.Implementations
             JobMatchingDbContext db,
             IAIService ai,
             OpenMapService map,
-            LocationDisplayService locDisplay)
+            LocationDisplayService locDisplay,
+            IImageService imageService
+            )
         {
             _repo = repo;
             _db = db;
             _ai = ai;
             _map = map;
             _locDisplay = locDisplay;
-        }
+            _imageService = imageService;
+            }
 
         // CREATE
 
@@ -91,6 +96,32 @@ namespace PTJ_Service.EmployerPostService.Implementations
             // ✅ Lưu DB để lấy ID thật
             await _repo.AddAsync(post);
             await _db.SaveChangesAsync();
+
+            // ===============================
+            // 🌟 UPLOAD ẢNH CHO BÀI ĐĂNG
+            // ===============================
+            if (dto.Images != null && dto.Images.Any())
+                {
+                foreach (var file in dto.Images)
+                    {
+                    var (url, publicId) = await _imageService.UploadImageAsync(file, "EmployerPosts");
+
+                    var img = new Image
+                        {
+                        EntityType = "EmployerPost",
+                        EntityId = post.EmployerPostId,
+                        Url = url,
+                        PublicId = publicId,
+                        Format = file.ContentType,
+                        CreatedAt = DateTime.Now
+                        };
+
+                    _db.Images.Add(img);
+                    }
+
+                await _db.SaveChangesAsync();
+                }
+
 
             // ✅ Load lại entity đầy đủ (có User và Category)
             var freshPost = await _db.EmployerPosts
@@ -324,10 +355,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
         // UPDATE
 
         public async Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostDto dto)
-        {
+            {
             var post = await _repo.GetByIdAsync(id);
             if (post == null || post.Status == "Deleted")
                 return null;
+
             string fullLocation = await _locDisplay.BuildAddressAsync(
                 dto.ProvinceId,
                 dto.DistrictId,
@@ -335,11 +367,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
             );
 
             if (!string.IsNullOrWhiteSpace(dto.DetailAddress))
-            {
+                {
                 fullLocation = $"{dto.DetailAddress}, {fullLocation}";
-            }
+                }
 
-
+            // ===============================
+            // 🌟 UPDATE THÔNG TIN BÀI VIẾT
+            // ===============================
             post.Title = dto.Title;
             post.Description = dto.Description;
             post.Salary = (!string.IsNullOrEmpty(dto.SalaryText) &&
@@ -357,9 +391,54 @@ namespace PTJ_Service.EmployerPostService.Implementations
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;
 
-
             await _repo.UpdateAsync(post);
 
+            // ===============================
+            // 🌟 XOÁ ẢNH CŨ
+            // ===============================
+            if (dto.DeleteImageIds != null && dto.DeleteImageIds.Any())
+                {
+                var imagesToDelete = await _db.Images
+                    .Where(i => dto.DeleteImageIds.Contains(i.ImageId)
+                             && i.EntityType == "EmployerPost"
+                             && i.EntityId == post.EmployerPostId)
+                    .ToListAsync();
+
+                foreach (var img in imagesToDelete)
+                    {
+                    await _imageService.DeleteImageAsync(img.PublicId); // Xoá cloudinary
+                    _db.Images.Remove(img);                             // Xoá DB
+                    }
+                }
+
+            // ===============================
+            // 🌟 UPLOAD ẢNH MỚI
+            // ===============================
+            if (dto.Images != null && dto.Images.Any())
+                {
+                foreach (var file in dto.Images)
+                    {
+                    var (url, publicId) = await _imageService.UploadImageAsync(file, "EmployerPosts");
+
+                    var newImg = new Image
+                        {
+                        EntityType = "EmployerPost",
+                        EntityId = post.EmployerPostId,
+                        Url = url,
+                        PublicId = publicId,
+                        Format = file.ContentType,
+                        CreatedAt = DateTime.Now
+                        };
+
+                    _db.Images.Add(newImg);
+                    }
+                }
+
+            await _db.SaveChangesAsync();
+
+            // ===============================
+            // 🌟 UPDATE EMBEDDING
+            // ===============================
             var category = await _db.Categories.FindAsync(post.CategoryId);
 
             string embedText =
@@ -375,39 +454,55 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 embedText
             );
 
-
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
                 id: $"EmployerPost:{post.EmployerPostId}",
                 vector: vector,
                 metadata: new
-                {
+                    {
                     title = post.Title ?? "",
                     location = post.Location ?? "",
                     salary = post.Salary ?? 0,
                     categoryId = post.CategoryId ?? 0,
                     postId = post.EmployerPostId
-                });
+                    });
 
             return await BuildCleanPostDto(post);
-        }
-
+            }
 
         // DELETE (Soft)
 
         public async Task<bool> DeleteAsync(int id)
-        {
+            {
             await _repo.SoftDeleteAsync(id);
 
+            // ===============================
+            // 🌟 XOÁ ẢNH LIÊN QUAN
+            // ===============================
+            var images = await _db.Images
+                .Where(i => i.EntityType == "EmployerPost" && i.EntityId == id)
+                .ToListAsync();
+
+            foreach (var img in images)
+                {
+                await _imageService.DeleteImageAsync(img.PublicId); // Xoá cloudinary
+                }
+
+            if (images.Any())
+                _db.Images.RemoveRange(images);
+
+            // ===============================
+            // 🌟 XOÁ GỢI Ý AI
+            // ===============================
             var targets = _db.AiMatchSuggestions
                 .Where(s => s.SourceType == "EmployerPost" && s.SourceId == id
                          || s.TargetType == "EmployerPost" && s.TargetId == id);
 
             _db.AiMatchSuggestions.RemoveRange(targets);
-            await _db.SaveChangesAsync();
 
+            await _db.SaveChangesAsync();
             return true;
-        }
+            }
 
 
         // REFRESH
@@ -825,6 +920,11 @@ ScoreAndFilterCandidatesAsync(
             var category = await _db.Categories.FindAsync(post.CategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
             var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
+            var images = await _db.Images
+    .Where(i => i.EntityType == "EmployerPost" && i.EntityId == post.EmployerPostId)
+    .Select(i => i.Url)
+    .ToListAsync();
+
             return new EmployerPostDtoOut
             {
                 EmployerPostId = post.EmployerPostId,
@@ -855,6 +955,7 @@ ScoreAndFilterCandidatesAsync(
                 SubCategoryName = sub?.Name,
                 EmployerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
+                ImageUrls = images,
                 Status = post.Status
             };
         }
