@@ -86,7 +86,9 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database = JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiContentForEmbedding>(entity =>
@@ -403,7 +405,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<Image>(entity =>
         {
-            entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F4EC5C1BE583");
+            entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F4EC19291B74");
 
             entity.Property(e => e.ImageId).HasColumnName("ImageID");
             entity.Property(e => e.CreatedAt)
@@ -414,16 +416,11 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.Format).HasMaxLength(20);
             entity.Property(e => e.PublicId).HasMaxLength(255);
             entity.Property(e => e.Url).HasMaxLength(500);
-
-            entity.HasOne(d => d.Entity).WithMany(p => p.Images)
-                .HasForeignKey(d => d.EntityId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Images_News");
         });
 
         modelBuilder.Entity<JobSeekerCv>(entity =>
         {
-            entity.HasKey(e => e.Cvid).HasName("PK__JobSeeke__A04CFC4346274163");
+            entity.HasKey(e => e.Cvid).HasName("PK__JobSeeke__A04CFC43DD1256F3");
 
             entity.ToTable("JobSeekerCVs");
 
@@ -575,7 +572,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<LocationCache>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC072C85A09F");
+            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC0765252704");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.LastUpdated).HasColumnType("datetime");
@@ -815,7 +812,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<SubCategory>(entity =>
         {
-            entity.HasKey(e => e.SubCategoryId).HasName("PK__SubCateg__26BE5B19694D949A");
+            entity.HasKey(e => e.SubCategoryId).HasName("PK__SubCateg__26BE5B197DBCD9BB");
 
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Name).HasMaxLength(255);

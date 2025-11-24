@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PTJ_Models.DTO.CategoryDTO;
-using PTJ_Service.CategoryService.Interfaces;
+using PTJ_Service.SearchService.Interfaces;
 
 namespace PTJ_API.Controllers
     {
@@ -21,35 +21,44 @@ namespace PTJ_API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
             {
-            return Ok(await _service.GetAllAsync());
+            bool isAdmin = User.IsInRole("Admin");
+            var result = await _service.GetAllAsync(isAdmin);
+            return Ok(result);
             }
 
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> Get(int id)
             {
-            var sub = await _service.GetByIdAsync(id);
+            bool isAdmin = User.IsInRole("Admin");
+            var sub = await _service.GetByIdAsync(id, isAdmin);
             return sub == null ? NotFound() : Ok(sub);
             }
-      
+
         [HttpGet("by-category/{categoryId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetByCategory(int categoryId)
             {
-            return Ok(await _service.GetByCategoryIdAsync(categoryId));
+            bool isAdmin = User.IsInRole("Admin");
+            var result = await _service.GetByCategoryIdAsync(categoryId, isAdmin);
+            return Ok(result);
             }
-       
+
         [HttpPost("filter")]
         [AllowAnonymous]
         public async Task<IActionResult> Filter(SubCategoryDTO.SubCategoryFilterDto dto)
             {
-            return Ok(await _service.FilterAsync(dto));
+            bool isAdmin = User.IsInRole("Admin");
+            var result = await _service.FilterAsync(dto, isAdmin);
+            return Ok(result);
             }
 
         [HttpPost]
         public async Task<IActionResult> Create(SubCategoryDTO.SubCategoryCreateDto dto)
             {
             var created = await _service.CreateAsync(dto);
+            if (created == null)
+                return BadRequest("SubCategory name already exists in this Category.");
             return Ok(created);
             }
 
@@ -57,7 +66,7 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> Update(int id, SubCategoryDTO.SubCategoryUpdateDto dto)
             {
             bool ok = await _service.UpdateAsync(id, dto);
-            return ok ? Ok() : NotFound();
+            return ok ? Ok() : BadRequest("SubCategory not found or name already exists.");
             }
 
         [HttpDelete("{id}")]

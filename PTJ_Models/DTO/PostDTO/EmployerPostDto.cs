@@ -1,61 +1,102 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace PTJ_Models.DTO.PostDTO
 {
-    public class EmployerPostDto
-    {
+    public class EmployerPostCreateDto
+        {
         public int UserID { get; set; }
 
-        [Required(ErrorMessage = "Tiêu đề không được để trống.")]
-        [StringLength(120, MinimumLength = 5, ErrorMessage = "Tiêu đề phải từ 5–120 ký tự.")]
+        [Required]
+        [StringLength(120, MinimumLength = 5)]
         public string Title { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Mô tả công việc không được để trống.")]
-        [StringLength(5000, MinimumLength = 20, ErrorMessage = "Mô tả phải từ 20 ký tự trở lên.")]
+        [Required]
+        [StringLength(5000, MinimumLength = 20)]
         public string? Description { get; set; }
 
-
-        [Range(0, double.MaxValue, ErrorMessage = "Mức lương phải >= 0.")]
+        [Range(0, double.MaxValue)]
         public decimal? Salary { get; set; }
 
         [StringLength(50)]
         public string? SalaryText { get; set; }
-        // FE gửi "thỏa thuận"
 
         public string? Requirements { get; set; }
 
-        [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$",
-       ErrorMessage = "Giờ làm phải có định dạng HH:mm.")]
+        [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
         public string? WorkHourStart { get; set; }
 
-        [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$",
-            ErrorMessage = "Giờ làm phải có định dạng HH:mm.")]
+        [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
         public string? WorkHourEnd { get; set; }
 
-
-        [Range(1, int.MaxValue, ErrorMessage = "ProvinceId không hợp lệ.")]
+        [Range(1, int.MaxValue)]
         public int ProvinceId { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "DistrictId không hợp lệ.")]
+        [Range(1, int.MaxValue)]
         public int DistrictId { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "WardId không hợp lệ.")]
+        [Range(1, int.MaxValue)]
         public int WardId { get; set; }
 
-        [Required(ErrorMessage = "Địa chỉ chi tiết không được để trống.")]
+        [Required]
         public string? DetailAddress { get; set; }
 
-
-        [Range(1, int.MaxValue, ErrorMessage = "CategoryID không hợp lệ.")]
+        [Range(1, int.MaxValue)]
         public int? CategoryID { get; set; }
 
         public int? SubCategoryId { get; set; }
 
-        [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$",
-    ErrorMessage = "Số điện thoại không đúng định dạng Việt Nam.")]
+        [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$")]
         public string? PhoneContact { get; set; }
 
-    }
+        public List<IFormFile>? Images { get; set; }
+        }
+
+    public class EmployerPostUpdateDto
+        {
+        [StringLength(120, MinimumLength = 5)]
+        public string? Title { get; set; }
+
+        [StringLength(5000, MinimumLength = 20)]
+        public string? Description { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? Salary { get; set; }
+
+        [StringLength(50)]
+        public string? SalaryText { get; set; }
+
+        public string? Requirements { get; set; }
+
+        [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
+        public string? WorkHourStart { get; set; }
+
+        [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
+        public string? WorkHourEnd { get; set; }
+
+        [Range(1, int.MaxValue)]
+        public int? ProvinceId { get; set; }
+
+        [Range(1, int.MaxValue)]
+        public int? DistrictId { get; set; }
+
+        [Range(1, int.MaxValue)]
+        public int? WardId { get; set; }
+
+        public string? DetailAddress { get; set; }
+
+        [Range(1, int.MaxValue)]
+        public int? CategoryID { get; set; }
+
+        public int? SubCategoryId { get; set; }
+
+        [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$")]
+        public string? PhoneContact { get; set; }
+
+        public List<IFormFile>? Images { get; set; }
+        public List<int>? DeleteImageIds { get; set; }
+        }
+
 
     public class EmployerPostResultDto
     {

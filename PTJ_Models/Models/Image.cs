@@ -18,6 +18,4 @@ public partial class Image
     public string? Format { get; set; }
 
     public DateTime CreatedAt { get; set; }
-
-    public virtual News Entity { get; set; } = null!;
 }

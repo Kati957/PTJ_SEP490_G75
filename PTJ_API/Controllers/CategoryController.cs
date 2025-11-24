@@ -21,14 +21,17 @@ namespace PTJ_API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
             {
-            return Ok(await _service.GetCategoriesAsync());
+            bool isAdmin = User.IsInRole("Admin");
+            var result = await _service.GetCategoriesAsync(isAdmin);
+            return Ok(result);
             }
 
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> Get(int id)
             {
-            var result = await _service.GetByIdAsync(id);
+            bool isAdmin = User.IsInRole("Admin");
+            var result = await _service.GetByIdAsync(id, isAdmin);
             return result == null ? NotFound() : Ok(result);
             }
 
@@ -36,6 +39,10 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> Create(CategoryDTO.CategoryCreateDto dto)
             {
             var created = await _service.CreateAsync(dto);
+            if (created == null)
+                {
+                return BadRequest("Category name already exists.");
+                }
             return Ok(created);
             }
 
@@ -43,7 +50,7 @@ namespace PTJ_API.Controllers
         public async Task<IActionResult> Update(int id, CategoryDTO.CategoryUpdateDto dto)
             {
             bool success = await _service.UpdateAsync(id, dto);
-            return success ? Ok() : NotFound();
+            return success ? Ok() : BadRequest("Category not found or name already exists.");
             }
 
         [HttpDelete("{id}")]
@@ -57,7 +64,9 @@ namespace PTJ_API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Filter(CategoryDTO.CategoryFilterDto dto)
             {
-            return Ok(await _service.FilterAsync(dto));
+            bool isAdmin = User.IsInRole("Admin");
+            var result = await _service.FilterAsync(dto, isAdmin);
+            return Ok(result);
             }
         }
     }

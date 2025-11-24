@@ -10,6 +10,7 @@ using PTJ_Service.AiService;
 using PTJ_Service.JobSeekerPostService;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
 using PTJ_Service.LocationService;
+using PTJ_Service.ImageService;              // ⭐ THÊM
 using System.Security.Cryptography;
 using System.Text;
 using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
@@ -23,24 +24,28 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         private readonly IAIService _ai;
         private readonly OpenMapService _map;
         private readonly LocationDisplayService _locDisplay;
+        private readonly IImageService _imageService;       // ⭐ THÊM
 
         public JobSeekerPostService(
             IJobSeekerPostRepository repo,
             JobMatchingDbContext db,
             IAIService ai,
             OpenMapService map,
-            LocationDisplayService locDisplay)
+            LocationDisplayService locDisplay,
+            IImageService imageService                  // ⭐ THÊM
+        )
             {
             _repo = repo;
             _db = db;
             _ai = ai;
             _map = map;
             _locDisplay = locDisplay;
+            _imageService = imageService;              // ⭐ THÊM
             }
 
 
         // CREATE
-        public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostDto dto)
+        public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostCreateDto dto)
             {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
@@ -106,6 +111,27 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             await _repo.AddAsync(post);
             await _db.SaveChangesAsync();
 
+            // ⭐⭐⭐ UPLOAD ẢNH (nếu có)
+            // UPLOAD ẢNH
+            if (dto.Images != null && dto.Images.Any())
+                {
+                foreach (var file in dto.Images)
+                    {
+                    var (url, publicId) = await _imageService.UploadImageAsync(file, "JobSeekerPosts");
+                    _db.Images.Add(new Image
+                        {
+                        EntityType = "JobSeekerPost",
+                        EntityId = post.JobSeekerPostId,
+                        Url = url,
+                        PublicId = publicId,
+                        Format = file.ContentType,
+                        CreatedAt = DateTime.Now
+                        });
+                    }
+                await _db.SaveChangesAsync();
+                }
+
+
             var freshPost = await _db.JobSeekerPosts
                 .Include(x => x.User)
                 .Include(x => x.Category)
@@ -149,7 +175,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 $"{freshPost.Description}. " +
                 $"Giờ làm: {freshPost.PreferredWorkHours}. " +
                 $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
-
 
             if (selectedCv != null)
                 {
@@ -258,7 +283,13 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
         public async Task<IEnumerable<JobSeekerPostDtoOut>> GetAllAsync()
             {
-            var posts = await _repo.GetAllAsync();
+            var posts = await _db.JobSeekerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category)
+                .Include(x => x.SubCategory)
+                .Where(x => x.Status == "Active" && x.User.IsActive)
+                .ToListAsync();
+
             return posts.Select(p => new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = p.JobSeekerPostId,
@@ -267,6 +298,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = p.Description,
                 PreferredLocation = p.PreferredLocation,
                 CategoryName = p.Category?.Name,
+                SubCategoryName = p.SubCategory?.Name,
                 SeekerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
@@ -276,6 +308,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         public async Task<IEnumerable<JobSeekerPostDtoOut>> GetByUserAsync(int userId)
             {
             var posts = await _repo.GetByUserAsync(userId);
+
+            // Không bao giờ trả bài Deleted
+            posts = posts.Where(x => x.Status != "Deleted");
+
             return posts.Select(p => new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = p.JobSeekerPostId,
@@ -284,16 +320,26 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = p.Description,
                 PreferredLocation = p.PreferredLocation,
                 CategoryName = p.Category?.Name,
+                SubCategoryName = p.SubCategory?.Name,
                 SeekerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status
                 });
             }
 
+
         public async Task<JobSeekerPostDtoOut?> GetByIdAsync(int id)
             {
             var post = await _repo.GetByIdAsync(id);
             if (post == null)
+                return null;
+
+            // ❌ Bị Blocked / Inactive / Deleted → không trả về
+            if (post.Status == "Blocked" || post.Status == "Inactive" || post.Status == "Deleted")
+                return null;
+
+            // ❌ User bị khóa → không trả về
+            if (post.User == null || post.User.IsActive == false)
                 return null;
 
             return new JobSeekerPostDtoOut
@@ -304,6 +350,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = post.Description,
                 PreferredLocation = post.PreferredLocation,
                 CategoryName = post.Category?.Name,
+                SubCategoryName = post.SubCategory?.Name,
                 SeekerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status
@@ -311,9 +358,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             }
 
 
+
         // UPDATE
 
-        public async Task<JobSeekerPostDtoOut?> UpdateAsync(int id, JobSeekerPostDto dto)
+        public async Task<JobSeekerPostDtoOut?> UpdateAsync(int id, JobSeekerPostUpdateDto dto)
             {
             var post = await _repo.GetByIdAsync(id);
             if (post == null || post.Status == "Deleted")
@@ -346,15 +394,17 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             post.Gender = dto.Gender;
             post.PreferredWorkHours = $"{dto.PreferredWorkHourStart} - {dto.PreferredWorkHourEnd}";
 
-            post.ProvinceId = dto.ProvinceId;
-            post.DistrictId = dto.DistrictId;
-            post.WardId = dto.WardId;
+            post.ProvinceId = dto.ProvinceId ?? post.ProvinceId;
+            post.DistrictId = dto.DistrictId ?? post.DistrictId;
+            post.WardId = dto.WardId ?? post.WardId;
+
 
             post.PreferredLocation = await _locDisplay.BuildAddressAsync(
-                dto.ProvinceId,
-                dto.DistrictId,
-                dto.WardId
+                dto.ProvinceId ?? throw new Exception("ProvinceId is required"),
+                dto.DistrictId ?? throw new Exception("DistrictId is required"),
+                dto.WardId ?? throw new Exception("WardId is required")
             );
+
 
             post.CategoryId = dto.CategoryID;
             post.SubCategoryId = dto.SubCategoryId;
@@ -363,6 +413,43 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             post.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(post);
+
+            // DELETE OLD IMAGES
+            if (dto.DeleteImageIds != null && dto.DeleteImageIds.Any())
+                {
+                var oldImages = await _db.Images
+                    .Where(i => dto.DeleteImageIds.Contains(i.ImageId)
+                             && i.EntityType == "JobSeekerPost"
+                             && i.EntityId == post.JobSeekerPostId)
+                    .ToListAsync();
+
+                foreach (var img in oldImages)
+                    {
+                    await _imageService.DeleteImageAsync(img.PublicId);
+                    _db.Images.Remove(img);
+                    }
+                }
+
+            // UPLOAD NEW IMAGES
+            if (dto.Images != null && dto.Images.Any())
+                {
+                foreach (var file in dto.Images)
+                    {
+                    var (url, publicId) = await _imageService.UploadImageAsync(file, "JobSeekerPosts");
+                    _db.Images.Add(new Image
+                        {
+                        EntityType = "JobSeekerPost",
+                        EntityId = post.JobSeekerPostId,
+                        Url = url,
+                        PublicId = publicId,
+                        Format = file.ContentType,
+                        CreatedAt = DateTime.Now
+                        });
+                    }
+                }
+
+            await _db.SaveChangesAsync();
+
 
             // Lấy CV gắn với bài đăng
             JobSeekerCv? selectedCv = null;
@@ -392,7 +479,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 $"{cvText} " +
                 $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
 
-
             var (vector, _) = await EnsureEmbeddingAsync(
                 "JobSeekerPost",
                 post.JobSeekerPostId,
@@ -419,13 +505,29 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
         public async Task<bool> DeleteAsync(int id)
             {
+            // ⭐ Xoá mềm bài đăng
             await _repo.SoftDeleteAsync(id);
 
+            // ⭐ XÓA ẢNH LIÊN QUAN
+            var images = await _db.Images
+                .Where(i => i.EntityType == "JobSeekerPost" && i.EntityId == id)
+                .ToListAsync();
+
+            foreach (var img in images)
+                {
+                await _imageService.DeleteImageAsync(img.PublicId); // Xóa Cloudinary
+                }
+
+            if (images.Any())
+                _db.Images.RemoveRange(images);
+
+            // ⭐ XÓA GỢI Ý AI
             var targets = _db.AiMatchSuggestions
-                .Where(s => s.SourceType == "JobSeekerPost" && s.SourceId == id
-                         || s.TargetType == "JobSeekerPost" && s.TargetId == id);
+                .Where(s => (s.SourceType == "JobSeekerPost" && s.SourceId == id)
+                         || (s.TargetType == "JobSeekerPost" && s.TargetId == id));
 
             _db.AiMatchSuggestions.RemoveRange(targets);
+
             await _db.SaveChangesAsync();
 
             return true;
@@ -466,7 +568,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 $"Giờ làm: {post.PreferredWorkHours}. " +
                 $"{cvText} " +
                 $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
-
 
             var (vector, _) = await EnsureEmbeddingAsync(
                 "JobSeekerPost",
@@ -581,6 +682,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 if (job == null || job.Status != "Active")
                     continue;
 
+                if (job.User == null || job.User.IsActive == false)
+                    continue;
+
                 // Category Filter
                 if (mustMatchCategoryId.HasValue &&
                     job.CategoryId != mustMatchCategoryId.Value)
@@ -590,8 +694,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 if (mustMatchSubCategoryId.HasValue &&
                     job.SubCategoryId != mustMatchSubCategoryId.Value)
                     continue;
-
-
 
                 // Location Filter: chỉ lọc, không cộng điểm
                 if (!await IsWithinDistanceAsync(preferredLocation, job.Location))
@@ -669,6 +771,14 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         public async Task<IEnumerable<object>> GetSavedJobsAsync(int jobSeekerId)
             {
             return await _db.JobSeekerShortlistedJobs
+                 .Include(x => x.EmployerPost)
+                 .ThenInclude(e => e.User)
+                 .Where(x =>
+                     x.JobSeekerId == jobSeekerId &&
+                     x.EmployerPost.Status == "Active" &&
+                     x.EmployerPost.User.IsActive == true
+                 )
+
                 .Include(x => x.EmployerPost)
                 .ThenInclude(e => e.User)
                 .Where(x => x.JobSeekerId == jobSeekerId)
@@ -710,6 +820,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 join ep in _db.EmployerPosts.Include(e => e.User)
                      on s.TargetId equals ep.EmployerPostId
                 where ep.Status == "Active"
+                   && ep.User.IsActive == true
+
                 orderby s.MatchPercent descending, s.RawScore descending, s.CreatedAt descending
                 select new JobSeekerJobSuggestionDto
                     {
@@ -827,6 +939,12 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
 
+            // ⭐ Lấy danh sách ảnh
+            var images = await _db.Images
+                .Where(i => i.EntityType == "JobSeekerPost" && i.EntityId == post.JobSeekerPostId)
+                .Select(i => i.Url)
+                .ToListAsync();
+
             return new JobSeekerPostDtoOut
                 {
                 JobSeekerPostId = post.JobSeekerPostId,
@@ -844,7 +962,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 SubCategoryName = sub?.Name,
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
-                Status = post.Status
+                Status = post.Status,
+
+                ImageUrls = images      // ⭐ map ra DTO
                 };
             }
 
@@ -907,6 +1027,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             await _db.SaveChangesAsync();
             }
+
         private async Task<float[]> GetIndustryEmbeddingAsync(string text)
             {
             if (string.IsNullOrWhiteSpace(text))
@@ -943,5 +1064,32 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             return vec;
             }
 
+        // CLOSE (Inactive)
+        public async Task<bool> CloseJobSeekerPostAsync(int id)
+            {
+            var post = await _repo.GetByIdAsync(id);
+            if (post == null || post.Status == "Deleted")
+                return false;
+
+            post.Status = "Inactive";
+            post.UpdatedAt = DateTime.Now;
+
+            await _repo.UpdateAsync(post);
+            return true;
+            }
+
+        // REOPEN (Active)
+        public async Task<bool> ReopenJobSeekerPostAsync(int id)
+            {
+            var post = await _repo.GetByIdAsync(id);
+            if (post == null || post.Status == "Deleted")
+                return false;
+
+            post.Status = "Active";
+            post.UpdatedAt = DateTime.Now;
+
+            await _repo.UpdateAsync(post);
+            return true;
+            }
         }
     }

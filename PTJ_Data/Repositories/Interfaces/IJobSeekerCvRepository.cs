@@ -10,7 +10,7 @@ namespace PTJ_Data.Repositories.Interfaces
         Task<IEnumerable<JobSeekerCv>> GetByJobSeekerAsync(int jobSeekerId);
         Task AddAsync(JobSeekerCv entity);
         Task UpdateAsync(JobSeekerCv entity);
-        Task DeleteAsync(JobSeekerCv entity);
+        Task SoftDeleteAsync(int cvId);
         Task SaveChangesAsync();
         }
     }

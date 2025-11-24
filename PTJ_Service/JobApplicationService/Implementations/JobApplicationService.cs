@@ -43,8 +43,12 @@ namespace PTJ_Service.JobApplicationService.Implementations
             var post = await _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == employerPostId);
             if (post == null)
                 return (false, "Bài đăng không tồn tại.");
-            if (post.Status == "Deleted" || post.Status == "Closed")
-                return (false, "Bài đăng đã đóng tuyển.");
+            if (post.Status == "Deleted" || post.Status == "Inactive")
+                return (false, "Bài đăng đã được đóng tuyển.");
+
+            var employer = await _db.Users.FirstAsync(u => u.UserId == post.UserId);
+            if (!employer.IsActive)
+                return (false, "Nhà tuyển dụng đã bị khóa, bài đăng này không khả dụng.");
 
             // Lấy thông tin Employer
             var employerId = post.UserId;
@@ -162,6 +166,13 @@ namespace PTJ_Service.JobApplicationService.Implementations
         public async Task<IEnumerable<JobApplicationResultDto>> GetApplicationsBySeekerAsync(int jobSeekerId)
         {
             var list = await _repo.GetByJobSeekerWithPostDetailAsync(jobSeekerId);
+
+            list = list.Where(x =>
+                x.EmployerPost != null &&
+                x.EmployerPost.Status == "Active" &&
+                x.EmployerPost.User.IsActive == true
+            ).ToList();
+
 
             return list.Select(x =>
             {

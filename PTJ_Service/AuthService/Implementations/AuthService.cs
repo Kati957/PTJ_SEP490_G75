@@ -288,11 +288,11 @@ public sealed class AuthService : IAuthService
         var key = dto.UsernameOrEmail.Trim().ToLowerInvariant();
 
         var user = await _db.Users
-            .Include(u => u.Roles)
-            .FirstOrDefaultAsync(x => x.Email.ToLower() == key ||
-                                      x.Username.ToLower() == key)
-            ?? throw new Exception("Thông tin đăng nhập không hợp lệ.");
-
+        .Include(u => u.Roles)
+        .FirstOrDefaultAsync(x => x.Email.ToLower() == key ||
+                                  x.Username.ToLower() == key);
+        if (user == null)
+            throw new Exception("Email hoặc mật khẩu không đúng.");
         if (!user.IsActive)
             throw new Exception("Tài khoản bị vô hiệu hóa.");
 

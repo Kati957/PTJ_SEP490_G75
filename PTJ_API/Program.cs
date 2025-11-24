@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
+using PTJ_Service.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
@@ -72,6 +73,7 @@ using PTJ_Service.HomeService;
 using PTJ_Service.CategoryService.Implementations;
 using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Services;
+using System.Security.Claims;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -206,6 +208,72 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30)
             };
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var db = context.HttpContext.RequestServices
+                    .GetRequiredService<JobMatchingDbContext>();
+
+                var claims = context.Principal.Claims;
+
+                var userIdClaim =
+                       claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)
+                    ?? claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Sub);
+
+                if (userIdClaim == null)
+                {
+                    context.Fail("Invalid token: no user ID.");
+                    return;
+                }
+
+                int userId = int.Parse(userIdClaim.Value);
+
+                var user = await db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+
+                if (user == null)
+                {
+                    context.Fail("User does not exist.");
+                    return;
+                }
+
+                if (!user.IsActive)
+                {
+                    context.Fail("Your account has been deactivated.");
+                    return;
+                }
+
+                if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+                {
+                    context.Fail("Your account has been locked.");
+                    return;
+                }
+            },
+            OnChallenge = context =>
+            {
+                context.HandleResponse(); 
+
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                context.Response.ContentType = "application/json";
+
+                string msg = context.ErrorDescription;
+
+                if (msg == "Your account has been locked.")
+                    msg = "Tài khoản của bạn đã bị khóa bởi quản trị viên.";
+
+                if (msg == "Your account has been deactivated.")
+                    msg = "Tài khoản của bạn đã bị vô hiệu hóa.";
+
+                return context.Response.WriteAsync($$"""
+        {
+            "success": false,
+            "message": "{{msg}}"
+        }
+        """);
+            }
+        };
+
+
     });
 
 // 4️⃣ SIGNALR
@@ -264,5 +332,5 @@ app.UseAuthorization();
 // SignalR Hub Registration
 app.MapHub<NotificationHub>("/hubs/notification");
 app.MapControllers();
-
+app.UseMiddleware<ErrorHandlingMiddleware>();
 app.Run();
