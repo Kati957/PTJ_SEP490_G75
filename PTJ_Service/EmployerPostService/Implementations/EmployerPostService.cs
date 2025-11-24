@@ -259,68 +259,84 @@ namespace PTJ_Service.EmployerPostService.Implementations
         // READ
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
-        {
+            {
             var posts = await _db.EmployerPosts
                 .Include(p => p.User)
                 .Include(p => p.Category)
                 .Include(p => p.SubCategory)
-                .Where(p =>
-                    p.Status == "Active" &&
-                    p.User.IsActive == true     // ⭐ Lọc tại đây
-                )
+                .Where(p => p.Status == "Active" && p.User.IsActive == true)
                 .ToListAsync();
 
-            return posts.Select(p => new EmployerPostDtoOut
-            {
-                EmployerPostId = p.EmployerPostId,
-                EmployerId = p.UserId,
-                Title = p.Title,
-                Description = p.Description,
-                Salary = p.Salary,
-                Requirements = p.Requirements,
-                WorkHours = p.WorkHours,
-                Location = p.Location,
-                ProvinceId = p.ProvinceId,
-                DistrictId = p.DistrictId,
-                WardId = p.WardId,
-                PhoneContact = p.PhoneContact,
-                CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory?.Name,
-                EmployerName = p.User.Username,
-                CreatedAt = p.CreatedAt,
-                Status = p.Status,
-                CompanyLogo = p.User.EmployerProfile.AvatarUrl ?? ""
-            });
+            var result = new List<EmployerPostDtoOut>();
+
+            foreach (var p in posts)
+                {
+                var images = await _db.Images
+                    .Where(i => i.EntityType == "EmployerPost" && i.EntityId == p.EmployerPostId)
+                    .Select(i => i.Url)
+                    .ToListAsync();
+
+                result.Add(new EmployerPostDtoOut
+                    {
+                    EmployerPostId = p.EmployerPostId,
+                    EmployerId = p.UserId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category?.Name,
+                    SubCategoryName = p.SubCategory?.Name,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status,
+                    ImageUrls = images
+                    });
+                }
+
+            return result;
             }
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
-        {
+            {
             var posts = await _repo.GetByUserAsync(userId);
 
-            // ❗ Không bao giờ trả về bài Deleted
+            // Bỏ bài đã deleted
             posts = posts.Where(x => x.Status != "Deleted");
 
-            return posts.Select(p => new EmployerPostDtoOut
-            {
-                EmployerPostId = p.EmployerPostId,
-                EmployerId = p.UserId,
-                Title = p.Title,
-                Description = p.Description,
-                Salary = p.Salary,
-                Requirements = p.Requirements,
-                WorkHours = p.WorkHours,
-                Location = p.Location,
-                ProvinceId = p.ProvinceId,
-                DistrictId = p.DistrictId,
-                WardId = p.WardId,
-                PhoneContact = p.PhoneContact,
-                CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory?.Name,
-                EmployerName = p.User.Username,
-                CreatedAt = p.CreatedAt,
-                Status = p.Status,
-                CompanyLogo = p.User.EmployerProfile.AvatarUrl ?? ""
-            });
+            var result = new List<EmployerPostDtoOut>();
+
+            foreach (var p in posts)
+                {
+                // Lấy danh sách ảnh
+                var images = await _db.Images
+                    .Where(i => i.EntityType == "EmployerPost" && i.EntityId == p.EmployerPostId)
+                    .Select(i => i.Url)
+                    .ToListAsync();
+
+                result.Add(new EmployerPostDtoOut
+                    {
+                    EmployerPostId = p.EmployerPostId,
+                    EmployerId = p.UserId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Salary = p.Salary,
+                    Requirements = p.Requirements,
+                    WorkHours = p.WorkHours,
+                    Location = p.Location,
+                    PhoneContact = p.PhoneContact,
+                    CategoryName = p.Category?.Name,
+                    SubCategoryName = p.SubCategory?.Name,
+                    EmployerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status,
+                    ImageUrls = images   // ⭐⭐ THÊM ẢNH VÀO DTO
+                    });
+                }
+
+            return result;
             }
 
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
@@ -336,6 +352,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
             // ❌ Nếu employer bị khóa → không trả về
             if (post.User == null || post.User.IsActive == false)
                 return null;
+
+            var images = await _db.Images
+        .Where(i => i.EntityType == "EmployerPost" && i.EntityId == post.EmployerPostId)
+        .Select(i => i.Url)
+        .ToListAsync();
 
             return new EmployerPostDtoOut
                 {
@@ -356,7 +377,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 EmployerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
-                CompanyLogo = post.User.EmployerProfile.AvatarUrl ?? ""
+                CompanyLogo = post.User.EmployerProfile.AvatarUrl ?? "",
+                ImageUrls = images
             };
             }
 

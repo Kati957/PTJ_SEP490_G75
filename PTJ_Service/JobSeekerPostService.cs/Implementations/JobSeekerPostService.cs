@@ -290,43 +290,68 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 .Where(x => x.Status == "Active" && x.User.IsActive)
                 .ToListAsync();
 
-            return posts.Select(p => new JobSeekerPostDtoOut
+            var result = new List<JobSeekerPostDtoOut>();
+
+            foreach (var p in posts)
                 {
-                JobSeekerPostId = p.JobSeekerPostId,
-                UserID = p.UserId,
-                Title = p.Title,
-                Description = p.Description,
-                PreferredLocation = p.PreferredLocation,
-                CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory?.Name,
-                SeekerName = p.User.Username,
-                CreatedAt = p.CreatedAt,
-                Status = p.Status
-                });
+                var images = await _db.Images
+                    .Where(i => i.EntityType == "JobSeekerPost" && i.EntityId == p.JobSeekerPostId)
+                    .Select(i => i.Url)
+                    .ToListAsync();
+
+                result.Add(new JobSeekerPostDtoOut
+                    {
+                    JobSeekerPostId = p.JobSeekerPostId,
+                    UserID = p.UserId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    PreferredLocation = p.PreferredLocation,
+                    CategoryName = p.Category?.Name,
+                    SubCategoryName = p.SubCategory?.Name,
+                    SeekerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status,
+
+                    ImageUrls = images   // ⭐ THÊM DÒNG NÀY
+                    });
+                }
+
+            return result;
             }
 
         public async Task<IEnumerable<JobSeekerPostDtoOut>> GetByUserAsync(int userId)
             {
             var posts = await _repo.GetByUserAsync(userId);
-
-            // Không bao giờ trả bài Deleted
             posts = posts.Where(x => x.Status != "Deleted");
 
-            return posts.Select(p => new JobSeekerPostDtoOut
-                {
-                JobSeekerPostId = p.JobSeekerPostId,
-                UserID = p.UserId,
-                Title = p.Title,
-                Description = p.Description,
-                PreferredLocation = p.PreferredLocation,
-                CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory?.Name,
-                SeekerName = p.User.Username,
-                CreatedAt = p.CreatedAt,
-                Status = p.Status
-                });
-            }
+            var result = new List<JobSeekerPostDtoOut>();
 
+            foreach (var p in posts)
+                {
+                var images = await _db.Images
+                    .Where(i => i.EntityType == "JobSeekerPost" && i.EntityId == p.JobSeekerPostId)
+                    .Select(i => i.Url)
+                    .ToListAsync();
+
+                result.Add(new JobSeekerPostDtoOut
+                    {
+                    JobSeekerPostId = p.JobSeekerPostId,
+                    UserID = p.UserId,
+                    Title = p.Title,
+                    Description = p.Description,
+                    PreferredLocation = p.PreferredLocation,
+                    CategoryName = p.Category?.Name,
+                    SubCategoryName = p.SubCategory?.Name,
+                    SeekerName = p.User.Username,
+                    CreatedAt = p.CreatedAt,
+                    Status = p.Status,
+
+                    ImageUrls = images     // ⭐ THÊM DÒNG NÀY
+                    });
+                }
+
+            return result;
+            }
 
         public async Task<JobSeekerPostDtoOut?> GetByIdAsync(int id)
             {
@@ -341,6 +366,11 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             // ❌ User bị khóa → không trả về
             if (post.User == null || post.User.IsActive == false)
                 return null;
+
+            var images = await _db.Images
+            .Where(i => i.EntityType == "JobSeekerPost" && i.EntityId == post.JobSeekerPostId)
+            .Select(i => i.Url)
+            .ToListAsync(); 
 
             return new JobSeekerPostDtoOut
                 {
@@ -364,7 +394,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 SeekerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
-                CvId = post.SelectedCvId
+                CvId = post.SelectedCvId,
+                ImageUrls = images
             };
             }
 
