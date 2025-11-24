@@ -28,7 +28,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
         public async Task<IEnumerable<EmployerPost>> GetByUserAsync(int userId)
         {
             return await _db.EmployerPosts
-                .Include(p => p.User)
+                .Include(p => p.User).ThenInclude(p => p.EmployerProfile)
                 .Include(p => p.Category)
                 .Include(p => p.SubCategory)
                 .Where(p => p.UserId == userId && p.Status == "Active")
@@ -39,7 +39,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
         public async Task<EmployerPost?> GetByIdAsync(int id)
         {
             return await _db.EmployerPosts
-                .Include(p => p.User)
+                .Include(p => p.User).ThenInclude(p => p.EmployerProfile)
                 .Include(p => p.Category)
                 .Include(p => p.SubCategory)
                 .FirstOrDefaultAsync(p => p.EmployerPostId == id);

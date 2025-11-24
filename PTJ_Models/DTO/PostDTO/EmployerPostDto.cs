@@ -10,8 +10,8 @@ namespace PTJ_Models.DTO.PostDTO
         [StringLength(120, MinimumLength = 5, ErrorMessage = "Tiêu đề phải từ 5–120 ký tự.")]
         public string Title { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Mô tả công việc không được để trống.")]
-        [StringLength(5000, MinimumLength = 20, ErrorMessage = "Mô tả phải từ 20 ký tự trở lên.")]
+        //[Required(ErrorMessage = "Mô tả công việc không được để trống.")]
+        //[StringLength(5000, MinimumLength = 20, ErrorMessage = "Mô tả phải từ 20 ký tự trở lên.")]
         public string? Description { get; set; }
 
 

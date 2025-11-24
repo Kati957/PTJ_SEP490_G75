@@ -240,13 +240,17 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Requirements = p.Requirements,
                 WorkHours = p.WorkHours,
                 Location = p.Location,
+                ProvinceId = p.ProvinceId,
+                DistrictId = p.DistrictId,
+                WardId = p.WardId,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
                 SubCategoryName = p.SubCategory.Name,
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
-                Status = p.Status
-                });
+                Status = p.Status,
+                CompanyLogo = p.User.EmployerProfile.AvatarUrl ?? ""
+            });
             }
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
@@ -262,13 +266,17 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Requirements = p.Requirements,
                 WorkHours = p.WorkHours,
                 Location = p.Location,
+                ProvinceId = p.ProvinceId,
+                DistrictId = p.DistrictId,
+                WardId = p.WardId,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
                 SubCategoryName = p.SubCategory.Name,
                 EmployerName = p.User.Username,
                 CreatedAt = p.CreatedAt,
-                Status = p.Status
-                });
+                Status = p.Status,
+                CompanyLogo = p.User.EmployerProfile.AvatarUrl ?? ""
+            });
             }
 
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
@@ -287,13 +295,17 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
                 Location = post.Location,
+                ProvinceId = post.ProvinceId,
+                DistrictId = post.DistrictId,
+                WardId = post.WardId,
                 PhoneContact = post.PhoneContact,
                 CategoryName = post.Category?.Name,
                 SubCategoryName = post.SubCategory.Name,
                 EmployerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
-                Status = post.Status
-                };
+                Status = post.Status,
+                CompanyLogo = post.User.EmployerProfile.AvatarUrl ?? ""
+            };
             }
 
 
