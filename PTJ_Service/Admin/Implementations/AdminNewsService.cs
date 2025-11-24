@@ -1,8 +1,13 @@
-﻿using PTJ_Data.Repositories.Interfaces.Admin;
+﻿using Microsoft.EntityFrameworkCore;
+using PTJ_Data;
+using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
 using PTJ_Service.Admin.Interfaces;
 using PTJ_Service.ImageService;
+using PTJ_Service.Interfaces;
+
+
 
 namespace PTJ_Service.Admin.Implementations
 {
@@ -10,12 +15,22 @@ namespace PTJ_Service.Admin.Implementations
     {
         private readonly IAdminNewsRepository _repo;
         private readonly IImageService _img;
+        private readonly INotificationService _noti;
+        private readonly JobMatchingDbContext _db;
 
-        public AdminNewsService(IAdminNewsRepository repo, IImageService img)
+
+        public AdminNewsService(
+     IAdminNewsRepository repo,
+     IImageService img,
+     INotificationService noti,
+     JobMatchingDbContext db)
         {
             _repo = repo;
             _img = img;
+            _noti = noti;
+            _db = db;
         }
+
 
         //  Danh sách
         public Task<IEnumerable<AdminNewsDto>> GetAllNewsAsync(bool? isPublished, string? keyword)
@@ -82,11 +97,54 @@ namespace PTJ_Service.Admin.Implementations
         }
 
         //  Publish / Unpublish
+        //  Publish / Unpublish + Notification
         public async Task TogglePublishStatusAsync(int id)
         {
-            var success = await _repo.TogglePublishStatusAsync(id);
-            if (!success)
+            // 1️⃣ Lấy tin tức
+            var news = await _db.News.FirstOrDefaultAsync(n => n.NewsId == id);
+            if (news == null || news.IsDeleted)
                 throw new KeyNotFoundException("Không tìm thấy tin tức hoặc tin tức đã bị xóa.");
+
+            bool wasPublished = news.IsPublished;
+
+            // 2️⃣ Toggle trạng thái
+            news.IsPublished = !news.IsPublished;
+            news.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            // Nếu chuyển sang unpublish → không bắn noti
+            if (!news.IsPublished)
+                return;
+
+            // 3️⃣ Chỉ gửi noti khi publish = true và trước đó là false
+            if (!wasPublished && news.IsPublished)
+            {
+                // 4️⃣ Lấy tất cả user đang active
+                var users = await _db.Users
+                    .Where(u => u.IsActive)
+                    .Select(u => u.UserId)
+                    .ToListAsync();
+
+                string shortDesc = news.Content.Length > 80
+                    ? news.Content.Substring(0, 80) + "..."
+                    : news.Content;
+
+                // 5️⃣ Gửi Notification cho tất cả user
+                foreach (var uid in users)
+                {
+                    await _noti.SendAsync(new CreateNotificationDto
+                    {
+                        UserId = uid,
+                        NotificationType = "NewsPublished",
+                        RelatedItemId = news.NewsId,
+                        Data = new()
+                {
+                    { "Title", news.Title },
+                    { "ShortDescription", shortDesc }
+                }
+                    });
+                }
+            }
         }
 
         //  Xóa mềm

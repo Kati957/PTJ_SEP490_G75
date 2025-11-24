@@ -47,7 +47,7 @@ namespace PTJ_Service.Implementations
             // Save to DB
             await _repo.CreateAsync(noti);
 
-            // 4. PUSH REAL-TIME SIGNALR 🔥
+            // 4. PUSH REAL-TIME SIGNALR 
             await _hub.Clients.Group($"user_{dto.UserId}")
                 .SendAsync("ReceiveNotification", new
                 {

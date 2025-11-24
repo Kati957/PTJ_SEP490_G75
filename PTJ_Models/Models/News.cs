@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PTJ_Models.Models;
 
@@ -32,7 +31,5 @@ public partial class News
 
     public virtual User Admin { get; set; } = null!;
 
-    // ⭐ Thêm property này
-    [NotMapped]
     public List<Image> Images { get; set; } = new();
-    }
+}

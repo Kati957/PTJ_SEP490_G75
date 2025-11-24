@@ -31,8 +31,6 @@ public partial class JobSeekerCv
 
     public int WardId { get; set; }
 
-    public bool IsDeleted { get; set; }
-
     public virtual User JobSeeker { get; set; } = null!;
 
     public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
