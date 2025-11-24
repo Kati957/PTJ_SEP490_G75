@@ -128,8 +128,7 @@ namespace PTJ_Service.Implementations.Admin
             await _db.SaveChangesAsync();
 
             // 3️⃣ Tạo EmployerProfile
-            const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
-
+            const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
             var profile = new EmployerProfile
             {
                 UserId = user.UserId,
