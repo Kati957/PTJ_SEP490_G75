@@ -46,7 +46,7 @@ namespace PTJ_API.Controllers
             if (!User.IsInRole("Admin") && dto.JobSeekerId != currentUserId)
                 return Forbid("Bạn không thể nộp đơn thay người khác.");
 
-            var (success, error) = await _service.ApplyAsync(dto.JobSeekerId, dto.EmployerPostId, dto.Note);
+            var (success, error) = await _service.ApplyAsync(dto.JobSeekerId, dto.EmployerPostId, dto.Note, dto.Cvid);
             if (!success)
                 return BadRequest(new { success = false, message = error });
 

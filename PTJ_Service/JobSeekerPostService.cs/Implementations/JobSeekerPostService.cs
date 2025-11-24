@@ -311,7 +311,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     SeekerName = p.User.Username,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
-
+                    CvId = p.SelectedCvId,
                     ImageUrls = images   // ⭐ THÊM DÒNG NÀY
                     });
                 }
@@ -345,7 +345,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     SeekerName = p.User.Username,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
-
+                    CvId = p.SelectedCvId,
                     ImageUrls = images     // ⭐ THÊM DÒNG NÀY
                     });
                 }
