@@ -44,7 +44,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
         // CREATE
 
-        public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostDto dto)
+        public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostCreateDto dto)
         {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto), "Dữ liệu không hợp lệ.");
@@ -354,17 +354,18 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
         // UPDATE
 
-        public async Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostDto dto)
+        public async Task<EmployerPostDtoOut?> UpdateAsync(int id, EmployerPostUpdateDto dto)
             {
             var post = await _repo.GetByIdAsync(id);
             if (post == null || post.Status == "Deleted")
                 return null;
 
             string fullLocation = await _locDisplay.BuildAddressAsync(
-                dto.ProvinceId,
-                dto.DistrictId,
-                dto.WardId
-            );
+                 dto.ProvinceId ?? throw new Exception("ProvinceId is required"),
+                 dto.DistrictId ?? throw new Exception("DistrictId is required"),
+                 dto.WardId ?? throw new Exception("WardId is required")
+             );
+
 
             if (!string.IsNullOrWhiteSpace(dto.DetailAddress))
                 {
@@ -382,9 +383,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 : dto.Salary;
             post.Requirements = dto.Requirements;
             post.Location = fullLocation;
-            post.ProvinceId = dto.ProvinceId;
-            post.DistrictId = dto.DistrictId;
-            post.WardId = dto.WardId;
+            post.ProvinceId = dto.ProvinceId ?? post.ProvinceId;
+            post.DistrictId = dto.DistrictId ?? post.DistrictId;
+            post.WardId = dto.WardId ?? post.WardId;
+
             post.WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}";
             post.CategoryId = dto.CategoryID;
             post.SubCategoryId = dto.SubCategoryId;
@@ -933,7 +935,8 @@ ScoreAndFilterCandidatesAsync(
                 Title = post.Title,
                 Description = post.Description,
                 Salary = post.Salary,
-                SalaryText = post.Salary == null ? "Thỏa thuận" : $"{post.Salary}",
+                SalaryText = post.Salary == null ? "Thỏa thuận" : null,
+
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
 

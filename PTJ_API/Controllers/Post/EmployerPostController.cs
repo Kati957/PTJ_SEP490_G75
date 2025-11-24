@@ -32,7 +32,7 @@ namespace PTJ_API.Controllers.Post
         // CREATE
         // =========================================================
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromForm] EmployerPostDto dto)
+        public async Task<IActionResult> Create([FromForm] EmployerPostCreateDto dto)
             {
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
@@ -64,7 +64,6 @@ namespace PTJ_API.Controllers.Post
             var result = await _service.CreateEmployerPostAsync(dto);
             return Ok(new { success = true, message = "Đăng bài tuyển dụng thành công.", data = result });
             }
-
 
         // =========================================================
         // READ
@@ -165,7 +164,7 @@ namespace PTJ_API.Controllers.Post
         // UPDATE
         // =========================================================
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromForm] EmployerPostDto dto)
+        public async Task<IActionResult> Update(int id, [FromForm] EmployerPostUpdateDto dto)
             {
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
@@ -195,8 +194,6 @@ namespace PTJ_API.Controllers.Post
             var result = await _service.UpdateAsync(id, dto);
             return Ok(new { success = true, message = "Cập nhật thành công.", data = result });
             }
-
-
 
         // =========================================================
         // DELETE

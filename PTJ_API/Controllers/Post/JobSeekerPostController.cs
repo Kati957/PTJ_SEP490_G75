@@ -32,14 +32,14 @@ namespace PTJ_API.Controllers.Post
         // CREATE
         // =========================================================
         [HttpPost("create")]
-        public async Task<IActionResult> Create([FromForm] JobSeekerPostDto dto)
+        public async Task<IActionResult> Create([FromForm] JobSeekerPostCreateDto dto)
             {
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
 
             var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
             if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+                return Unauthorized(new { success = false, message = "Token không hợp lệ." });
 
             var currentUserId = int.Parse(sub.Value);
 
@@ -57,7 +57,7 @@ namespace PTJ_API.Controllers.Post
                 }
 
             if (dto.ProvinceId <= 0 || dto.DistrictId <= 0 || dto.WardId <= 0)
-                return BadRequest(new { success = false, message = "Vui lòng chọn Tỉnh/Quận/Huyện/Xã đầy đủ." });
+                return BadRequest(new { success = false, message = "Vui lòng chọn Tỉnh/Huyện/Xã đầy đủ." });
 
             if (dto.Age is < 15 or > 65)
                 return BadRequest(new { success = false, message = "Tuổi không hợp lệ." });
@@ -65,7 +65,6 @@ namespace PTJ_API.Controllers.Post
             var result = await _service.CreateJobSeekerPostAsync(dto);
             return Ok(new { success = true, message = "Đăng bài tìm việc thành công.", data = result });
             }
-
 
         // =========================================================
         // READ
@@ -167,7 +166,7 @@ namespace PTJ_API.Controllers.Post
         // UPDATE
         // =========================================================
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromForm] JobSeekerPostDto dto)
+        public async Task<IActionResult> Update(int id, [FromForm] JobSeekerPostUpdateDto dto)
             {
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
@@ -202,8 +201,6 @@ namespace PTJ_API.Controllers.Post
 
             return Ok(new { success = true, message = "Cập nhật thành công.", data = result });
             }
-
-
 
         // =========================================================
         // DELETE

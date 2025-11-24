@@ -12,9 +12,9 @@ namespace PTJ_Service.JobSeekerPostService.cs.Interfaces
         Task<bool> DeleteAsync(int id);
 
         // CREATE + REFRESH
-        Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostDto dto);
+        Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostCreateDto dto);
         Task<JobSeekerPostResultDto> RefreshSuggestionsAsync(int jobSeekerPostId);
-        Task<JobSeekerPostDtoOut?> UpdateAsync(int id, JobSeekerPostDto dto);
+        Task<JobSeekerPostDtoOut?> UpdateAsync(int id, JobSeekerPostUpdateDto dto);
 
         // SHORTLIST
         Task SaveJobAsync(SaveJobDto dto);

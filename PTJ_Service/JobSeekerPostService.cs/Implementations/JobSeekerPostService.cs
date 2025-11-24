@@ -45,7 +45,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
 
         // CREATE
-        public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostDto dto)
+        public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostCreateDto dto)
             {
             if (dto == null)
                 throw new ArgumentNullException(nameof(dto));
@@ -361,7 +361,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
         // UPDATE
 
-        public async Task<JobSeekerPostDtoOut?> UpdateAsync(int id, JobSeekerPostDto dto)
+        public async Task<JobSeekerPostDtoOut?> UpdateAsync(int id, JobSeekerPostUpdateDto dto)
             {
             var post = await _repo.GetByIdAsync(id);
             if (post == null || post.Status == "Deleted")
@@ -394,15 +394,17 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             post.Gender = dto.Gender;
             post.PreferredWorkHours = $"{dto.PreferredWorkHourStart} - {dto.PreferredWorkHourEnd}";
 
-            post.ProvinceId = dto.ProvinceId;
-            post.DistrictId = dto.DistrictId;
-            post.WardId = dto.WardId;
+            post.ProvinceId = dto.ProvinceId ?? post.ProvinceId;
+            post.DistrictId = dto.DistrictId ?? post.DistrictId;
+            post.WardId = dto.WardId ?? post.WardId;
+
 
             post.PreferredLocation = await _locDisplay.BuildAddressAsync(
-                dto.ProvinceId,
-                dto.DistrictId,
-                dto.WardId
+                dto.ProvinceId ?? throw new Exception("ProvinceId is required"),
+                dto.DistrictId ?? throw new Exception("DistrictId is required"),
+                dto.WardId ?? throw new Exception("WardId is required")
             );
+
 
             post.CategoryId = dto.CategoryID;
             post.SubCategoryId = dto.SubCategoryId;
