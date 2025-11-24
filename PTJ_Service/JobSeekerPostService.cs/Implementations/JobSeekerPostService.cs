@@ -348,13 +348,24 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 UserID = post.UserId,
                 Title = post.Title,
                 Description = post.Description,
+                Age = post.Age,
+                Gender = post.Gender,
+                PreferredWorkHours = post.PreferredWorkHours,
+                PreferredWorkHourStart = post.PreferredWorkHours?.Split(" - ").FirstOrDefault(),
+                PreferredWorkHourEnd = post.PreferredWorkHours?.Split(" - ").LastOrDefault(),
                 PreferredLocation = post.PreferredLocation,
+                ProvinceId = post.ProvinceId,
+                DistrictId = post.DistrictId,
+                WardId = post.WardId,
+                PhoneContact = post.PhoneContact,
+                CategoryID = post.CategoryId ?? 0,
                 CategoryName = post.Category?.Name,
                 SubCategoryName = post.SubCategory?.Name,
                 SeekerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
-                Status = post.Status
-                };
+                Status = post.Status,
+                CvId = post.SelectedCvId
+            };
             }
 
 

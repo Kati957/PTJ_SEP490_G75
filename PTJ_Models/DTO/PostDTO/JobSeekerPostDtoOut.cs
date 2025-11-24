@@ -21,11 +21,12 @@ namespace PTJ_Models.DTO.PostDTO
         public string? PreferredWorkHourEnd { get; set; }
 
         public string? PreferredLocation { get; set; }
-        //public int ProvinceId { get; set; }
-        //public int DistrictId { get; set; }
-        //public int WardId { get; set; }
+        public int ProvinceId { get; set; }
+        public int DistrictId { get; set; }
+        public int WardId { get; set; }
 
         public string? PhoneContact { get; set; }
+        public int CategoryID { get; set; }
         public string? CategoryName { get; set; }
         public string? SubCategoryName { get; set; }
         public string? SeekerName { get; set; }
