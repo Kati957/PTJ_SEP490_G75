@@ -154,7 +154,8 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Skills = cv?.Skills,
                     PreferredJobType = cv?.PreferredJobType,
                     PreferredLocation = cv?.PreferredLocation,
-                    ContactPhone = cv?.ContactPhone
+                    ContactPhone = cv?.ContactPhone,
+                    EmployerId = x.EmployerPost?.UserId ?? 0 // ✅ Added EmployerId
                 };
             }).ToList();
         }
@@ -203,7 +204,8 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Skills = cv?.Skills,
                     PreferredJobType = cv?.PreferredJobType,
                     PreferredLocation = cv?.PreferredLocation,
-                    ContactPhone = cv?.ContactPhone
+                    ContactPhone = cv?.ContactPhone,
+                    EmployerId = employer?.UserId ?? 0 // ✅ Added EmployerId
                 };
             }).ToList();
         }
