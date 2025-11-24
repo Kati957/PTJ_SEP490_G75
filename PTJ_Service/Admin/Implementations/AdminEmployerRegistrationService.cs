@@ -1,9 +1,6 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.WebUtilities;
-using System.Security.Cryptography;
-using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
@@ -13,7 +10,7 @@ using PTJ_Service.Interfaces.Admin;
 using Microsoft.Extensions.Configuration;
 using PTJ_Service.Interfaces; 
 
-namespace PTJ_Service.Implementations.Admin
+namespace PTJ_Service.Admin.Implementations
 {
     public class AdminEmployerRegistrationService : IAdminEmployerRegistrationService
     {

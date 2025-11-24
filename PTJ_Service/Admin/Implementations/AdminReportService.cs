@@ -8,7 +8,7 @@ using PTJ_Models.Models;
 using PTJ_Service.Interfaces.Admin;
 using PTJ_Service.Interfaces;
 
-namespace PTJ_Service.Implementations.Admin
+namespace PTJ_Service.Admin.Implementations
 {
     public class AdminReportService : IAdminReportService
     {
