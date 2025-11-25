@@ -4,82 +4,85 @@ using PTJ_Models.DTO.Admin;
 using PTJ_Models.DTOs;
 using PTJ_Models.Models;
 
-public class AdminSystemReportService : IAdminSystemReportService
+namespace PTJ_Service.Admin.Implementations
 {
-    private readonly JobMatchingDbContext _db;
-
-    public AdminSystemReportService(JobMatchingDbContext db)
+    public class AdminSystemReportService : IAdminSystemReportService
     {
-        _db = db;
-    }
+        private readonly JobMatchingDbContext _db;
 
-    public async Task<PagedResult<SystemReportViewDto>> GetSystemReportsAsync(
-        string? status, string? keyword, int page, int pageSize)
-    {
-        var query = _db.SystemReports
-            .Include(r => r.User)
-            .AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(r => r.Status == status);
-
-        if (!string.IsNullOrWhiteSpace(keyword))
+        public AdminSystemReportService(JobMatchingDbContext db)
         {
-            var kw = keyword.ToLower();
-            query = query.Where(r =>
-                r.Title.ToLower().Contains(kw) ||
-                r.Description.ToLower().Contains(kw) ||
-                r.User.Email.ToLower().Contains(kw));
+            _db = db;
         }
 
-        var total = await query.CountAsync();
+        public async Task<PagedResult<SystemReportViewDto>> GetSystemReportsAsync(
+            string? status, string? keyword, int page, int pageSize)
+        {
+            var query = _db.SystemReports
+                .Include(r => r.User)
+                .AsQueryable();
 
-        var items = await query
-            .OrderByDescending(r => r.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(r => new SystemReportViewDto
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(r => r.Status == status);
+
+            if (!string.IsNullOrWhiteSpace(keyword))
             {
-                ReportId = r.SystemReportId,
-                UserEmail = r.User.Email,
-                Title = r.Title,
-                Description = r.Description,
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
-            })
-            .ToListAsync();
+                var kw = keyword.ToLower();
+                query = query.Where(r =>
+                    r.Title.ToLower().Contains(kw) ||
+                    r.Description.ToLower().Contains(kw) ||
+                    r.User.Email.ToLower().Contains(kw));
+            }
 
-        return new PagedResult<SystemReportViewDto>(items, total, page, pageSize);
-    }
+            var total = await query.CountAsync();
 
-    public async Task<SystemReportViewDto?> GetSystemReportDetailAsync(int id)
-    {
-        return await _db.SystemReports
-            .Include(r => r.User)
-            .Where(r => r.SystemReportId == id)
-            .Select(r => new SystemReportViewDto
-            {
-                ReportId = r.SystemReportId,
-                UserEmail = r.User.Email,
-                Title = r.Title,
-                Description = r.Description,
-                Status = r.Status,
-                CreatedAt = r.CreatedAt,
-                UpdatedAt = r.UpdatedAt
-            })
-            .FirstOrDefaultAsync();
-    }
+            var items = await query
+                .OrderByDescending(r => r.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(r => new SystemReportViewDto
+                {
+                    ReportId = r.SystemReportId,
+                    UserEmail = r.User.Email,
+                    Title = r.Title,
+                    Description = r.Description,
+                    Status = r.Status,
+                    CreatedAt = r.CreatedAt,
+                    UpdatedAt = r.UpdatedAt
+                })
+                .ToListAsync();
 
-    public async Task<bool> UpdateStatusAsync(int id, string status)
-    {
-        var report = await _db.SystemReports.FindAsync(id);
-        if (report == null) return false;
+            return new PagedResult<SystemReportViewDto>(items, total, page, pageSize);
+        }
 
-        report.Status = status;
-        report.UpdatedAt = DateTime.UtcNow;
+        public async Task<SystemReportViewDto?> GetSystemReportDetailAsync(int id)
+        {
+            return await _db.SystemReports
+                .Include(r => r.User)
+                .Where(r => r.SystemReportId == id)
+                .Select(r => new SystemReportViewDto
+                {
+                    ReportId = r.SystemReportId,
+                    UserEmail = r.User.Email,
+                    Title = r.Title,
+                    Description = r.Description,
+                    Status = r.Status,
+                    CreatedAt = r.CreatedAt,
+                    UpdatedAt = r.UpdatedAt
+                })
+                .FirstOrDefaultAsync();
+        }
 
-        await _db.SaveChangesAsync();
-        return true;
+        public async Task<bool> UpdateStatusAsync(int id, string status)
+        {
+            var report = await _db.SystemReports.FindAsync(id);
+            if (report == null) return false;
+
+            report.Status = status;
+            report.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return true;
+        }
     }
 }

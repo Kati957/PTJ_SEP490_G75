@@ -13,12 +13,12 @@ namespace PTJ_Service.JobApplicationService.Implementations
     {
         private readonly IJobApplicationRepository _repo;
         private readonly JobMatchingDbContext _db;
-        private readonly INotificationService _noti;   //  ADD SERVICE
+        private readonly INotificationService _noti;   
 
         public JobApplicationService(
             IJobApplicationRepository repo,
             JobMatchingDbContext db,
-            INotificationService noti) // inject thêm NotificationService
+            INotificationService noti) 
         {
             _repo = repo;
             _db = db;
@@ -104,6 +104,18 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     { "Name", seeker.Username ?? "Ứng viên" },
                     { "PostTitle", post.Title }
                 }
+            });
+
+            // GỬI THÔNG BÁO CHO JOB SEEKER (MỚI THÊM)
+            await _noti.SendAsync(new CreateNotificationDto
+            {
+                UserId = jobSeekerId,
+                NotificationType = "JobAppliedSuccess",
+                RelatedItemId = submission.SubmissionId,
+                Data = new Dictionary<string, string>
+    {
+        { "PostTitle", post.Title }
+    }
             });
 
             return (true, null);

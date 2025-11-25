@@ -8,22 +8,31 @@ using PTJ_Service.Admin.Interfaces;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Service.Interfaces.Admin;
 using Microsoft.Extensions.Configuration;
+using PTJ_Service.Interfaces; 
 
-namespace PTJ_Service.Implementations.Admin
+namespace PTJ_Service.Admin.Implementations
 {
     public class AdminEmployerRegistrationService : IAdminEmployerRegistrationService
     {
         private readonly JobMatchingDbContext _db;
         private readonly IEmailSender _email;
         private readonly IConfiguration _cfg;
-        public AdminEmployerRegistrationService( JobMatchingDbContext db,
+        private readonly INotificationService _noti;   
+
+        public AdminEmployerRegistrationService(
+            JobMatchingDbContext db,
             IEmailSender email,
-            IConfiguration cfg)
+            IConfiguration cfg,
+            INotificationService noti)                 
         {
             _db = db;
             _email = email;
             _cfg = cfg;
+            _noti = noti;                            
         }
+
+        
+
 
         public async Task<PagedResult<AdminEmployerRegListItemDto>> GetRequestsAsync(
             string? status, string? keyword, int page, int pageSize)
@@ -98,10 +107,8 @@ namespace PTJ_Service.Implementations.Admin
                 Email = req.Email,
                 Username = req.Username,
                 PasswordHash = req.PasswordHash,
-
                 IsActive = true,
-                IsVerified = false,     // ❗ KHÔNG verify tự động theo logic mới
-
+                IsVerified = false,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -118,8 +125,7 @@ namespace PTJ_Service.Implementations.Admin
             await _db.SaveChangesAsync();
 
             // 3️⃣ Tạo EmployerProfile
-            const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
-
+            const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
             var profile = new EmployerProfile
             {
                 UserId = user.UserId,
@@ -129,7 +135,6 @@ namespace PTJ_Service.Implementations.Admin
                 ContactPhone = req.ContactPhone,
                 ContactEmail = req.ContactEmail,
                 FullLocation = req.Address,
-
                 AvatarUrl = DefaultLogo,
                 AvatarPublicId = null,
                 IsAvatarHidden = false,
@@ -142,7 +147,6 @@ namespace PTJ_Service.Implementations.Admin
             req.Status = "Approved";
             req.ReviewedAt = DateTime.UtcNow;
             req.AdminNote = $"Duyệt bởi admin {adminId}";
-
             await _db.SaveChangesAsync();
 
             // 5️⃣ Tạo verify token
@@ -164,15 +168,27 @@ namespace PTJ_Service.Implementations.Admin
                 user.Email,
                 "PTJ - Xác minh tài khoản nhà tuyển dụng",
                 $@"
-            <h3>Tài khoản của bạn đã được duyệt!</h3>
-            <p>Vui lòng nhấn nút bên dưới để xác minh email và kích hoạt tài khoản:</p>
-            <a href='{verifyUrl}' 
-                style='background:#007bff;color:#fff;padding:10px 14px;border-radius:5px;text-decoration:none;'>
-                Xác minh tài khoản
-            </a>
-            <p>Liên kết có hiệu lực trong 30 phút.</p>
-        ");
+                    <h3>Tài khoản của bạn đã được duyệt!</h3>
+                    <p>Vui lòng nhấn nút bên dưới để xác minh email và kích hoạt tài khoản:</p>
+                    <a href='{verifyUrl}' 
+                        style='background:#007bff;color:#fff;padding:10px 14px;border-radius:5px;text-decoration:none;'>
+                        Xác minh tài khoản
+                    </a>
+                    <p>Liên kết có hiệu lực trong 30 phút.</p>
+                ");
 
+            // 7️⃣ GỬI NOTIFICATION TRONG HỆ THỐNG
+            await _noti.SendAsync(new CreateNotificationDto
+            {
+                UserId = user.UserId,
+                NotificationType = "EmployerApproved",
+                RelatedItemId = req.RequestId,
+                Data = new()
+                {
+                    { "CompanyName", req.CompanyName },
+                    { "Message", "Hồ sơ nhà tuyển dụng của bạn đã được duyệt. Vui lòng xác minh email để kích hoạt tài khoản." }
+                }
+            });
         }
 
 
@@ -196,6 +212,8 @@ namespace PTJ_Service.Implementations.Admin
                 "PTJ - Hồ sơ của bạn bị từ chối",
                 $"<p>Hồ sơ đăng ký của bạn đã bị từ chối.</p><p>Lý do: {dto.Reason}</p>"
             );
+
+            
         }
     }
 }

@@ -9,7 +9,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
-using PTJ_Service.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
@@ -43,7 +42,6 @@ using CloudinaryDotNet;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Models.Models;
-using PTJ_Service.Implementations.Admin;
 using PTJ_Service.Interfaces.Admin;
 using PTJ_Service.Admin.Implementations;
 using PTJ_Data.Repositories.Interfaces.EPost;
