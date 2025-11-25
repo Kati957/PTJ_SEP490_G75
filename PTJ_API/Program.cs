@@ -123,6 +123,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IEmployerRankingService, EmployerRankingService>();
 builder.Services.AddScoped<IChangePasswordService, ChangePasswordService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -156,6 +157,7 @@ builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
 builder.Services.AddScoped<IAdminEmployerRegistrationService, AdminEmployerRegistrationService>();
 
 // Repository
+builder.Services.AddScoped<IEmployerRankingRepository, EmployerRankingRepository>();
 builder.Services.AddScoped<IAdminStatisticsRepository, AdminStatisticsRepository>();
 builder.Services.AddScoped<IHomeRepository, HomeRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
