@@ -18,7 +18,7 @@ namespace PTJ_API.Controllers
         }
 
         private int UserId =>
-            int.Parse(User.FindFirstValue("id")!);
+            int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub")!);
 
         [HttpGet]
         public async Task<IActionResult> GetNotifications([FromQuery] bool? isRead = null)

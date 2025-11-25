@@ -1,4 +1,5 @@
-﻿using PTJ_Models.Models;
+﻿using PTJ_Models.DTO.ApplicationDTO;
+using PTJ_Models.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -13,6 +14,8 @@ namespace PTJ_Data.Repositories.Interfaces
         Task<IEnumerable<JobSeekerSubmission>> GetByEmployerPostWithDetailAsync(int employerPostId);
         Task<IEnumerable<JobSeekerSubmission>> GetByJobSeekerWithPostDetailAsync(int jobSeekerId);
         Task UpdateAsync(JobSeekerSubmission entity);
+        Task<ApplicationSummaryDto> GetFullSummaryAsync(int? employerId);
+
         Task SaveChangesAsync();
         }
     }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models;
+using PTJ_Models.DTO.ApplicationDTO;
 using PTJ_Models.Models;
 using System.Collections.Generic;
 using System.Linq;
@@ -62,6 +63,54 @@ namespace PTJ_Data.Repositories.Implementations
                 .Where(x => x.JobSeekerId == jobSeekerId)
                 .OrderByDescending(x => x.AppliedAt)
                 .ToListAsync();
+            }
+
+        public async Task<ApplicationSummaryDto> GetFullSummaryAsync(int? employerId)
+            {
+            var query = _db.JobSeekerSubmissions
+                .Include(x => x.JobSeeker)
+                .Include(x => x.EmployerPost)
+                .AsQueryable();
+
+            if (employerId.HasValue)
+                query = query.Where(x => x.EmployerPost.UserId == employerId.Value);
+
+            var list = await query.ToListAsync();
+
+            var pending = list
+                .Where(x => x.Status == "Pending")
+                .Select(x => new ApplicationSimpleDto
+                    {
+                    SubmissionId = x.SubmissionId,
+                    JobSeekerId = x.JobSeekerId,
+                    Username = x.JobSeeker.Username,
+                    PostId = x.EmployerPostId,
+                    PostTitle = x.EmployerPost.Title,
+                    Status = x.Status,
+                    AppliedAt = x.AppliedAt
+                    }).ToList();
+
+            var reviewed = list
+                .Where(x => x.Status == "Accepted" || x.Status == "Rejected" || x.Status == "Interviewing")
+                .Select(x => new ApplicationSimpleDto
+                    {
+                    SubmissionId = x.SubmissionId,
+                    JobSeekerId = x.JobSeekerId,
+                    Username = x.JobSeeker.Username,
+                    PostId = x.EmployerPostId,
+                    PostTitle = x.EmployerPost.Title,
+                    Status = x.Status,
+                    AppliedAt = x.AppliedAt
+                    }).ToList();
+
+            return new ApplicationSummaryDto
+                {
+                PendingTotal = pending.Count,
+                ReviewedTotal = reviewed.Count,
+
+                PendingApplications = pending,
+                ReviewedApplications = reviewed
+                };
             }
 
 

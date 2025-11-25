@@ -154,7 +154,8 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Skills = cv?.Skills,
                     PreferredJobType = cv?.PreferredJobType,
                     PreferredLocation = cv?.PreferredLocation,
-                    ContactPhone = cv?.ContactPhone
+                    ContactPhone = cv?.ContactPhone,
+                    EmployerId = x.EmployerPost?.UserId ?? 0 // ✅ Added EmployerId
                 };
             }).ToList();
         }
@@ -203,7 +204,8 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     Skills = cv?.Skills,
                     PreferredJobType = cv?.PreferredJobType,
                     PreferredLocation = cv?.PreferredLocation,
-                    ContactPhone = cv?.ContactPhone
+                    ContactPhone = cv?.ContactPhone,
+                    EmployerId = employer?.UserId ?? 0 // ✅ Added EmployerId
                 };
             }).ToList();
         }
@@ -282,6 +284,14 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 }
 
             return true;
+            }
+
+        public async Task<ApplicationSummaryDto> GetApplicationSummaryAsync(int userId, bool isAdmin)
+            {
+            // Nếu admin → xem toàn hệ thống → employerId = null
+            // Nếu employer → employerId = userId
+            int? employerId = isAdmin ? null : userId;
+            return await _repo.GetFullSummaryAsync(employerId);
             }
 
         }

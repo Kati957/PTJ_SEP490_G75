@@ -47,6 +47,7 @@ namespace PTJ_API.Controllers
                 {
                 return Ok(new
                     {
+                    UserId = employerDto.UserId,
                     Role = "Employer",
                     employerDto.DisplayName,
                     employerDto.Description,

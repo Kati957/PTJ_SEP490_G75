@@ -46,5 +46,29 @@ namespace PTJ_Models.DTO.ApplicationDTO
         public decimal? Salary { get; set; }
         public string? WorkHours { get; set; }
         public string? PhoneContact { get; set; }
+        public int EmployerId { get; set; }
         }
+
+    public class ApplicationSummaryDto
+        {
+        public int PendingTotal { get; set; }
+        public int ReviewedTotal { get; set; }
+
+        public List<ApplicationSimpleDto> PendingApplications { get; set; } = new();
+        public List<ApplicationSimpleDto> ReviewedApplications { get; set; } = new();
+        }
+
+    public class ApplicationSimpleDto
+        {
+        public int SubmissionId { get; set; }
+        public int JobSeekerId { get; set; }
+        public string Username { get; set; } = string.Empty;
+
+        public int PostId { get; set; }
+        public string PostTitle { get; set; } = string.Empty;
+
+        public string Status { get; set; } = string.Empty;
+        public DateTime AppliedAt { get; set; }
+        }
+
     }

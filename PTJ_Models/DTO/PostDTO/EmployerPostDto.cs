@@ -13,7 +13,7 @@ namespace PTJ_Models.DTO.PostDTO
 
         [Required]
         [StringLength(5000, MinimumLength = 20)]
-        public string? Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         [Range(0, double.MaxValue)]
         public decimal? Salary { get; set; }
@@ -23,11 +23,13 @@ namespace PTJ_Models.DTO.PostDTO
 
         public string? Requirements { get; set; }
 
+        [Required]
         [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
-        public string? WorkHourStart { get; set; }
+        public string WorkHourStart { get; set; } = string.Empty;
 
+        [Required]
         [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
-        public string? WorkHourEnd { get; set; }
+        public string WorkHourEnd { get; set; } = string.Empty;
 
         [Range(1, int.MaxValue)]
         public int ProvinceId { get; set; }
@@ -39,15 +41,16 @@ namespace PTJ_Models.DTO.PostDTO
         public int WardId { get; set; }
 
         [Required]
-        public string? DetailAddress { get; set; }
+        public string DetailAddress { get; set; } = string.Empty;
 
         [Range(1, int.MaxValue)]
-        public int? CategoryID { get; set; }
+        public int CategoryID { get; set; }
 
         public int? SubCategoryId { get; set; }
 
+        [Required]
         [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$")]
-        public string? PhoneContact { get; set; }
+        public string PhoneContact { get; set; } = string.Empty;
 
         public List<IFormFile>? Images { get; set; }
         }

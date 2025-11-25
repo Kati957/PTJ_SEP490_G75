@@ -46,7 +46,7 @@ namespace PTJ_API.Controllers
             if (!User.IsInRole("Admin") && dto.JobSeekerId != currentUserId)
                 return Forbid("Bạn không thể nộp đơn thay người khác.");
 
-            var (success, error) = await _service.ApplyAsync(dto.JobSeekerId, dto.EmployerPostId, dto.Note);
+            var (success, error) = await _service.ApplyAsync(dto.JobSeekerId, dto.EmployerPostId, dto.Note, dto.Cvid);
             if (!success)
                 return BadRequest(new { success = false, message = error });
 
@@ -167,5 +167,29 @@ namespace PTJ_API.Controllers
 
             return Ok(new { success = true, data = statuses });
             }
+
+        // ================================
+        // TỔNG ĐƠN ỨNG TUYỂN (EMPLOYER + ADMIN)
+        // ================================
+        [Authorize(Roles = "Employer,Admin")]
+        [HttpGet("applications/summary")]
+        public async Task<IActionResult> GetSummary()
+            {
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ." });
+
+            int userId = int.Parse(sub.Value);
+            bool isAdmin = User.IsInRole("Admin");
+
+            var data = await _service.GetApplicationSummaryAsync(userId, isAdmin);
+
+            return Ok(new
+                {
+                success = true,
+                data
+                });
+            }
+
         }
     }
