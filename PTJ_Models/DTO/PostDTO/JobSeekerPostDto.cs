@@ -48,7 +48,6 @@ namespace PTJ_Models.DTO.PostDTO
         [Range(1, int.MaxValue, ErrorMessage = "CV được chọn không hợp lệ.")]
         public int? SelectedCvId { get; set; }
 
-        public List<IFormFile>? Images { get; set; }
         }
 
     public class JobSeekerPostUpdateDto
@@ -89,9 +88,6 @@ namespace PTJ_Models.DTO.PostDTO
 
         [Range(1, int.MaxValue, ErrorMessage = "CV được chọn không hợp lệ.")]
         public int? SelectedCvId { get; set; }
-
-        public List<IFormFile>? Images { get; set; }
-        public List<int>? DeleteImageIds { get; set; }
         }
     public class JobSeekerPostResultDto
     {

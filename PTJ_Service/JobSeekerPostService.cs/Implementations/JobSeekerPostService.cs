@@ -111,26 +111,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             await _repo.AddAsync(post);
             await _db.SaveChangesAsync();
 
-            //  UPLOAD ẢNH (nếu có)
-            // UPLOAD ẢNH
-            if (dto.Images != null && dto.Images.Any())
-                {
-                foreach (var file in dto.Images)
-                    {
-                    var (url, publicId) = await _imageService.UploadImageAsync(file, "JobSeekerPosts");
-                    _db.Images.Add(new Image
-                        {
-                        EntityType = "JobSeekerPost",
-                        EntityId = post.JobSeekerPostId,
-                        Url = url,
-                        PublicId = publicId,
-                        Format = file.ContentType,
-                        CreatedAt = DateTime.Now
-                        });
-                    }
-                await _db.SaveChangesAsync();
-                }
-
 
             var freshPost = await _db.JobSeekerPosts
                 .Include(x => x.User)
@@ -312,7 +292,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
-                    ImageUrls = images    
                     });
                 }
 
@@ -346,7 +325,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
-                    ImageUrls = images     
                     });
                 }
 
@@ -395,7 +373,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 CvId = post.SelectedCvId,
-                ImageUrls = images
             };
             }
 
@@ -455,41 +432,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             post.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(post);
-
-            // DELETE OLD IMAGES
-            if (dto.DeleteImageIds != null && dto.DeleteImageIds.Any())
-                {
-                var oldImages = await _db.Images
-                    .Where(i => dto.DeleteImageIds.Contains(i.ImageId)
-                             && i.EntityType == "JobSeekerPost"
-                             && i.EntityId == post.JobSeekerPostId)
-                    .ToListAsync();
-
-                foreach (var img in oldImages)
-                    {
-                    await _imageService.DeleteImageAsync(img.PublicId);
-                    _db.Images.Remove(img);
-                    }
-                }
-
-            // UPLOAD NEW IMAGES
-            if (dto.Images != null && dto.Images.Any())
-                {
-                foreach (var file in dto.Images)
-                    {
-                    var (url, publicId) = await _imageService.UploadImageAsync(file, "JobSeekerPosts");
-                    _db.Images.Add(new Image
-                        {
-                        EntityType = "JobSeekerPost",
-                        EntityId = post.JobSeekerPostId,
-                        Url = url,
-                        PublicId = publicId,
-                        Format = file.ContentType,
-                        CreatedAt = DateTime.Now
-                        });
-                    }
-                }
-
             await _db.SaveChangesAsync();
 
 
@@ -1005,8 +947,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
-
-                ImageUrls = images      
                 };
             }
 
