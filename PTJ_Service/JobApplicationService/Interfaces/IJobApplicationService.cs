@@ -11,6 +11,7 @@ namespace PTJ_Service.JobApplicationService.Interfaces
         Task<IEnumerable<JobApplicationResultDto>> GetCandidatesByPostAsync(int employerPostId);
         Task<IEnumerable<JobApplicationResultDto>> GetApplicationsBySeekerAsync(int jobSeekerId);
         Task<bool> UpdateStatusAsync(int submissionId, string status, string? note = null);
+        Task<ApplicationSummaryDto> GetApplicationSummaryAsync(int userId, bool isAdmin);
         }
 
     }

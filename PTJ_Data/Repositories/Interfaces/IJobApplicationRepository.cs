@@ -13,6 +13,7 @@ namespace PTJ_Data.Repositories.Interfaces
         Task<IEnumerable<JobSeekerSubmission>> GetByEmployerPostWithDetailAsync(int employerPostId);
         Task<IEnumerable<JobSeekerSubmission>> GetByJobSeekerWithPostDetailAsync(int jobSeekerId);
         Task UpdateAsync(JobSeekerSubmission entity);
+        Task<(int pending, int reviewed)> CountApplicationSummaryAsync(int? employerId);
         Task SaveChangesAsync();
         }
     }

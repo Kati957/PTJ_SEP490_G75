@@ -64,6 +64,32 @@ namespace PTJ_Data.Repositories.Implementations
                 .ToListAsync();
             }
 
+        public async Task<(int pending, int reviewed)> CountApplicationSummaryAsync(int? employerId)
+            {
+            var query = _db.JobSeekerSubmissions
+                .Include(x => x.EmployerPost)
+                .AsQueryable();
+
+            // Nếu có employerId → chỉ thống kê các post của employer đó
+            if (employerId.HasValue)
+                {
+                query = query.Where(x => x.EmployerPost.UserId == employerId.Value);
+                }
+
+            int pending = await query
+                .Where(x => x.Status == "Pending")
+                .CountAsync();
+
+            int reviewed = await query
+                .Where(x => x.Status == "Accepted"
+                         || x.Status == "Rejected"
+                         || x.Status == "Interviewing")
+                .CountAsync();
+
+            return (pending, reviewed);
+            }
+
+
 
         public async Task UpdateAsync(JobSeekerSubmission entity)
             {

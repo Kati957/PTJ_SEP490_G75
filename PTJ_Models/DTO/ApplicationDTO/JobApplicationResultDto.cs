@@ -48,4 +48,11 @@ namespace PTJ_Models.DTO.ApplicationDTO
         public string? PhoneContact { get; set; }
         public int EmployerId { get; set; }
         }
+
+    public class ApplicationSummaryDto
+        {
+        public int Pending { get; set; }
+        public int Reviewed { get; set; }
+        }
+
     }

@@ -167,5 +167,30 @@ namespace PTJ_API.Controllers
 
             return Ok(new { success = true, data = statuses });
             }
+
+        // ================================
+        // TỔNG ĐƠN ỨNG TUYỂN (EMPLOYER + ADMIN)
+        // ================================
+        [Authorize(Roles = "Employer,Admin")]
+        [HttpGet("applications/summary")]
+        public async Task<IActionResult> GetSummary()
+            {
+            // Lấy userId giống EmployerPostController
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            if (sub == null)
+                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+
+            int currentUserId = int.Parse(sub.Value);
+
+            bool isAdmin = User.IsInRole("Admin");
+
+            var data = await _service.GetApplicationSummaryAsync(currentUserId, isAdmin);
+
+            return Ok(new
+                {
+                success = true,
+                data
+                });
+            }
         }
     }
