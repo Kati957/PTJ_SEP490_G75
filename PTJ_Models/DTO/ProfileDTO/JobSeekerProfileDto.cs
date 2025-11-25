@@ -10,9 +10,9 @@ public class JobSeekerProfileDto
     public string? ProfilePicture { get; set; }
     public string? ContactPhone { get; set; }
 
-    [JsonIgnore] public int ProvinceId { get; set; }
-    [JsonIgnore] public int DistrictId { get; set; }
-    [JsonIgnore] public int WardId { get; set; }
+    public int ProvinceId { get; set; }
+    public int DistrictId { get; set; }
+    public int WardId { get; set; }
 
     public string Location { get; set; } = string.Empty;
     }

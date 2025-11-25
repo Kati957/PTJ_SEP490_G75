@@ -261,7 +261,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
             {
             var posts = await _db.EmployerPosts
-                .Include(p => p.User)
+                .Include(p => p.User).ThenInclude(User => User.EmployerProfile)
                 .Include(p => p.Category)
                 .Include(p => p.SubCategory)
                 .Where(p => p.Status == "Active" && p.User.IsActive == true)

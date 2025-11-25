@@ -46,5 +46,6 @@ namespace PTJ_Models.DTO.ApplicationDTO
         public decimal? Salary { get; set; }
         public string? WorkHours { get; set; }
         public string? PhoneContact { get; set; }
+        public int EmployerId { get; set; }
         }
     }

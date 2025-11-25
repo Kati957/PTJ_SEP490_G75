@@ -71,6 +71,7 @@ namespace PTJ_Services.Implementations
 
             var dto = new EmployerProfileDto
                 {
+                UserId = p.UserId,
                 DisplayName = p.DisplayName,
                 Description = p.Description,
                 AvatarUrl = p.AvatarUrl,
