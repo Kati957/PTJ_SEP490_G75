@@ -11,6 +11,9 @@ using PTJ_Service.ImageService;
 using PTJ_Service.LocationService;
 using System.Security.Cryptography;
 using System.Text;
+using PTJ_Service.Interfaces;
+using PTJ_Models.DTO.Notification;
+
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
 
 namespace PTJ_Service.EmployerPostService.Implementations
@@ -23,16 +26,18 @@ namespace PTJ_Service.EmployerPostService.Implementations
         private readonly OpenMapService _map;
         private readonly LocationDisplayService _locDisplay;
         private readonly IImageService _imageService;
+        private readonly INotificationService _noti;
 
 
-        public EmployerPostService(
-            IEmployerPostRepository repo,
-            JobMatchingDbContext db,
-            IAIService ai,
-            OpenMapService map,
-            LocationDisplayService locDisplay,
-            IImageService imageService
-            )
+    public EmployerPostService(
+    IEmployerPostRepository repo,
+    JobMatchingDbContext db,
+    IAIService ai,
+    OpenMapService map,
+    LocationDisplayService locDisplay,
+    IImageService imageService,
+    INotificationService noti   
+    )
         {
             _repo = repo;
             _db = db;
@@ -40,7 +45,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
             _map = map;
             _locDisplay = locDisplay;
             _imageService = imageService;
-            }
+            _noti = noti;             
+        }
 
         // CREATE
 
@@ -93,13 +99,42 @@ namespace PTJ_Service.EmployerPostService.Implementations
             };
 
 
-            // ✅ Lưu DB để lấy ID thật
+            //  Lưu DB để lấy ID thật
             await _repo.AddAsync(post);
             await _db.SaveChangesAsync();
 
-            // ===============================
-            // 🌟 UPLOAD ẢNH CHO BÀI ĐĂNG
-            // ===============================
+            //  GỬI THÔNG BÁO CHO CÁC JOBSEEKER ĐANG FOLLOW EMPLOYER NÀY
+            var employerId = post.UserId;
+
+            // Lấy thông tin employer
+            var employerUser = await _db.Users.FirstOrDefaultAsync(u => u.UserId == employerId);
+
+            // Lấy danh sách follower (JobSeeker đang follow)
+            var followers = await _db.EmployerFollowers
+                .Where(f => f.EmployerId == employerId && f.IsActive)
+                .Select(f => f.JobSeekerId)
+                .ToListAsync();
+
+            if (employerUser != null && followers.Any())
+            {
+                foreach (var jsId in followers)
+                {
+                    await _noti.SendAsync(new CreateNotificationDto
+                    {
+                        UserId = jsId,
+                        NotificationType = "FollowEmployerPosted",
+                        RelatedItemId = post.EmployerPostId,
+                        Data = new()
+            {
+                { "EmployerName", employerUser.Username },
+                { "PostTitle", post.Title ?? "" }
+            }
+                    });
+                }
+            }
+
+
+          //  UPLOAD ẢNH CHO BÀI ĐĂNG
             if (dto.Images != null && dto.Images.Any())
                 {
                 foreach (var file in dto.Images)
@@ -123,7 +158,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 }
 
 
-            // ✅ Load lại entity đầy đủ (có User và Category)
+            //  Load lại entity đầy đủ (có User và Category)
             var freshPost = await _db.EmployerPosts
                 .Include(x => x.User)
                 .Include(x => x.Category)
@@ -133,7 +168,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (freshPost == null)
                 throw new Exception("Không thể load lại bài đăng vừa tạo.");
 
-            // 🧠 Tạo embedding vector
+            //  Tạo embedding vector
             var category = await _db.Categories.FindAsync(freshPost.CategoryId);
 
             string embedText =
@@ -150,7 +185,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             );
 
 
-            // 📤 Upsert vector vào Pinecone
+            //  Upsert vector vào Pinecone
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
                 id: $"EmployerPost:{freshPost.EmployerPostId}",
@@ -164,7 +199,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     postId = freshPost.EmployerPostId
                 });
 
-            // 🔍 Truy vấn ứng viên tương tự (top 100)
+            //  Truy vấn ứng viên tương tự (top 100)
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
             if (!matches.Any())
@@ -187,19 +222,19 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 };
             }
 
-            // 🔢 Tính điểm và lọc ứng viên
+            //  Tính điểm và lọc ứng viên
             var scored = await ScoreAndFilterCandidatesAsync(
                         matches,
                         freshPost.CategoryId,
                         freshPost.SubCategoryId,
                         freshPost.Location ?? "",
                         freshPost.Title ?? "",
-                        freshPost.Requirements ?? ""    // thêm tham số 5
+                        freshPost.Requirements ?? ""    
                     );
 
 
 
-            // 💾 Lưu gợi ý top 5
+            //  Lưu gợi ý top 5
             var scoredWithCv = scored.Select(x => (x.Seeker, x.Score, x.CvId)).ToList();
 
             await UpsertSuggestionsAsync(
@@ -212,13 +247,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
 
 
-            // 🧾 Lấy danh sách ứng viên đã được shortlist
+            //  Lấy danh sách ứng viên đã được shortlist
             var savedIds = await _db.EmployerShortlistedCandidates
                 .Where(x => x.EmployerPostId == freshPost.EmployerPostId)
                 .Select(x => x.JobSeekerId)
                 .ToListAsync();
 
-            // 🎯 Chuẩn hóa danh sách ứng viên trả về
+            //  Chuẩn hóa danh sách ứng viên trả về
             var suggestions = scored
         .OrderByDescending(x => x.Score)
         .Take(5)
@@ -239,14 +274,14 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 x.Seeker.PhoneContact,
                 CategoryName = x.Seeker.Category?.Name,
                 SeekerName = x.Seeker.User.Username,
-                SelectedCvId = x.CvId,   //  <<<<<<<<<<<<<<<<<<<<<<  🔥 THÊM DÒNG NÀY
+                SelectedCvId = x.CvId,  
                 IsSaved = savedIds.Contains(x.Seeker.JobSeekerPostId)
             }
         })
     .ToList();
 
 
-            // ✅ Trả kết quả cuối cùng
+            //  Trả kết quả cuối cùng
             return new EmployerPostResultDto
             {
                 Post = await BuildCleanPostDto(freshPost),
@@ -266,7 +301,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 .Include(p => p.SubCategory)
                 .Where(p =>
                     p.Status == "Active" &&
-                    p.User.IsActive == true     // ⭐ Lọc tại đây
+                    p.User.IsActive == true     
                 )
                 .ToListAsync();
 
@@ -294,7 +329,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         {
             var posts = await _repo.GetByUserAsync(userId);
 
-            // ❗ Không bao giờ trả về bài Deleted
+            // Không bao giờ trả về bài Deleted
             posts = posts.Where(x => x.Status != "Deleted");
 
             return posts.Select(p => new EmployerPostDtoOut
