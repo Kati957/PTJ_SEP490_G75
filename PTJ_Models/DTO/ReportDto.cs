@@ -2,7 +2,7 @@
 
 namespace PTJ_Models.DTO.Report
 {
-    // --- Request DTO ---
+    //  Request DTO 
     public class CreateEmployerPostReportDto
     {
         public int EmployerPostId { get; set; }
@@ -15,7 +15,7 @@ namespace PTJ_Models.DTO.Report
         public string? Reason { get; set; }
     }
 
-    // --- Response / Listing DTO ---
+    //  Response / Listing DTO 
     public class MyReportDto
     {
         public int ReportId { get; set; }

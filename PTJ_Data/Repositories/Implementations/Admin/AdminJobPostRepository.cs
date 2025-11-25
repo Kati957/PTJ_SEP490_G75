@@ -10,9 +10,9 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminJobPostRepository(JobMatchingDbContext db) => _db = db;
 
-        // ============================
+
         // EMPLOYER POSTS
-        // ============================
+
 
         public async Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsPagedAsync(
             string? status, int? categoryId, string? keyword, int page, int pageSize)
@@ -109,7 +109,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return true;
         }
 
-        // ⭐⭐ NEW — Lấy EmployerPost để gửi Notification ⭐⭐
+        //  NEW — Lấy EmployerPost để gửi Notification 
         public async Task<EmployerPost?> GetEmployerPostByIdAsync(int id)
         {
             return await _db.EmployerPosts
@@ -117,9 +117,9 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 .FirstOrDefaultAsync(p => p.EmployerPostId == id);
         }
 
-        // ============================
+
         // JOB SEEKER POSTS
-        // ============================
+
 
         public async Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsPagedAsync(
             string? status, int? categoryId, string? keyword, int page, int pageSize)
@@ -215,7 +215,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return true;
         }
 
-        // ⭐⭐ NEW — Lấy JobSeekerPost để gửi Notification ⭐⭐
+        //  NEW — Lấy JobSeekerPost để gửi Notification 
         public async Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int id)
         {
             return await _db.JobSeekerPosts

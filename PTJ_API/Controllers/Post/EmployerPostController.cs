@@ -28,9 +28,9 @@ namespace PTJ_API.Controllers.Post
             });
         }
 
-        // =========================================================
+
         // CREATE
-        // =========================================================
+
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromForm] EmployerPostCreateDto dto)
             {
@@ -65,9 +65,9 @@ namespace PTJ_API.Controllers.Post
             return Ok(new { success = true, message = "Đăng bài tuyển dụng thành công.", data = result });
             }
 
-        // =========================================================
+
         // READ
-        // =========================================================
+
         [HttpGet("all")]
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
@@ -79,17 +79,17 @@ namespace PTJ_API.Controllers.Post
             bool isEmployer = User.IsInRole("Employer");
             bool isJobSeeker = User.IsInRole("JobSeeker") || currentUserId == null;
 
-            // ❌ Employer không được xem danh sách tất cả
+            //  Employer không được xem danh sách tất cả
             if (isEmployer)
                 return Forbid("Employer không có quyền xem tất cả bài đăng.");
 
             var result = await _service.GetAllAsync();
 
-            // ✔ JobSeeker chỉ xem Active
+            //  JobSeeker chỉ xem Active
             if (isJobSeeker)
                 result = result.Where(x => x.Status == "Active");
 
-            // ✔ Admin xem tất cả (không filter)
+            //  Admin xem tất cả (không filter)
             return Ok(new
                 {
                 success = true,
@@ -109,17 +109,17 @@ namespace PTJ_API.Controllers.Post
             bool isEmployer = User.IsInRole("Employer");
             bool isJobSeeker = User.IsInRole("JobSeeker") || currentUserId == null;
 
-            // ✔ Employer chỉ xem bài của chính họ
+            //  Employer chỉ xem bài của chính họ
             if (isEmployer && currentUserId != userId)
                 return Forbid("Employer không thể xem bài đăng của người khác.");
 
             var result = await _service.GetByUserAsync(userId);
 
-            // ✔ JobSeeker CHỈ thấy bài Active
+            //  JobSeeker CHỈ thấy bài Active
             if (isJobSeeker)
                 result = result.Where(x => x.Status == "Active");
 
-            // ✔ Admin xem tất cả
+            //  Admin xem tất cả
             return Ok(new
                 {
                 success = true,
@@ -145,11 +145,11 @@ namespace PTJ_API.Controllers.Post
             bool isEmployer = User.IsInRole("Employer");
             bool isJobSeeker = User.IsInRole("JobSeeker") || currentUserId == null;
 
-            // ✔ Employer chỉ xem bài của họ
+            //  Employer chỉ xem bài của họ
             if (isEmployer && post.EmployerId != currentUserId)
                 return Forbid("Employer không thể xem bài đăng của người khác.");
 
-            // ✔ JobSeeker chỉ xem bài Active
+            //  JobSeeker chỉ xem bài Active
             if (isJobSeeker && post.Status != "Active")
                 return NotFound(new { success = false, message = "Không tìm thấy bài đăng." });
 
@@ -160,9 +160,9 @@ namespace PTJ_API.Controllers.Post
 
 
 
-        // =========================================================
+
         // UPDATE
-        // =========================================================
+
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromForm] EmployerPostUpdateDto dto)
             {
@@ -195,9 +195,9 @@ namespace PTJ_API.Controllers.Post
             return Ok(new { success = true, message = "Cập nhật thành công.", data = result });
             }
 
-        // =========================================================
+
         // DELETE
-        // =========================================================
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -217,9 +217,9 @@ namespace PTJ_API.Controllers.Post
             return Ok(new { success, message = success ? "Đã xóa bài đăng." : "Không thể xóa bài đăng." });
         }
 
-        // =========================================================
+
         // AI SUGGESTIONS + SHORTLIST
-        // =========================================================
+
         [HttpPost("refresh/{postId}")]
         public async Task<IActionResult> Refresh(int postId)
         {

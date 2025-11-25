@@ -14,7 +14,7 @@ namespace PTJ_Service.Admin.Interfaces
 
         Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id);
 
-        //  NEW: Admin nhập lý do + truyền adminId
+        //   Admin nhập lý do + truyền adminId
         Task ToggleEmployerPostBlockedAsync(int id, string? reason, int adminId);
 
 
@@ -28,7 +28,7 @@ namespace PTJ_Service.Admin.Interfaces
 
         Task<AdminJobSeekerPostDetailDto?> GetJobSeekerPostDetailAsync(int id);
 
-        // NEW: Admin nhập lý do + truyền adminId
+        //  Admin nhập lý do + truyền adminId
         Task ToggleJobSeekerPostArchivedAsync(int id, string? reason, int adminId);
     }
 }

@@ -12,7 +12,7 @@ namespace PTJ_Models.DTO.ApplicationDTO
         [Range(1, int.MaxValue, ErrorMessage = "EmployerPostId không hợp lệ.")]
         public int EmployerPostId { get; set; }
 
-        // ✅ Thêm Cvid để chọn CV khi ứng tuyển
+        //  Thêm Cvid để chọn CV khi ứng tuyển
         [Range(1, int.MaxValue, ErrorMessage = "CV không hợp lệ.")]
         public int? Cvid { get; set; }
 

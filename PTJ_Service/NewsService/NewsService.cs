@@ -15,9 +15,9 @@ namespace PTJ_Service.NewsService
         public NewsService(JobMatchingDbContext db) => _db = db;
 
 
-        // =========================================================
+
         // 1️⃣ LẤY DANH SÁCH NEWS (PHÂN TRANG + TÌM KIẾM)
-        // =========================================================
+
         public async Task<(List<NewsReadDto> Data, int Total)> GetPagedAsync(
             string? keyword, string? category, int page, int pageSize, string sortBy, bool desc)
             {
@@ -38,7 +38,7 @@ namespace PTJ_Service.NewsService
 
             var total = await q.CountAsync();
 
-            // ⭐ Lấy ảnh bằng Image table (Không dùng Include)
+            //  Lấy ảnh bằng Image table (Không dùng Include)
             var data = await q
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -63,9 +63,9 @@ namespace PTJ_Service.NewsService
             }
 
 
-        // =========================================================
+
         // 2️⃣ LẤY CHI TIẾT NEWS
-        // =========================================================
+
         public async Task<NewsReadDto?> GetDetailAsync(int id)
             {
             return await _db.News
@@ -77,7 +77,7 @@ namespace PTJ_Service.NewsService
                     Content = n.Content,
                     ImageUrl = n.ImageUrl,
 
-                    // ⭐ Lấy tất cả ảnh của News
+                    //  Lấy tất cả ảnh của News
                     GalleryUrls = _db.Images
                         .Where(i => i.EntityType == "News" && i.EntityId == n.NewsId)
                         .Select(i => i.Url)

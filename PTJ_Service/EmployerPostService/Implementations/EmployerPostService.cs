@@ -70,7 +70,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 fullLocation = $"{dto.DetailAddress}, {fullLocation}";
                 }
 
-            // 🧱 Tạo bài đăng mới
+            //  Tạo bài đăng mới
             var post = new EmployerPostModel
                 {
                 UserId = dto.UserID,
@@ -85,7 +85,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Location = fullLocation,
 
-                // ⭐ LOCATION ID — thêm vào DB
+                //  LOCATION ID — thêm vào DB
                 ProvinceId = dto.ProvinceId,
                 DistrictId = dto.DistrictId,
                 WardId = dto.WardId,
@@ -367,7 +367,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     EmployerName = p.User.Username,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
-                    ImageUrls = images   // ⭐⭐ THÊM ẢNH VÀO DTO
+                    ImageUrls = images   //  THÊM ẢNH VÀO DTO
                     });
                 }
 
@@ -380,11 +380,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (post == null)
                 return null;
 
-            // ❌ Nếu bài đăng bị Blocked → không trả về
+            //  Nếu bài đăng bị Blocked → không trả về
             if (post.Status == "Blocked" || post.Status == "Inactive" || post.Status == "Deleted")
                 return null;
 
-            // ❌ Nếu employer bị khóa → không trả về
+            //  Nếu employer bị khóa → không trả về
             if (post.User == null || post.User.IsActive == false)
                 return null;
 
@@ -439,9 +439,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 fullLocation = $"{dto.DetailAddress}, {fullLocation}";
                 }
 
-            // ===============================
-            // 🌟 UPDATE THÔNG TIN BÀI VIẾT
-            // ===============================
+
+            //  UPDATE THÔNG TIN BÀI VIẾT
+
             post.Title = dto.Title;
             post.Description = dto.Description;
             post.Salary = (!string.IsNullOrEmpty(dto.SalaryText) &&
@@ -462,9 +462,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             await _repo.UpdateAsync(post);
 
-            // ===============================
-            // 🌟 XOÁ ẢNH CŨ
-            // ===============================
+
+            //  XOÁ ẢNH CŨ
+
             if (dto.DeleteImageIds != null && dto.DeleteImageIds.Any())
                 {
                 var imagesToDelete = await _db.Images
@@ -480,9 +480,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     }
                 }
 
-            // ===============================
-            // 🌟 UPLOAD ẢNH MỚI
-            // ===============================
+
+            //  UPLOAD ẢNH MỚI
+
             if (dto.Images != null && dto.Images.Any())
                 {
                 foreach (var file in dto.Images)
@@ -505,9 +505,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             await _db.SaveChangesAsync();
 
-            // ===============================
-            // 🌟 UPDATE EMBEDDING
-            // ===============================
+
+            //  UPDATE EMBEDDING
+
             var category = await _db.Categories.FindAsync(post.CategoryId);
 
             string embedText =
@@ -545,9 +545,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             {
             await _repo.SoftDeleteAsync(id);
 
-            // ===============================
-            // 🌟 XOÁ ẢNH LIÊN QUAN
-            // ===============================
+
+            //  XOÁ ẢNH LIÊN QUAN
+
             var images = await _db.Images
                 .Where(i => i.EntityType == "EmployerPost" && i.EntityId == id)
                 .ToListAsync();
@@ -560,9 +560,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (images.Any())
                 _db.Images.RemoveRange(images);
 
-            // ===============================
-            // 🌟 XOÁ GỢI Ý AI
-            // ===============================
+
+            //  XOÁ GỢI Ý AI
+
             var targets = _db.AiMatchSuggestions
                 .Where(s => s.SourceType == "EmployerPost" && s.SourceId == id
                          || s.TargetType == "EmployerPost" && s.TargetId == id);
@@ -582,7 +582,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (post == null)
                 throw new Exception("Bài đăng không tồn tại.");
 
-            // 🔄 Tạo embedding lại
+            //  Tạo embedding lại
             var category = await _db.Categories.FindAsync(post.CategoryId);
 
             string embedText =
@@ -600,7 +600,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             );
 
 
-            // 🔄 Upsert vector vào Pinecone
+            //  Upsert vector vào Pinecone
             await _ai.UpsertVectorAsync(
                 ns: "employer_posts",
                 id: $"EmployerPost:{post.EmployerPostId}",
@@ -614,7 +614,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     postId = post.EmployerPostId
                     });
 
-            // 🔍 Query ứng viên tương tự
+            //  Query ứng viên tương tự
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
             if (!matches.Any())
@@ -626,7 +626,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     };
                 }
 
-            // 🧠 Chấm điểm và lọc ứng viên
+            //  Chấm điểm và lọc ứng viên
             var scored = await ScoreAndFilterCandidatesAsync(
                 matches,
                 post.CategoryId,
@@ -636,8 +636,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 post.Requirements ?? ""
             );
 
-            // 🆕 🆕 🆕---------------------------------------------
-            // 📌 LƯU LẠI GỢI Ý TOP 5 TRONG DB (FIX CHÍNH)
+            
+            //  LƯU LẠI GỢI Ý TOP 5 TRONG DB (FIX CHÍNH)
             await UpsertSuggestionsAsync(
                 "EmployerPost",
                 post.EmployerPostId,
@@ -645,7 +645,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 scored,
                 keepTop: 5
             );
-            // 🆕 🆕 🆕---------------------------------------------
+            
 
             // Danh sách ID đã save
             var savedIds = await _db.EmployerShortlistedCandidates
@@ -692,9 +692,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
         // SCORING
 
-        // ================================================
-        // ⚙️ SCORING LOGIC (Category filter + Distance ≤100km + Hybrid score)
-        // ================================================
+
+        //  SCORING LOGIC (Category filter + Distance ≤100km + Hybrid score)
+
         private async Task<List<(JobSeekerPost Seeker, double Score, int? CvId)>>
 ScoreAndFilterCandidatesAsync(
     List<(string Id, double Score)> matches,
@@ -735,7 +735,7 @@ ScoreAndFilterCandidatesAsync(
                 if (!await IsWithinDistanceAsync(employerLocation, seeker.PreferredLocation))
                     continue;
 
-                // 🎯 ONLY 1 SCORE: embedding score
+                //  ONLY 1 SCORE: embedding score
                 double finalScore = m.Score;
 
                 result.Add((seeker, finalScore, seeker.SelectedCvId));
@@ -760,7 +760,7 @@ ScoreAndFilterCandidatesAsync(
                             employerCoord.Value.lat, employerCoord.Value.lng,
                             seekerCoord.Value.lat, seekerCoord.Value.lng);
 
-                        return distanceKm <= 100; // ❗ Lọc, không tính điểm
+                        return distanceKm <= 100; //  Lọc, không tính điểm
                         }
                     }
                 }
@@ -857,7 +857,7 @@ ScoreAndFilterCandidatesAsync(
 
             var rawList = await query.ToListAsync();
 
-            // ✔ Xử lý SelectedCvId thủ công sau khi đã có dữ liệu từ SQL
+            //  Xử lý SelectedCvId thủ công sau khi đã có dữ liệu từ SQL
             var result = rawList.Select(x => new EmployerPostSuggestionDto
                 {
                 JobSeekerPostId = x.Post.JobSeekerPostId,
@@ -887,7 +887,7 @@ ScoreAndFilterCandidatesAsync(
             return result;
             }
 
-        // ✔ Hỗ trợ tách CV=xxx
+        //  Hỗ trợ tách CV=xxx
         private int? ParseSelectedCvId(string? reason)
             {
             if (string.IsNullOrEmpty(reason))
@@ -1015,7 +1015,7 @@ ScoreAndFilterCandidatesAsync(
 
                 Location = post.Location,
 
-                // ⭐ TRẢ ĐÚNG VỀ CLIENT
+                //  TRẢ ĐÚNG VỀ CLIENT
                 //ProvinceId = post.ProvinceId,
                 //DistrictId = post.DistrictId,
                 //WardId = post.WardId,

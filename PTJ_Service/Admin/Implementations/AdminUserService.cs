@@ -48,9 +48,9 @@ namespace PTJ_Service.Admin.Implementations
             return dto;
         }
 
-        // ============================
-        // ⭐ Toggle Active / Inactive
-        // ============================
+        
+        //  Toggle Active / Inactive
+        
         public async Task ToggleActiveAsync(int id)
         {
             var user = await _repo.GetUserEntityAsync(id)
@@ -74,9 +74,9 @@ namespace PTJ_Service.Admin.Implementations
             await HandleUserDeactivationAsync(user, "Tài khoản của bạn đã bị khóa bởi quản trị viên.");
         }
 
-        // =======================================================
-        //  ⭐ API BAN USER THỦ CÔNG
-        // =======================================================
+        
+        //   API BAN USER THỦ CÔNG
+        
         public async Task<bool> BanUserAsync(int userId, string reason, int adminId)
         {
             var user = await _repo.GetUserEntityAsync(userId)
@@ -91,9 +91,9 @@ namespace PTJ_Service.Admin.Implementations
             return true;
         }
 
-        // =======================================================
-        //  🔧 RESTORE POSTS KHI USER ĐƯỢC MỞ KHÓA
-        // =======================================================
+        
+        //  RESTORE POSTS KHI USER ĐƯỢC MỞ KHÓA
+        
         private async Task RestorePostsAsync(User user)
         {
             var roleName = user.Roles
@@ -135,9 +135,9 @@ namespace PTJ_Service.Admin.Implementations
             }
         }
 
-        // =======================================================
-        //  🔧 KHÓA ACCOUNT: Block bài + Xóa AI + Hủy đơn...
-        // =======================================================
+        
+        //   KHÓA ACCOUNT: Block bài + Xóa AI + Hủy đơn...
+        
         private async Task HandleUserDeactivationAsync(User user, string? reason)
         {
             var roleName = user.Roles
@@ -146,7 +146,7 @@ namespace PTJ_Service.Admin.Implementations
 
             int userId = user.UserId;
 
-            // ================= EMPLOYER =================
+            //  EMPLOYER 
             if (roleName == "employer")
             {
                 var posts = await _db.EmployerPosts
@@ -193,7 +193,7 @@ namespace PTJ_Service.Admin.Implementations
                 await _db.SaveChangesAsync();
             }
 
-            // ================= JOB SEEKER =================
+            //  JOB SEEKER 
             if (roleName == "jobseeker")
             {
                 var posts = await _db.JobSeekerPosts
@@ -238,7 +238,7 @@ namespace PTJ_Service.Admin.Implementations
                 }
             }
 
-            // ======= NOTIFICATION TO USER ======
+            //  NOTIFICATION TO USER 
             var data = new Dictionary<string, string>();
             if (!string.IsNullOrWhiteSpace(reason))
                 data["Reason"] = reason;

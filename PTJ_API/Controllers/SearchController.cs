@@ -30,7 +30,7 @@ namespace PTJ_API.Controllers
             _categoryService = categoryService;
             }
 
-        // 🔹 Employer tìm JobSeeker
+        //  Employer tìm JobSeeker
         [HttpPost("jobseekers")]
         [Authorize(Roles = "Employer")]
         public async Task<IActionResult> SearchJobSeekers([FromBody] EmployerSearchFilterDto filter)
@@ -39,7 +39,7 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // 🔹 JobSeeker tìm EmployerPost
+        //  JobSeeker tìm EmployerPost
         [HttpPost("employerposts")]
         [Authorize(Roles = "JobSeeker")]
         public async Task<IActionResult> SearchEmployerPosts([FromBody] JobSeekerSearchFilterDto filter)
@@ -48,7 +48,7 @@ namespace PTJ_API.Controllers
             return Ok(result);
             }
 
-        // 🔹 Suggest API → cần HTTP method
+        //  Suggest API → cần HTTP method
         [HttpGet("suggest")]
         [AllowAnonymous]
         public async Task<IActionResult> Suggest(string keyword)
@@ -59,7 +59,7 @@ namespace PTJ_API.Controllers
 
 
 
-        // 🔹 Từ khóa phổ biến — lấy role tự động
+        //  Từ khóa phổ biến — lấy role tự động
         [HttpGet("popular")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPopularKeywords()

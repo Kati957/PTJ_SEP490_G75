@@ -21,7 +21,7 @@ namespace PTJ_Service.Admin.Interfaces
 
         Task ToggleActiveAsync(int id);
 
-        // ⭐ NEW: Khóa user + gửi thông báo có lý do (Admin nhập tay)
+        //  Khóa user + gửi thông báo có lý do (Admin nhập tay)
         Task<bool> BanUserAsync(int userId, string reason, int adminId);
 
     }

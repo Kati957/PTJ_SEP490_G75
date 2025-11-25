@@ -12,7 +12,7 @@
         public class ReportService : IReportService
         {
             private readonly IReportRepository _repo;
-            private readonly INotificationService _noti;   // 🔔 ADD NOTIFICATION SERVICE
+            private readonly INotificationService _noti;   //  ADD NOTIFICATION SERVICE
 
             public ReportService(IReportRepository repo, INotificationService noti)
             {
@@ -20,9 +20,9 @@
                 _noti = noti;
             }
 
-            // -------------------------------------------------------------
-            // 🔥 1. REPORT EMPLOYER POST
-            // -------------------------------------------------------------
+
+            //  1. REPORT EMPLOYER POST
+
             public async Task<int> ReportEmployerPostAsync(int reporterId, CreateEmployerPostReportDto dto)
             {
                 if (dto.EmployerPostId <= 0)
@@ -55,7 +55,7 @@
                 // Lấy tiêu đề bài đăng để gửi Notification
                 var postTitle = await _repo.GetEmployerPostTitleAsync(dto.EmployerPostId);
 
-                // 🔔 GỬI NOTIFICATION CHO ADMIN
+                //  GỬI NOTIFICATION CHO ADMIN
                 var adminId = await _repo.GetAdminUserIdAsync();
                 if (adminId > 0)
                 {
@@ -74,9 +74,9 @@
                 return report.PostReportId;
             }
 
-            // -------------------------------------------------------------
-            // 🔥 2. REPORT JOBSEEKER POST
-            // -------------------------------------------------------------
+
+            // 2. REPORT JOBSEEKER POST
+
             public async Task<int> ReportJobSeekerPostAsync(int reporterId, CreateJobSeekerPostReportDto dto)
             {
                 if (dto.JobSeekerPostId <= 0)
@@ -107,7 +107,7 @@
                 // Lấy tiêu đề bài đăng
                 var postTitle = await _repo.GetJobSeekerPostTitleAsync(dto.JobSeekerPostId);
 
-                // 🔔 GỬI THÔNG BÁO CHO ADMIN
+                //  GỬI THÔNG BÁO CHO ADMIN
                 var adminId = await _repo.GetAdminUserIdAsync();
                 if (adminId > 0)
                 {
@@ -126,9 +126,9 @@
                 return report.PostReportId;
             }
 
-            // -------------------------------------------------------------
+
             // 3️⃣ GET MY REPORTS
-            // -------------------------------------------------------------
+
             public Task<IEnumerable<MyReportDto>> GetMyReportsAsync(int reporterId)
                 => _repo.GetMyReportsAsync(reporterId);
         }

@@ -27,9 +27,9 @@ namespace YourProject.Controllers
             if (provinceId <= 0)
                 return BadRequest("ProvinceId không hợp lệ");
 
-            // ================================
+
             // 1️⃣ KIỂM TRA USER ĐĂNG NHẬP?
-            // ================================
+
             int? userId = null;
             if (User.Identity != null && User.Identity.IsAuthenticated)
                 {
@@ -57,9 +57,9 @@ namespace YourProject.Controllers
                     userRole = "JobSeeker"; // đúng tên trong DB
                 }
 
-            // ================================
+
             // 2️⃣ ADMIN → Trả về toàn bộ dữ liệu trong tỉnh
-            // ================================
+
             if (userRole == "Admin")
                 {
                 var employers = await _db.EmployerPosts
@@ -77,9 +77,9 @@ namespace YourProject.Controllers
                     });
                 }
 
-            // ================================
+
             // 3️⃣ JOB SEEKER (hoặc KHÁCH) → Xem EmployerPosts
-            // ================================
+
             if (userRole == "JobSeeker")
                 {
                 var employers = await _db.EmployerPosts
@@ -89,9 +89,9 @@ namespace YourProject.Controllers
                 return Ok(employers);
                 }
 
-            // ================================
+
             // 4️⃣ EMPLOYER → Xem JobSeekerPosts
-            // ================================
+
             if (userRole == "Employer")
                 {
                 var seekers = await _db.JobSeekerPosts

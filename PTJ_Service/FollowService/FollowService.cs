@@ -46,7 +46,7 @@ namespace PTJ_Service.FollowService
 
             await _context.SaveChangesAsync();
 
-            // 🔔 Gửi noti cho Employer khi có follower mới
+            //  Gửi noti cho Employer khi có follower mới
             if (isNewFollow)
             {
                 var seeker = await _context.Users

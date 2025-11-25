@@ -25,7 +25,7 @@ namespace PTJ_API.Attributes
             var verifiedClaim = user.FindFirst("IsVerified")?.Value;
 
             if (verifiedClaim == "True" || verifiedClaim == "true")
-                return; // OK, đã xác thực
+                return; 
 
             // Nếu token không chứa claim → fallback kiểm tra DB
             var db = context.HttpContext.RequestServices.GetRequiredService<JobMatchingDbContext>();
@@ -35,7 +35,7 @@ namespace PTJ_API.Attributes
             {
                 var dbUser = db.Users.FirstOrDefault(u => u.UserId == userId);
                 if (dbUser != null && dbUser.IsVerified)
-                    return; // OK
+                    return; 
             }
 
             //  Chưa xác thực email → chặn

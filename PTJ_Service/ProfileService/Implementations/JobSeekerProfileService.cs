@@ -39,7 +39,7 @@ namespace PTJ_Services.Implementations
             ));
             }
 
-        // 🟢 Lấy profile của chính user đăng nhập
+        //  Lấy profile của chính user đăng nhập
         public async Task<JobSeekerProfileDto?> GetProfileAsync(int userId)
             {
             JobSeekerProfile? p = await _repo.GetByUserIdAsync(userId);
@@ -64,7 +64,7 @@ namespace PTJ_Services.Implementations
             return dto;
             }
 
-        // 🌐 Xem public profile theo userId
+        //  Xem public profile theo userId
         public async Task<JobSeekerProfileDto?> GetProfileByUserIdAsync(int targetUserId)
             {
             JobSeekerProfile? p = await _repo.GetByUserIdAsync(targetUserId);
@@ -89,7 +89,7 @@ namespace PTJ_Services.Implementations
             return dto;
             }
 
-        // ✏️ Cập nhật thông tin + upload ảnh
+        //  Cập nhật thông tin + upload ảnh
         public async Task<bool> UpdateProfileAsync(int userId, JobSeekerProfileUpdateDto dto)
             {
             var existing = await _repo.GetByUserIdAsync(userId);
@@ -125,7 +125,7 @@ namespace PTJ_Services.Implementations
             return true;
             }
 
-        // ❌ Gỡ ảnh (về mặc định)
+        //  Gỡ ảnh (về mặc định)
         public async Task<bool> DeleteProfilePictureAsync(int userId)
             {
             var existing = await _repo.GetByUserIdAsync(userId);
@@ -139,7 +139,7 @@ namespace PTJ_Services.Implementations
             return true;
             }
 
-        // 🔁 Helper: build LocationDto từ Id bằng VnPostLocationService
+        //  Helper: build LocationDto từ Id bằng VnPostLocationService
         private async Task<string> BuildLocationStringAsync(JobSeekerProfile p)
             {
             var provinces = await _locationService.GetProvincesAsync();

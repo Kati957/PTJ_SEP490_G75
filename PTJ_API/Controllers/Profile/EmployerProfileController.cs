@@ -23,7 +23,7 @@ namespace PTJ_API.Controllers
             _jobSeekerService = jobSeekerService;
             }
 
-        // 🧑‍💼 Lấy profile của chính Employer đang đăng nhập
+        //  Lấy profile của chính Employer đang đăng nhập
         [HttpGet("me")]
         public async Task<IActionResult> GetMyProfile()
             {
@@ -36,7 +36,7 @@ namespace PTJ_API.Controllers
             return Ok(dto);
             }
 
-        // 🌐 Xem public profile (Employer hoặc JobSeeker)
+        //  Xem public profile (Employer hoặc JobSeeker)
         [HttpGet("public/{userId:int}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetProfileByUserId(int userId)
@@ -55,7 +55,7 @@ namespace PTJ_API.Controllers
                     employerDto.Website,
                     employerDto.ContactPhone,
                     employerDto.ContactEmail,
-                    Location = employerDto.Location // ⚡ TRẢ TÊN ĐỊA ĐIỂM
+                    Location = employerDto.Location //  TRẢ TÊN ĐỊA ĐIỂM
                     });
                 }
 
@@ -70,7 +70,7 @@ namespace PTJ_API.Controllers
                     AvatarUrl = jobSeekerDto.ProfilePicture,
                     jobSeekerDto.Gender,
                     jobSeekerDto.BirthYear,
-                    Location = jobSeekerDto.Location, // ⚡ TRẢ TÊN ĐỊA ĐIỂM
+                    Location = jobSeekerDto.Location, //  TRẢ TÊN ĐỊA ĐIỂM
                     jobSeekerDto.ContactPhone
                     });
                 }
@@ -78,7 +78,7 @@ namespace PTJ_API.Controllers
             return NotFound("Không tìm thấy profile.");
             }
 
-        // ✏️ Cập nhật thông tin (chỉ Employer/Admin)
+        // Cập nhật thông tin (chỉ Employer/Admin)
         [HttpPut("update")]
         [Authorize(Roles = "Employer,Admin")]
         [Consumes("multipart/form-data")]
@@ -93,7 +93,7 @@ namespace PTJ_API.Controllers
             return Ok("Cập nhật profile thành công.");
             }
 
-        // ❌ Xóa avatar (trả về ảnh mặc định)
+        //  Xóa avatar (trả về ảnh mặc định)
         [HttpDelete("avatar")]
         [Authorize(Roles = "Employer,Admin")]
         public async Task<IActionResult> DeleteAvatar()

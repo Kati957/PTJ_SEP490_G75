@@ -31,11 +31,11 @@ namespace PTJ_Data.Repositories.Implementations.Ratings
 
         public async Task<decimal> GetAverageRatingByRateeAsync(int rateeId)
         {
-            // ✅ Nếu không có rating thì trả về 0
+            //  Nếu không có rating thì trả về 0
             if (!await _context.Ratings.AnyAsync(r => r.RateeId == rateeId))
                 return 0;
 
-            // ✅ Fix decimal? → decimal bằng ?? 0
+            //  Fix decimal? → decimal bằng ?? 0
             var avg = await _context.Ratings
                 .Where(r => r.RateeId == rateeId)
                 .AverageAsync(r => r.RatingValue ?? 0);

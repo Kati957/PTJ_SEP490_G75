@@ -1,6 +1,6 @@
 ﻿namespace PTJ_Service.LocationService.Models
     {
-    // ----- PROVINCE -----
+    //  PROVINCE 
     public class VnPostProvince
         {
         public int code { get; set; }
@@ -15,7 +15,7 @@
         public List<VnPostDistrict> districts { get; set; }
         }
 
-    // ----- DISTRICT -----
+    //  DISTRICT 
     public class VnPostDistrict
         {
         public int code { get; set; }
@@ -29,7 +29,7 @@
         public List<VnPostWard> wards { get; set; }
         }
 
-    // ----- WARD -----
+    //  WARD 
     public class VnPostWard
         {
         public int code { get; set; }

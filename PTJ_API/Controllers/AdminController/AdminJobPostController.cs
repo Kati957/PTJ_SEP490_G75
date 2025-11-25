@@ -22,9 +22,8 @@ namespace PTJ_API.Controllers.Admin
                 throw new Exception("Token missing userId")
             );
 
-        // ================================
         // EMPLOYER POSTS
-        // ================================
+       
 
         [HttpGet("employer")]
         public async Task<IActionResult> GetEmployerPosts(
@@ -50,9 +49,9 @@ namespace PTJ_API.Controllers.Admin
             return Ok(new { message = "Employer post status toggled." });
         }
 
-        // ================================
+        
         // JOB SEEKER POSTS
-        // ================================
+        
 
         [HttpGet("jobseeker")]
         public async Task<IActionResult> GetJobSeekerPosts(

@@ -53,9 +53,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = "Ứng tuyển thành công." });
             }
 
-        // =========================================================
+       
         // ỨNG VIÊN RÚT ĐƠN
-        // =========================================================
+       
         [Authorize(Roles = "JobSeeker,Admin")]
         [HttpPut("withdraw")]
         public async Task<IActionResult> Withdraw(int jobSeekerId, int employerPostId)
@@ -79,9 +79,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = "Rút đơn thành công." });
             }
 
-        // =========================================================
+       
         // EMPLOYER XEM DANH SÁCH ỨNG VIÊN
-        // =========================================================
+       
         [Authorize(Roles = "Employer,Admin")]
         [HttpGet("by-post/{employerPostId}")]
         public async Task<ActionResult<IEnumerable<JobApplicationResultDto>>> GetByPost(int employerPostId)
@@ -93,9 +93,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, total = result.Count(), data = result });
             }
 
-        // =========================================================
+       
         // JOBSEEKER XEM ĐƠN ĐÃ ỨNG TUYỂN CỦA CHÍNH HỌ
-        // =========================================================
+       
         [Authorize(Roles = "JobSeeker,Admin")]
         [HttpGet("by-seeker/{jobSeekerId}")]
         public async Task<IActionResult> GetBySeeker(int jobSeekerId)
@@ -119,9 +119,9 @@ namespace PTJ_API.Controllers
                 });
             }
 
-        // =========================================================
+       
         // EMPLOYER CẬP NHẬT TRẠNG THÁI ỨNG VIÊN
-        // =========================================================
+       
         [Authorize(Roles = "Employer,Admin")]
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] JobApplicationUpdateDto dto)
@@ -149,9 +149,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = $"Cập nhật trạng thái thành công: {dto.Status}" });
             }
 
-        // =========================================================
+       
         // DANH SÁCH TRẠNG THÁI HỢP LỆ
-        // =========================================================
+       
         [HttpGet("valid-statuses")]
         public IActionResult GetValidStatuses()
             {
@@ -168,9 +168,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, data = statuses });
             }
 
-        // ================================
+        
         // TỔNG ĐƠN ỨNG TUYỂN (EMPLOYER + ADMIN)
-        // ================================
+        
         [Authorize(Roles = "Employer,Admin")]
         [HttpGet("applications/summary")]
         public async Task<IActionResult> GetSummary()
