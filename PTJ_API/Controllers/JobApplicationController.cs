@@ -175,16 +175,14 @@ namespace PTJ_API.Controllers
         [HttpGet("applications/summary")]
         public async Task<IActionResult> GetSummary()
             {
-            // Lấy userId giống EmployerPostController
-            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier);
             if (sub == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ hoặc thiếu thông tin người dùng." });
+                return Unauthorized(new { success = false, message = "Token không hợp lệ." });
 
-            int currentUserId = int.Parse(sub.Value);
-
+            int userId = int.Parse(sub.Value);
             bool isAdmin = User.IsInRole("Admin");
 
-            var data = await _service.GetApplicationSummaryAsync(currentUserId, isAdmin);
+            var data = await _service.GetApplicationSummaryAsync(userId, isAdmin);
 
             return Ok(new
                 {
@@ -192,5 +190,6 @@ namespace PTJ_API.Controllers
                 data
                 });
             }
+
         }
     }

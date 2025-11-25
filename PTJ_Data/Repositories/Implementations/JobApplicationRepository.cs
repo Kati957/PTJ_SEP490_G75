@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models;
+using PTJ_Models.DTO.ApplicationDTO;
 using PTJ_Models.Models;
 using System.Collections.Generic;
 using System.Linq;
@@ -64,31 +65,53 @@ namespace PTJ_Data.Repositories.Implementations
                 .ToListAsync();
             }
 
-        public async Task<(int pending, int reviewed)> CountApplicationSummaryAsync(int? employerId)
+        public async Task<ApplicationSummaryDto> GetFullSummaryAsync(int? employerId)
             {
             var query = _db.JobSeekerSubmissions
+                .Include(x => x.JobSeeker)
                 .Include(x => x.EmployerPost)
                 .AsQueryable();
 
-            // Nếu có employerId → chỉ thống kê các post của employer đó
             if (employerId.HasValue)
-                {
                 query = query.Where(x => x.EmployerPost.UserId == employerId.Value);
-                }
 
-            int pending = await query
+            var list = await query.ToListAsync();
+
+            var pending = list
                 .Where(x => x.Status == "Pending")
-                .CountAsync();
+                .Select(x => new ApplicationSimpleDto
+                    {
+                    SubmissionId = x.SubmissionId,
+                    JobSeekerId = x.JobSeekerId,
+                    Username = x.JobSeeker.Username,
+                    PostId = x.EmployerPostId,
+                    PostTitle = x.EmployerPost.Title,
+                    Status = x.Status,
+                    AppliedAt = x.AppliedAt
+                    }).ToList();
 
-            int reviewed = await query
-                .Where(x => x.Status == "Accepted"
-                         || x.Status == "Rejected"
-                         || x.Status == "Interviewing")
-                .CountAsync();
+            var reviewed = list
+                .Where(x => x.Status == "Accepted" || x.Status == "Rejected" || x.Status == "Interviewing")
+                .Select(x => new ApplicationSimpleDto
+                    {
+                    SubmissionId = x.SubmissionId,
+                    JobSeekerId = x.JobSeekerId,
+                    Username = x.JobSeeker.Username,
+                    PostId = x.EmployerPostId,
+                    PostTitle = x.EmployerPost.Title,
+                    Status = x.Status,
+                    AppliedAt = x.AppliedAt
+                    }).ToList();
 
-            return (pending, reviewed);
+            return new ApplicationSummaryDto
+                {
+                PendingTotal = pending.Count,
+                ReviewedTotal = reviewed.Count,
+
+                PendingApplications = pending,
+                ReviewedApplications = reviewed
+                };
             }
-
 
 
         public async Task UpdateAsync(JobSeekerSubmission entity)

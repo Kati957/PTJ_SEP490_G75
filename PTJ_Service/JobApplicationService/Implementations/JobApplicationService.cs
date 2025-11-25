@@ -291,14 +291,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
             // Nếu admin → xem toàn hệ thống → employerId = null
             // Nếu employer → employerId = userId
             int? employerId = isAdmin ? null : userId;
-
-            var (pending, reviewed) = await _repo.CountApplicationSummaryAsync(employerId);
-
-            return new ApplicationSummaryDto
-                {
-                Pending = pending,
-                Reviewed = reviewed
-                };
+            return await _repo.GetFullSummaryAsync(employerId);
             }
 
         }
