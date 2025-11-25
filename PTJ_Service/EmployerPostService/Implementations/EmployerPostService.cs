@@ -294,7 +294,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         // READ
 
         public async Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync()
-            {
+        {
             var posts = await _db.EmployerPosts
                 .Include(p => p.User).ThenInclude(User => User.EmployerProfile)
                 .Include(p => p.Category)
@@ -305,14 +305,14 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var result = new List<EmployerPostDtoOut>();
 
             foreach (var p in posts)
-                {
+            {
                 var images = await _db.Images
                     .Where(i => i.EntityType == "EmployerPost" && i.EntityId == p.EmployerPostId)
                     .Select(i => i.Url)
                     .ToListAsync();
 
                 result.Add(new EmployerPostDtoOut
-                    {
+                {
                     EmployerPostId = p.EmployerPostId,
                     EmployerId = p.UserId,
                     Title = p.Title,
@@ -328,14 +328,14 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     ImageUrls = images
-                    });
-                }
-
-            return result;
+                });
             }
 
+            return result;
+        }
+
         public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
-            {
+        {
             var posts = await _repo.GetByUserAsync(userId);
 
             // Bỏ bài đã deleted
@@ -344,7 +344,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var result = new List<EmployerPostDtoOut>();
 
             foreach (var p in posts)
-                {
+            {
                 // Lấy danh sách ảnh
                 var images = await _db.Images
                     .Where(i => i.EntityType == "EmployerPost" && i.EntityId == p.EmployerPostId)
@@ -352,7 +352,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     .ToListAsync();
 
                 result.Add(new EmployerPostDtoOut
-                    {
+                {
                     EmployerPostId = p.EmployerPostId,
                     EmployerId = p.UserId,
                     Title = p.Title,
@@ -368,11 +368,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     ImageUrls = images   // ⭐⭐ THÊM ẢNH VÀO DTO
-                    });
-                }
+                });
+            }
 
             return result;
-            }
+        }
 
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id)
             {
@@ -380,18 +380,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (post == null)
                 return null;
 
-            // ❌ Nếu bài đăng bị Blocked → không trả về
+            //  Nếu bài đăng bị Blocked → không trả về
             if (post.Status == "Blocked" || post.Status == "Inactive" || post.Status == "Deleted")
                 return null;
 
-            // ❌ Nếu employer bị khóa → không trả về
+            //  Nếu employer bị khóa → không trả về
             if (post.User == null || post.User.IsActive == false)
                 return null;
-
-            var images = await _db.Images
-        .Where(i => i.EntityType == "EmployerPost" && i.EntityId == post.EmployerPostId)
-        .Select(i => i.Url)
-        .ToListAsync();
 
             return new EmployerPostDtoOut
                 {
@@ -403,18 +398,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
                 Location = post.Location,
-                ProvinceId = post.ProvinceId,
-                DistrictId = post.DistrictId,
-                WardId = post.WardId,
                 PhoneContact = post.PhoneContact,
                 CategoryName = post.Category?.Name,
                 SubCategoryName = post.SubCategory?.Name,
                 EmployerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
-                Status = post.Status,
-                CompanyLogo = post.User.EmployerProfile.AvatarUrl ?? "",
-                ImageUrls = images
-            };
+                Status = post.Status
+                };
             }
 
 
@@ -439,9 +429,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 fullLocation = $"{dto.DetailAddress}, {fullLocation}";
                 }
 
-            // ===============================
-            // 🌟 UPDATE THÔNG TIN BÀI VIẾT
-            // ===============================
+            
+            //  UPDATE THÔNG TIN BÀI VIẾT
+           
             post.Title = dto.Title;
             post.Description = dto.Description;
             post.Salary = (!string.IsNullOrEmpty(dto.SalaryText) &&
@@ -462,9 +452,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             await _repo.UpdateAsync(post);
 
-            // ===============================
-            // 🌟 XOÁ ẢNH CŨ
-            // ===============================
+            
+            //  XOÁ ẢNH CŨ
+            
             if (dto.DeleteImageIds != null && dto.DeleteImageIds.Any())
                 {
                 var imagesToDelete = await _db.Images
@@ -475,14 +465,14 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 foreach (var img in imagesToDelete)
                     {
-                    await _imageService.DeleteImageAsync(img.PublicId); // Xoá cloudinary
-                    _db.Images.Remove(img);                             // Xoá DB
+                    await _imageService.DeleteImageAsync(img.PublicId); 
+                    _db.Images.Remove(img);                             
                     }
                 }
 
-            // ===============================
-            // 🌟 UPLOAD ẢNH MỚI
-            // ===============================
+           
+            //  UPLOAD ẢNH MỚI
+            
             if (dto.Images != null && dto.Images.Any())
                 {
                 foreach (var file in dto.Images)
@@ -505,9 +495,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             await _db.SaveChangesAsync();
 
-            // ===============================
-            // 🌟 UPDATE EMBEDDING
-            // ===============================
+            
+            //  UPDATE EMBEDDING
+         
             var category = await _db.Categories.FindAsync(post.CategoryId);
 
             string embedText =
@@ -545,16 +535,16 @@ namespace PTJ_Service.EmployerPostService.Implementations
             {
             await _repo.SoftDeleteAsync(id);
 
-            // ===============================
-            // 🌟 XOÁ ẢNH LIÊN QUAN
-            // ===============================
+            
+            //  XOÁ ẢNH LIÊN QUAN
+            
             var images = await _db.Images
                 .Where(i => i.EntityType == "EmployerPost" && i.EntityId == id)
                 .ToListAsync();
 
             foreach (var img in images)
                 {
-                await _imageService.DeleteImageAsync(img.PublicId); // Xoá cloudinary
+                await _imageService.DeleteImageAsync(img.PublicId); 
                 }
 
             if (images.Any())
