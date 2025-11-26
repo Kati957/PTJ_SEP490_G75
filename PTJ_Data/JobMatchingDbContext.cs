@@ -675,29 +675,19 @@ public partial class JobMatchingDbContext : DbContext
         modelBuilder.Entity<PostReport>(entity =>
         {
             entity.Property(e => e.PostReportId).HasColumnName("PostReportID");
+            entity.Property(e => e.AffectedPostType).HasMaxLength(50);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.EmployerPostId).HasColumnName("EmployerPostID");
-            entity.Property(e => e.JobSeekerPostId).HasColumnName("JobSeekerPostID");
             entity.Property(e => e.ReportType)
                 .HasMaxLength(20)
                 .IsUnicode(false);
-            entity.Property(e => e.ReportedItemId).HasColumnName("ReportedItemID");
             entity.Property(e => e.ReporterId).HasColumnName("ReporterID");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .IsUnicode(false)
                 .HasDefaultValue("Pending");
             entity.Property(e => e.TargetUserId).HasColumnName("TargetUserID");
-
-            entity.HasOne(d => d.EmployerPost).WithMany(p => p.PostReports)
-                .HasForeignKey(d => d.EmployerPostId)
-                .HasConstraintName("FK__PostRepor__Emplo__70A8B9AE");
-
-            entity.HasOne(d => d.JobSeekerPost).WithMany(p => p.PostReports)
-                .HasForeignKey(d => d.JobSeekerPostId)
-                .HasConstraintName("FK__PostRepor__JobSe__719CDDE7");
 
             entity.HasOne(d => d.Reporter).WithMany(p => p.PostReportReporters)
                 .HasForeignKey(d => d.ReporterId)

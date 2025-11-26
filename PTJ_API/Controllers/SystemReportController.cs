@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Models.DTOs;
-using PTJ_Models.Models;
+using PTJ_Models.DTO;
 using PTJ_Service.SystemReportService.Interfaces;
 
 [Authorize]

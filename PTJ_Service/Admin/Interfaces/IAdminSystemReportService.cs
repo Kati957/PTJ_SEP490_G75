@@ -1,5 +1,5 @@
-﻿using PTJ_Models.DTO.Admin;
-using PTJ_Models.DTOs;
+﻿using PTJ_Models.DTO;
+using PTJ_Models.DTO.Admin;
 
 public interface IAdminSystemReportService
 {

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using PTJ_Models.DTO.Report;
+﻿using PTJ_Models.DTO;
 using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Interfaces
@@ -12,11 +10,7 @@ namespace PTJ_Data.Repositories.Interfaces
         Task AddAsync(PostReport report);
         Task SaveChangesAsync();
         Task<IEnumerable<MyReportDto>> GetMyReportsAsync(int reporterId);
-        Task<bool> HasRecentDuplicateAsync(
-            int reporterId,
-            string reportType,
-            int reportedItemId,
-            int withinMinutes);
+        Task<bool> HasRecentDuplicateAsync(int reporterId, string reportType, int affectedPostId, int withinMinutes);
         Task<string?> GetEmployerPostTitleAsync(int employerPostId);
         Task<string?> GetJobSeekerPostTitleAsync(int jobSeekerPostId);
         Task<int> GetAdminUserIdAsync();

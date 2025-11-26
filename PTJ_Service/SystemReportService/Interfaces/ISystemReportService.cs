@@ -1,5 +1,4 @@
-﻿using PTJ_Models.DTOs;
-
+﻿using PTJ_Models.DTO;
 namespace PTJ_Service.SystemReportService.Interfaces
 {
     public interface ISystemReportService

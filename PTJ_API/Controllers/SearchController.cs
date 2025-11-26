@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Models.DTO.ReportDTO.SearchDTO;
+using PTJ_Models.DTO.SearchDTO;
 using PTJ_Models.Models;
 using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Interfaces;
@@ -8,7 +8,7 @@ using PTJ_Service.SearchService.Services;
 using System.Security.Claims;
 
 namespace PTJ_API.Controllers
-    {
+{
     [Route("api/[controller]")]
     [ApiController]
     [Authorize] // Yêu cầu đăng nhập cho tất cả

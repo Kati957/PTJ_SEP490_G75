@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Models.DTOs;
+using PTJ_Models.DTO;
 
 [Authorize(Roles = "Admin")]
 [ApiController]
