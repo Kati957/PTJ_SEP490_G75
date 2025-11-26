@@ -1053,7 +1053,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             if (post == null || post.Status == "Deleted")
                 return false;
 
-            post.Status = "Inactive";
+            post.Status = "Archived";
             post.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(post);
