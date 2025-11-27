@@ -64,7 +64,8 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
         public async Task<AdminEmployerPostDetailDto?> GetEmployerPostDetailAsync(int id)
         {
-            return await _db.EmployerPosts
+            // 1️⃣ Lấy dữ liệu bài đăng như cũ
+            var dto = await _db.EmployerPosts
                 .Include(p => p.User)
                 .Include(p => p.Category)
                 .Include(p => p.User.EmployerProfile)
@@ -90,10 +91,24 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
                     CategoryName = p.Category != null ? p.Category.Name : null,
                     Status = p.Status,
-                    CreatedAt = p.CreatedAt
+                    CreatedAt = p.CreatedAt,
+
+                    ImageUrls = new List<string>()
                 })
                 .FirstOrDefaultAsync();
+
+            if (dto == null)
+                return null;
+
+            // 2️⃣ Lấy ảnh từ bảng Images (pattern giống code CreatePost)
+            dto.ImageUrls = await _db.Images
+                .Where(i => i.EntityType == "EmployerPost" && i.EntityId == id)
+                .Select(i => i.Url)
+                .ToListAsync();
+
+            return dto;
         }
+
 
         public async Task<bool> ToggleEmployerPostBlockedAsync(int id)
         {

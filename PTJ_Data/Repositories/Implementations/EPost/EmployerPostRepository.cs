@@ -20,7 +20,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
                 .Include(p => p.User).ThenInclude(p => p.EmployerProfile)
                 .Include(p => p.Category)
                 .Include(p => p.SubCategory)
-                .Where(p => p.Status == "Active")
+                .Where(p => p.Status == "Active" && p.User.IsActive)
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
         }
@@ -31,7 +31,7 @@ namespace PTJ_Data.Repositories.Implementations.EPost
                 .Include(p => p.User).ThenInclude(p => p.EmployerProfile)
                 .Include(p => p.Category)
                 .Include(p => p.SubCategory)
-                .Where(p => p.UserId == userId && p.Status == "Active")
+                .Where(p => p.UserId == userId && p.Status != "Deleted")
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
         }
@@ -48,13 +48,11 @@ namespace PTJ_Data.Repositories.Implementations.EPost
         public async Task AddAsync(EmployerPost post)
         {
             _db.EmployerPosts.Add(post);
-            await _db.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(EmployerPost post)
         {
             _db.EmployerPosts.Update(post);
-            await _db.SaveChangesAsync();
         }
 
         public async Task SoftDeleteAsync(int id)
@@ -64,13 +62,13 @@ namespace PTJ_Data.Repositories.Implementations.EPost
             {
                 post.Status = "Deleted";
                 post.UpdatedAt = DateTime.Now;
-                await _db.SaveChangesAsync();
             }
         }
 
-        public async Task SaveChangesAsync()
+        public Task SaveChangesAsync()
         {
-            await _db.SaveChangesAsync();
+            return _db.SaveChangesAsync();
         }
+
     }
 }

@@ -1046,7 +1046,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             return vec;
             }
 
-        // CLOSE (Inactive)
+        // CLOSE (Archived)
         public async Task<bool> CloseJobSeekerPostAsync(int id)
             {
             var post = await _repo.GetByIdAsync(id);
