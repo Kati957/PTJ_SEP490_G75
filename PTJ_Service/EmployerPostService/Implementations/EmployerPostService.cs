@@ -432,7 +432,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 PhoneContact = post.PhoneContact,
                 CategoryName = post.Category?.Name,
                 SubCategoryName = post.SubCategory?.Name,
-                EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
+                EmployerName = post.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 CompanyLogo = user.EmployerProfile?.AvatarUrl ?? "",
