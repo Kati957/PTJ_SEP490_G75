@@ -1143,7 +1143,7 @@ ScoreAndFilterCandidatesAsync(
                 EntityType = "Industry",
                 EntityId = 0,
                 ContentHash = hash,
-                Model = "text-embedding-3-large",
+                Model = "text-embedding-nomic-embed-text-v2-moe",
                 VectorDim = vec.Length,
                 VectorData = JsonConvert.SerializeObject(vec),
                 UpdatedAt = DateTime.Now,

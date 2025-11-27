@@ -136,7 +136,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     EntityType = "JobSeekerCV",
                     EntityId = selectedCv.Cvid,
                     ContentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(cvText))),
-                    Model = "text-embedding-3-large",
+                    Model = "text-embedding-nomic-embed-text-v2-moe",
                     VectorDim = cvEmbedding.Length,
                     PineconeId = $"JobSeekerCV:{selectedCv.Cvid}",
                     Status = "OK",
@@ -245,7 +245,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                         x.Job.WorkHours,
                         x.Job.PhoneContact,
                         CategoryName = x.Job.Category?.Name,
-                        EmployerName = x.Job.User.Username,
+                        EmployerName = x.Job.User.EmployerProfile.ContactName,
                         IsSaved = savedIds.Contains(x.Job.EmployerPostId)
                         }
                     })
@@ -288,7 +288,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
                     SubCategoryName = p.SubCategory?.Name,
-                    SeekerName = p.User.Username,
+                    SeekerName = p.User.JobSeekerProfile.FullName,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
@@ -321,7 +321,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
                     SubCategoryName = p.SubCategory?.Name,
-                    SeekerName = p.User.Username,
+                    SeekerName = p.User.JobSeekerProfile.FullName,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
@@ -369,7 +369,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 CategoryID = post.CategoryId ?? 0,
                 CategoryName = post.Category?.Name,
                 SubCategoryName = post.SubCategory?.Name,
-                SeekerName = post.User.Username,
+                SeekerName = post.User.JobSeekerProfile.FullName,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 CvId = post.SelectedCvId,
@@ -622,7 +622,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                         x.Job.Salary,
                         x.Job.Location,
                         x.Job.WorkHours,
-                        EmployerName = x.Job.User.Username,
+                        EmployerName = x.Job.User.EmployerProfile.ContactName,
                         IsSaved = savedIds.Contains(x.Job.EmployerPostId)
                         }
                     })
@@ -771,7 +771,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     x.EmployerPostId,
                     x.EmployerPost.Title,
                     x.EmployerPost.Location,
-                    EmployerName = x.EmployerPost.User.Username,
+                    EmployerName = x.EmployerPost.User.EmployerProfile.ContactName,
                     x.Note,
                     x.AddedAt
                     }).ToListAsync();
@@ -820,7 +820,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     PhoneContact = ep.PhoneContact,
                     CategoryName = ep.Category != null ? ep.Category.Name : null,
                     SubCategoryName = ep.SubCategory != null ? ep.SubCategory.Name : null,
-                    EmployerName = ep.User.Username,
+                    EmployerName = ep.User.EmployerProfile.DisplayName,
 
                     MatchPercent = s.MatchPercent,
                     RawScore = Math.Round(s.RawScore, 4),
@@ -867,7 +867,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     EntityType = entityType,
                     EntityId = entityId,
                     ContentHash = hash,
-                    Model = "text-embedding-3-large",
+                    Model = "text-embedding-nomic-embed-text-v2-moe",
                     VectorDim = vector.Length,
                     PineconeId = $"{entityType}:{entityId}",
                     Status = "OK",
@@ -905,7 +905,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 EntityType = entityType,
                 EntityId = 0,
                 ContentHash = hash,
-                Model = "text-embedding-3-small",
+                Model = "text-embedding-nomic-embed-text-v2-moe",
                 VectorDim = vector.Length,
                 PineconeId = $"{entityType}:{hash[..12]}",
                 Status = "OK",
@@ -944,7 +944,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
                 CategoryName = category?.Name,
                 SubCategoryName = sub?.Name,
-                SeekerName = user?.Username ?? "",
+                SeekerName = user?.JobSeekerProfile.FullName ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 };
@@ -1035,7 +1035,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 EntityType = "Industry",
                 EntityId = 0,
                 ContentHash = hash,
-                Model = "text-embedding-3-large",
+                Model = "text-embedding-nomic-embed-text-v2-moe",
                 VectorDim = vec.Length,
                 VectorData = JsonConvert.SerializeObject(vec),
                 UpdatedAt = DateTime.Now,
