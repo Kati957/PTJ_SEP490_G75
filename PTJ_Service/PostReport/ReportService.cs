@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using PTJ_Data.Repositories.Interfaces;
-using PTJ_Models.DTO.Notification;
-using PTJ_Models.DTO.Report;
+﻿using PTJ_Data.Repositories.Interfaces;
+using PTJ_Models.DTO;
 using PTJ_Models.Models;
 using PTJ_Service.Interfaces;
 
@@ -12,7 +8,7 @@ namespace PTJ_Service.Implementations
     public class ReportService : IReportService
     {
         private readonly IReportRepository _repo;
-        private readonly INotificationService _noti;   // 🔔 ADD NOTIFICATION SERVICE
+        private readonly INotificationService _noti;
 
         public ReportService(IReportRepository repo, INotificationService noti)
         {
@@ -20,29 +16,42 @@ namespace PTJ_Service.Implementations
             _noti = noti;
         }
 
-        // -------------------------------------------------------------
-        // 🔥 1. REPORT EMPLOYER POST
-        // -------------------------------------------------------------
-        public async Task<int> ReportEmployerPostAsync(int reporterId, CreateEmployerPostReportDto dto)
+
+        // 1) REPORT ANY POST (UNIFIED)
+
+        public async Task<int> ReportPostAsync(int reporterId, CreatePostReportDto dto)
         {
-            if (dto.EmployerPostId <= 0)
-                throw new ArgumentException("EmployerPostId không hợp lệ.");
+            if (dto.PostId <= 0)
+                throw new ArgumentException("PostId không hợp lệ.");
 
-            // Validate tồn tại
-            if (!await _repo.EmployerPostExistsAsync(dto.EmployerPostId))
-                throw new KeyNotFoundException("Không tìm thấy bài đăng của nhà tuyển dụng.");
+            if (string.IsNullOrWhiteSpace(dto.PostType))
+                throw new ArgumentException("PostType không hợp lệ.");
 
-            // Chống spam report lặp trong 10 phút
-            if (await _repo.HasRecentDuplicateAsync(reporterId, "EmployerPost", dto.EmployerPostId, withinMinutes: 10))
+            // PostType phải hợp lệ
+            if (dto.PostType != "EmployerPost" && dto.PostType != "JobSeekerPost")
+                throw new ArgumentException("PostType phải là EmployerPost hoặc JobSeekerPost.");
+
+            // 1️⃣ Kiểm tra tồn tại
+            bool exists = dto.PostType == "EmployerPost"
+                ? await _repo.EmployerPostExistsAsync(dto.PostId)
+                : await _repo.JobSeekerPostExistsAsync(dto.PostId);
+
+            if (!exists)
+                throw new KeyNotFoundException("Không tìm thấy bài đăng.");
+
+            // 2️⃣ Chống spam báo cáo
+            if (await _repo.HasRecentDuplicateAsync(reporterId, dto.PostType, dto.PostId, 10))
                 throw new InvalidOperationException("Bạn đã báo cáo bài đăng này gần đây.");
 
+            // 3️⃣ Tạo report
             var report = new PostReport
             {
                 ReporterId = reporterId,
-                ReportType = "EmployerPost",
-                ReportedItemId = dto.EmployerPostId,
-                EmployerPostId = dto.EmployerPostId,
-                JobSeekerPostId = null,
+                ReportType = dto.PostType,      
+
+                AffectedPostId = dto.PostId,
+                AffectedPostType = dto.PostType,
+
                 TargetUserId = null,
                 Reason = dto.Reason,
                 Status = "Pending",
@@ -52,11 +61,14 @@ namespace PTJ_Service.Implementations
             await _repo.AddAsync(report);
             await _repo.SaveChangesAsync();
 
-            // Lấy tiêu đề bài đăng để gửi Notification
-            var postTitle = await _repo.GetEmployerPostTitleAsync(dto.EmployerPostId);
+            // 4️⃣ Lấy tiêu đề bài đăng
+            string? postTitle = dto.PostType == "EmployerPost"
+                ? await _repo.GetEmployerPostTitleAsync(dto.PostId)
+                : await _repo.GetJobSeekerPostTitleAsync(dto.PostId);
 
-            // 🔔 GỬI NOTIFICATION CHO ADMIN
-            var adminId = await _repo.GetAdminUserIdAsync();
+            // 5️⃣ Gửi notification cho ADMIN
+            int adminId = await _repo.GetAdminUserIdAsync();
+
             if (adminId > 0)
             {
                 await _noti.SendAsync(new CreateNotificationDto
@@ -74,61 +86,8 @@ namespace PTJ_Service.Implementations
             return report.PostReportId;
         }
 
-        // -------------------------------------------------------------
-        // 🔥 2. REPORT JOBSEEKER POST
-        // -------------------------------------------------------------
-        public async Task<int> ReportJobSeekerPostAsync(int reporterId, CreateJobSeekerPostReportDto dto)
-        {
-            if (dto.JobSeekerPostId <= 0)
-                throw new ArgumentException("JobSeekerPostId không hợp lệ.");
+        // 2) GET MY REPORTS
 
-            if (!await _repo.JobSeekerPostExistsAsync(dto.JobSeekerPostId))
-                throw new KeyNotFoundException("Không tìm thấy bài đăng của người tìm việc.");
-
-            if (await _repo.HasRecentDuplicateAsync(reporterId, "JobSeekerPost", dto.JobSeekerPostId, withinMinutes: 10))
-                throw new InvalidOperationException("Bạn đã báo cáo bài đăng này gần đây.");
-
-            var report = new PostReport
-            {
-                ReporterId = reporterId,
-                ReportType = "JobSeekerPost",
-                ReportedItemId = dto.JobSeekerPostId,
-                EmployerPostId = null,
-                JobSeekerPostId = dto.JobSeekerPostId,
-                TargetUserId = null,
-                Reason = dto.Reason,
-                Status = "Pending",
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await _repo.AddAsync(report);
-            await _repo.SaveChangesAsync();
-
-            // Lấy tiêu đề bài đăng
-            var postTitle = await _repo.GetJobSeekerPostTitleAsync(dto.JobSeekerPostId);
-
-            // 🔔 GỬI THÔNG BÁO CHO ADMIN
-            var adminId = await _repo.GetAdminUserIdAsync();
-            if (adminId > 0)
-            {
-                await _noti.SendAsync(new CreateNotificationDto
-                {
-                    UserId = adminId,
-                    NotificationType = "ReportCreated",
-                    RelatedItemId = report.PostReportId,
-                    Data = new()
-                    {
-                        { "PostTitle", postTitle ?? "Không xác định" }
-                    }
-                });
-            }
-
-            return report.PostReportId;
-        }
-
-        // -------------------------------------------------------------
-        // 3️⃣ GET MY REPORTS
-        // -------------------------------------------------------------
         public Task<IEnumerable<MyReportDto>> GetMyReportsAsync(int reporterId)
             => _repo.GetMyReportsAsync(reporterId);
     }

@@ -1,13 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using PTJ_Models.DTO.Report;
+﻿using PTJ_Models.DTO;
 
 namespace PTJ_Service.Interfaces
 {
     public interface IReportService
     {
-        Task<int> ReportEmployerPostAsync(int reporterId, CreateEmployerPostReportDto dto);
-        Task<int> ReportJobSeekerPostAsync(int reporterId, CreateJobSeekerPostReportDto dto);
+        Task<int> ReportPostAsync(int reporterId, CreatePostReportDto dto);
         Task<IEnumerable<MyReportDto>> GetMyReportsAsync(int reporterId);
     }
 }

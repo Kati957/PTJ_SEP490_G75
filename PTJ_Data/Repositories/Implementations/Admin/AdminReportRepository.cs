@@ -1,27 +1,31 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces.Admin;
+using PTJ_Models;
 using PTJ_Models.DTO.Admin;
-using PTJ_Models.DTO;
 using PTJ_Models.Models;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminReportRepository : IAdminReportRepository
     {
         private readonly JobMatchingDbContext _db;
-        public AdminReportRepository(JobMatchingDbContext db) => _db = db;
 
-        // 1️⃣ Danh sách report chưa xử lý (Pending)
+        public AdminReportRepository(JobMatchingDbContext db)
+        {
+            _db = db;
+        }
+
+        // Lấy danh sách REPORT đang chờ xử lý (PENDING)
+
         public async Task<PagedResult<AdminReportDto>> GetPendingReportsPagedAsync(
-    string? reportType = null, string? keyword = null, int page = 1, int pageSize = 10)
+            string? reportType = null,
+            string? keyword = null,
+            int page = 1,
+            int pageSize = 10)
         {
             var query = _db.PostReports
                 .Include(r => r.Reporter)
                 .Include(r => r.TargetUser)
-                .Include(r => r.EmployerPost)
-                .Include(r => r.JobSeekerPost)
                 .Where(r => r.Status == "Pending")
                 .AsQueryable();
 
@@ -29,20 +33,13 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 query = query.Where(r => r.ReportType == reportType);
 
             if (!string.IsNullOrWhiteSpace(keyword))
-            {
-                var kw = keyword.ToLower();
                 query = query.Where(r =>
-                    r.Reporter.Email.ToLower().Contains(kw) ||
-                    (r.TargetUser != null && r.TargetUser.Email.ToLower().Contains(kw)) ||
-                    (r.Reason != null && r.Reason.ToLower().Contains(kw)) ||
-                    (r.EmployerPost != null && r.EmployerPost.Title.ToLower().Contains(kw)) ||
-                    (r.JobSeekerPost != null && r.JobSeekerPost.Title.ToLower().Contains(kw))
-                );
-            }
+                    r.Reporter.Email.Contains(keyword) ||
+                    r.TargetUser.Email.Contains(keyword));
 
-            var total = await query.CountAsync();
+            int total = await query.CountAsync();
 
-            var items = await query
+            var data = await query
                 .OrderByDescending(r => r.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -52,34 +49,34 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     ReportType = r.ReportType,
                     ReporterEmail = r.Reporter.Email,
                     TargetUserEmail = r.TargetUser != null ? r.TargetUser.Email : null,
-                    Reason = r.Reason,
-                    Status = r.Status,
-                    CreatedAt = r.CreatedAt,
-                    EmployerPostId = r.EmployerPostId,
-                    EmployerPostTitle = r.EmployerPost != null ? r.EmployerPost.Title : null,
-                    JobSeekerPostId = r.JobSeekerPostId,
-                    JobSeekerPostTitle = r.JobSeekerPost != null ? r.JobSeekerPost.Title : null,
 
-                    PostType = r.EmployerPostId != null ? "EmployerPost" :
-                               r.JobSeekerPostId != null ? "JobSeekerPost" : null
+                    PostId = r.AffectedPostId,
+                    PostType = r.AffectedPostType,
+
+                    PostTitle = r.AffectedPostType == "EmployerPost"
+                        ? _db.EmployerPosts.Where(p => p.EmployerPostId == r.AffectedPostId).Select(p => p.Title).FirstOrDefault()
+                        : _db.JobSeekerPosts.Where(p => p.JobSeekerPostId == r.AffectedPostId).Select(p => p.Title).FirstOrDefault(),
+
+                    Reason = r.Reason,
+                    CreatedAt = r.CreatedAt,
+                    Status = r.Status
                 })
                 .ToListAsync();
 
-            return new PagedResult<AdminReportDto>(items, total, page, pageSize);
+            return new PagedResult<AdminReportDto>(data, total, page, pageSize);
         }
 
-
-        // 2️⃣ Danh sách report đã xử lý (Solved)
+        // Lấy danh sách REPORT đã xử lý
         public async Task<PagedResult<AdminSolvedReportDto>> GetSolvedReportsPagedAsync(
-     string? adminEmail = null, string? reportType = null, int page = 1, int pageSize = 10)
+            string? adminEmail = null,
+            string? reportType = null,
+            int page = 1,
+            int pageSize = 10)
         {
             var query = _db.PostReportSolveds
+                .Include(s => s.PostReport)
                 .Include(s => s.Admin)
                 .Include(s => s.AffectedUser)
-                .Include(s => s.PostReport)
-                    .ThenInclude(r => r.EmployerPost)
-                .Include(s => s.PostReport)
-                    .ThenInclude(r => r.JobSeekerPost)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(adminEmail))
@@ -88,9 +85,9 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             if (!string.IsNullOrWhiteSpace(reportType))
                 query = query.Where(s => s.PostReport.ReportType == reportType);
 
-            var total = await query.CountAsync();
+            int total = await query.CountAsync();
 
-            var items = await query
+            var data = await query
                 .OrderByDescending(s => s.SolvedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -100,69 +97,91 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     ReportId = s.PostReportId,
                     ActionTaken = s.ActionTaken,
                     AdminEmail = s.Admin.Email,
-                    TargetUserEmail = s.AffectedUser != null ? s.AffectedUser.Email : null,
-                    ReportType = s.PostReport.ReportType,
-                    ReportReason = s.PostReport.Reason,
-                    Reason = s.Reason,
-                    SolvedAt = s.SolvedAt,
-                    EmployerPostId = s.PostReport.EmployerPostId,
-                    EmployerPostTitle = s.PostReport.EmployerPost != null ? s.PostReport.EmployerPost.Title : null,
-                    JobSeekerPostId = s.PostReport.JobSeekerPostId,
-                    JobSeekerPostTitle = s.PostReport.JobSeekerPost != null ? s.PostReport.JobSeekerPost.Title : null,
 
-                    PostType = s.PostReport.EmployerPostId != null ? "EmployerPost" :
-                               s.PostReport.JobSeekerPostId != null ? "JobSeekerPost" : null
+                    PostId = s.AffectedPostId,
+                    PostType = s.AffectedPostType,
+                    PostTitle = s.AffectedPostType == "EmployerPost"
+                        ? _db.EmployerPosts.Where(p => p.EmployerPostId == s.AffectedPostId).Select(p => p.Title).FirstOrDefault()
+                        : _db.JobSeekerPosts.Where(p => p.JobSeekerPostId == s.AffectedPostId).Select(p => p.Title).FirstOrDefault(),
+
+                    TargetUserId = s.AffectedUserId,
+                    TargetUserEmail = s.AffectedUser != null ? s.AffectedUser.Email : null,
+
+                    Reason = s.Reason,
+                    SolvedAt = s.SolvedAt
                 })
                 .ToListAsync();
 
-            return new PagedResult<AdminSolvedReportDto>(items, total, page, pageSize);
+            return new PagedResult<AdminSolvedReportDto>(data, total, page, pageSize);
         }
 
+        // Chi tiết một REPORT
 
-        // 3️⃣ Chi tiết report (GET /api/admin/reports/{id})
         public async Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId)
         {
-            var report = await _db.PostReports
+            var r = await _db.PostReports
                 .Include(r => r.Reporter)
                 .Include(r => r.TargetUser)
-                .Include(r => r.EmployerPost)
-                .Include(r => r.JobSeekerPost)
                 .FirstOrDefaultAsync(r => r.PostReportId == reportId);
 
-            if (report == null) return null;
+            if (r == null) return null;
+
+            string? title = null;
+
+            if (r.AffectedPostType == "EmployerPost")
+            {
+                title = await _db.EmployerPosts
+                    .Where(p => p.EmployerPostId == r.AffectedPostId)
+                    .Select(p => p.Title)
+                    .FirstOrDefaultAsync();
+            }
+            else if (r.AffectedPostType == "JobSeekerPost")
+            {
+                title = await _db.JobSeekerPosts
+                    .Where(p => p.JobSeekerPostId == r.AffectedPostId)
+                    .Select(p => p.Title)
+                    .FirstOrDefaultAsync();
+            }
 
             return new AdminReportDetailDto
             {
-                ReportId = report.PostReportId,
-                ReportType = report.ReportType,
-                ReporterEmail = report.Reporter?.Email ?? "Unknown",
-                TargetUserEmail = report.TargetUser?.Email,
-                TargetUserRole = report.TargetUser?.Roles.FirstOrDefault()?.RoleName,
-                Reason = report.Reason,
-                Status = report.Status,
-                CreatedAt = report.CreatedAt,
-                EmployerPostId = report.EmployerPostId,
-                EmployerPostTitle = report.EmployerPost?.Title,
-                JobSeekerPostId = report.JobSeekerPostId,
-                JobSeekerPostTitle = report.JobSeekerPost?.Title
+                ReportId = r.PostReportId,
+                ReportType = r.ReportType,
+
+                ReporterId = r.ReporterId,
+                ReporterEmail = r.Reporter.Email,
+
+                TargetUserId = r.TargetUserId,
+                TargetUserEmail = r.TargetUser != null ? r.TargetUser.Email : null,
+
+                PostId = r.AffectedPostId,
+                PostType = r.AffectedPostType,
+                PostTitle = title,
+
+                Reason = r.Reason,
+                Status = r.Status,
+                CreatedAt = r.CreatedAt
             };
         }
+        // Lấy report theo ID
 
-        // 4️⃣ Các hàm phụ trợ
-        public Task<PostReport?> GetReportByIdAsync(int reportId)
-            => _db.PostReports.FirstOrDefaultAsync(r => r.PostReportId == reportId);
+        public Task<PostReport?> GetReportByIdAsync(int id)
+            => _db.PostReports.FirstOrDefaultAsync(r => r.PostReportId == id);
 
-        public Task<EmployerPost?> GetEmployerPostByIdAsync(int postId)
-            => _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == postId);
+        //Lấy bài viết EmployerPost / JobSeekerPost theo ID
 
-        public Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int postId)
-            => _db.JobSeekerPosts.FirstOrDefaultAsync(p => p.JobSeekerPostId == postId);
+        public Task<EmployerPost?> GetEmployerPostByIdAsync(int id)
+            => _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == id);
 
-        public async Task AddSolvedReportAsync(PostReportSolved solvedReport)
+        public Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int id)
+            => _db.JobSeekerPosts.FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
+
+        // Lưu solved report
+
+        public async Task AddSolvedReportAsync(PostReportSolved solved)
         {
-            await _db.PostReportSolveds.AddAsync(solvedReport);
+            await _db.PostReportSolveds.AddAsync(solved);
         }
-
         public Task SaveChangesAsync() => _db.SaveChangesAsync();
     }
 }

@@ -20,9 +20,9 @@ namespace PTJ_API.Controllers
             _service = service;
             }
 
-        // =========================================================
+
         // Lấy danh sách CV của ứng viên
-        // =========================================================
+
         [HttpGet]
         public async Task<IActionResult> GetMyCvs()
             {
@@ -36,9 +36,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, total = result.Count(), data = result });
             }
 
-        // =========================================================
+
         // Xem chi tiết CV
-        // =========================================================
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
             {
@@ -57,9 +57,9 @@ namespace PTJ_API.Controllers
             }
 
 
-        // =========================================================
+
         // Tạo CV mới
-        // =========================================================
+
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] JobSeekerCvCreateDto dto)
             {
@@ -83,9 +83,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = "Tạo CV thành công.", data = result });
             }
 
-        // =========================================================
+
         // Cập nhật CV
-        // =========================================================
+
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] JobSeekerCvUpdateDto dto)
             {
@@ -102,9 +102,9 @@ namespace PTJ_API.Controllers
             return Ok(new { success = true, message = "Cập nhật CV thành công." });
             }
 
-        // =========================================================
+
         // Xóa CV
-        // =========================================================
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
             {

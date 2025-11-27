@@ -18,9 +18,9 @@ namespace PTJ_Data.Repositories.Implementations
             _db = db;
             }
 
-        // =========================================================
+
         // Lấy CV theo ID – chỉ lấy CV chưa bị xóa
-        // =========================================================
+
         public async Task<JobSeekerCv?> GetByIdAsync(int id)
             {
             var sql = @"
@@ -34,9 +34,9 @@ namespace PTJ_Data.Repositories.Implementations
                 .FirstOrDefaultAsync();
             }
 
-        // =========================================================
+
         // Lấy toàn bộ CV của một ứng viên – chỉ lấy CV chưa xóa
-        // =========================================================
+
         public async Task<IEnumerable<JobSeekerCv>> GetByJobSeekerAsync(int jobSeekerId)
             {
             var sql = @"
@@ -50,27 +50,27 @@ namespace PTJ_Data.Repositories.Implementations
                 .ToListAsync();
             }
 
-        // =========================================================
+
         // Thêm mới CV
-        // =========================================================
+
         public async Task AddAsync(JobSeekerCv entity)
             {
             await _db.JobSeekerCvs.AddAsync(entity);
             await _db.SaveChangesAsync();
             }
 
-        // =========================================================
+
         // Cập nhật CV
-        // =========================================================
+
         public async Task UpdateAsync(JobSeekerCv entity)
             {
             _db.JobSeekerCvs.Update(entity);
             await _db.SaveChangesAsync();
             }
 
-        // =========================================================
+
         // Soft Delete – không xóa record khỏi DB
-        // =========================================================
+
         public async Task SoftDeleteAsync(int cvId)
             {
             var sql = "UPDATE JobSeekerCvs SET IsDeleted = 1, UpdatedAt = @Now WHERE Cvid = @CvId";

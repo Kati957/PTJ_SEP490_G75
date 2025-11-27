@@ -21,19 +21,19 @@ namespace PTJ_Service.AiService.Implementations
             _db = db;
             _http = new HttpClient();
 
-            // === Pinecone config ===
+            //  Pinecone config 
             _pineconeKey = cfg["Pinecone:ApiKey"] ?? throw new Exception("Missing Pinecone:ApiKey");
             _pineconeUrl = cfg["Pinecone:IndexEndpoint"] ?? throw new Exception("Missing Pinecone:IndexEndpoint");
 
-            // === LM Studio config ===
-            // ⚙️ Ví dụ: http://127.0.0.1:1234/v1
+            //  LM Studio config 
+            //  Ví dụ: http://127.0.0.1:1234/v1
             _lmStudioUrl = cfg["LMStudio:Url"] ?? "http://127.0.0.1:1234/v1";
             _embeddingModel = cfg["LMStudio:EmbeddingModel"] ?? "text-embedding-nomic-embed-text-v2-moe";
             }
 
-        // =====================================================
-        // 🧠 Create Embedding via LM Studio (local)
-        // =====================================================
+
+        // Create Embedding via LM Studio (local)
+
         public async Task<float[]> CreateEmbeddingAsync(string text)
             {
             await CheckLMStudioHealthAsync();
@@ -44,13 +44,13 @@ namespace PTJ_Service.AiService.Implementations
                 input = text
                 };
 
-            // ✅ Đúng endpoint OpenAI-style
+            //  Đúng endpoint OpenAI-style
             var response = await _http.PostAsJsonAsync($"{_lmStudioUrl}/embeddings", payload);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-            // ✅ LM Studio trả về data[0].embedding
+            //  LM Studio trả về data[0].embedding
             var dataArray = json.GetProperty("data");
             if (dataArray.GetArrayLength() == 0)
                 throw new Exception("LM Studio trả về mảng embedding rỗng.");
@@ -63,9 +63,9 @@ namespace PTJ_Service.AiService.Implementations
             return embedding;
             }
 
-        // =====================================================
-        // 📤 Upsert Vector vào Pinecone
-        // =====================================================
+
+        //  Upsert Vector vào Pinecone
+
         public async Task UpsertVectorAsync(string ns, string id, float[] vector, object metadata)
             {
             using var client = new HttpClient();
@@ -94,9 +94,9 @@ namespace PTJ_Service.AiService.Implementations
                 }
             }
 
-        // =====================================================
-        // 🔍 Query Similar from Pinecone
-        // =====================================================
+
+        //  Query Similar from Pinecone
+
         public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
             {
             using var client = new HttpClient();
@@ -126,15 +126,15 @@ namespace PTJ_Service.AiService.Implementations
             return list;
             }
 
-        // =====================================================
-        // 🔎 Kiểm tra kết nối LM Studio
-        // =====================================================
+
+        //  Kiểm tra kết nối LM Studio
+
         private async Task CheckLMStudioHealthAsync()
             {
             try
                 {
                 using var healthCheck = new HttpClient();
-                // ✅ LM Studio dùng endpoint OpenAI-style
+                //  LM Studio dùng endpoint OpenAI-style
                 var res = await healthCheck.GetAsync($"{_lmStudioUrl}/models");
                 if (!res.IsSuccessStatusCode)
                     {

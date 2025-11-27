@@ -10,7 +10,7 @@ using PTJ_Service.AiService;
 using PTJ_Service.JobSeekerPostService;
 using PTJ_Service.JobSeekerPostService.cs.Interfaces;
 using PTJ_Service.LocationService;
-using PTJ_Service.ImageService;              // ⭐ THÊM
+using PTJ_Service.ImageService;              
 using System.Security.Cryptography;
 using System.Text;
 using JobSeekerPostModel = PTJ_Models.Models.JobSeekerPost;
@@ -24,7 +24,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         private readonly IAIService _ai;
         private readonly OpenMapService _map;
         private readonly LocationDisplayService _locDisplay;
-        private readonly IImageService _imageService;       // ⭐ THÊM
+        private readonly IImageService _imageService;       
 
         public JobSeekerPostService(
             IJobSeekerPostRepository repo,
@@ -32,7 +32,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             IAIService ai,
             OpenMapService map,
             LocationDisplayService locDisplay,
-            IImageService imageService                  // ⭐ THÊM
+            IImageService imageService                  
         )
             {
             _repo = repo;
@@ -40,7 +40,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             _ai = ai;
             _map = map;
             _locDisplay = locDisplay;
-            _imageService = imageService;              // ⭐ THÊM
+            _imageService = imageService;              
             }
 
 
@@ -110,26 +110,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             await _repo.AddAsync(post);
             await _db.SaveChangesAsync();
-
-            // ⭐⭐⭐ UPLOAD ẢNH (nếu có)
-            // UPLOAD ẢNH
-            if (dto.Images != null && dto.Images.Any())
-                {
-                foreach (var file in dto.Images)
-                    {
-                    var (url, publicId) = await _imageService.UploadImageAsync(file, "JobSeekerPosts");
-                    _db.Images.Add(new Image
-                        {
-                        EntityType = "JobSeekerPost",
-                        EntityId = post.JobSeekerPostId,
-                        Url = url,
-                        PublicId = publicId,
-                        Format = file.ContentType,
-                        CreatedAt = DateTime.Now
-                        });
-                    }
-                await _db.SaveChangesAsync();
-                }
 
 
             var freshPost = await _db.JobSeekerPosts
@@ -312,7 +292,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
-                    ImageUrls = images   // ⭐ THÊM DÒNG NÀY
                     });
                 }
 
@@ -346,7 +325,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
-                    ImageUrls = images     // ⭐ THÊM DÒNG NÀY
                     });
                 }
 
@@ -359,11 +337,11 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             if (post == null)
                 return null;
 
-            // ❌ Bị Blocked / Inactive / Deleted → không trả về
+            //  Bị Blocked / Inactive / Deleted → không trả về
             if (post.Status == "Blocked" || post.Status == "Inactive" || post.Status == "Deleted")
                 return null;
 
-            // ❌ User bị khóa → không trả về
+            //  User bị khóa → không trả về
             if (post.User == null || post.User.IsActive == false)
                 return null;
 
@@ -395,7 +373,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 CvId = post.SelectedCvId,
-                ImageUrls = images
             };
             }
 
@@ -455,41 +432,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             post.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(post);
-
-            // DELETE OLD IMAGES
-            if (dto.DeleteImageIds != null && dto.DeleteImageIds.Any())
-                {
-                var oldImages = await _db.Images
-                    .Where(i => dto.DeleteImageIds.Contains(i.ImageId)
-                             && i.EntityType == "JobSeekerPost"
-                             && i.EntityId == post.JobSeekerPostId)
-                    .ToListAsync();
-
-                foreach (var img in oldImages)
-                    {
-                    await _imageService.DeleteImageAsync(img.PublicId);
-                    _db.Images.Remove(img);
-                    }
-                }
-
-            // UPLOAD NEW IMAGES
-            if (dto.Images != null && dto.Images.Any())
-                {
-                foreach (var file in dto.Images)
-                    {
-                    var (url, publicId) = await _imageService.UploadImageAsync(file, "JobSeekerPosts");
-                    _db.Images.Add(new Image
-                        {
-                        EntityType = "JobSeekerPost",
-                        EntityId = post.JobSeekerPostId,
-                        Url = url,
-                        PublicId = publicId,
-                        Format = file.ContentType,
-                        CreatedAt = DateTime.Now
-                        });
-                    }
-                }
-
             await _db.SaveChangesAsync();
 
 
@@ -547,10 +489,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
         public async Task<bool> DeleteAsync(int id)
             {
-            // ⭐ Xoá mềm bài đăng
+            //  Xoá mềm bài đăng
             await _repo.SoftDeleteAsync(id);
 
-            // ⭐ XÓA ẢNH LIÊN QUAN
+            //  XÓA ẢNH LIÊN QUAN
             var images = await _db.Images
                 .Where(i => i.EntityType == "JobSeekerPost" && i.EntityId == id)
                 .ToListAsync();
@@ -563,7 +505,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             if (images.Any())
                 _db.Images.RemoveRange(images);
 
-            // ⭐ XÓA GỢI Ý AI
+            //  XÓA GỢI Ý AI
             var targets = _db.AiMatchSuggestions
                 .Where(s => (s.SourceType == "JobSeekerPost" && s.SourceId == id)
                          || (s.TargetType == "JobSeekerPost" && s.TargetId == id));
@@ -981,7 +923,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
 
-            // ⭐ Lấy danh sách ảnh
+            //  Lấy danh sách ảnh
             var images = await _db.Images
                 .Where(i => i.EntityType == "JobSeekerPost" && i.EntityId == post.JobSeekerPostId)
                 .Select(i => i.Url)
@@ -1005,8 +947,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
-
-                ImageUrls = images      // ⭐ map ra DTO
                 };
             }
 
@@ -1113,7 +1053,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             if (post == null || post.Status == "Deleted")
                 return false;
 
-            post.Status = "Inactive";
+            post.Status = "Archived";
             post.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(post);

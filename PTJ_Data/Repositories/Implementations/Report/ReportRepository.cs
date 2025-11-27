@@ -1,10 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces;
-using PTJ_Models;
-using PTJ_Models.DTO.Report;
+using PTJ_Models.DTO;
 using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Implementations
@@ -20,6 +16,8 @@ namespace PTJ_Data.Repositories.Implementations
         public Task<bool> JobSeekerPostExistsAsync(int jobSeekerPostId)
             => _db.JobSeekerPosts.AnyAsync(p => p.JobSeekerPostId == jobSeekerPostId && p.Status != "Deleted");
 
+        // ADD REPORT
+
         public async Task AddAsync(PostReport report)
         {
             await _db.PostReports.AddAsync(report);
@@ -27,39 +25,55 @@ namespace PTJ_Data.Repositories.Implementations
 
         public Task SaveChangesAsync() => _db.SaveChangesAsync();
 
+        // GET MY REPORTS UNIFIED VERSION
+
         public async Task<IEnumerable<MyReportDto>> GetMyReportsAsync(int reporterId)
         {
-            // Join sang 2 bảng để lấy Title (nếu có)
-            var q = from r in _db.PostReports
-                    where r.ReporterId == reporterId
-                    orderby r.CreatedAt descending
-                    select new MyReportDto
-                    {
-                        ReportId = r.PostReportId,
-                        ReportType = r.ReportType,
-                        ReportedItemId = r.ReportedItemId,
-                        EmployerPostTitle = r.EmployerPost != null ? r.EmployerPost.Title : null,
-                        JobSeekerPostTitle = r.JobSeekerPost != null ? r.JobSeekerPost.Title : null,
-                        Status = r.Status,
-                        Reason = r.Reason,
-                        CreatedAt = r.CreatedAt
-                    };
+            var list = await _db.PostReports
+                .Where(r => r.ReporterId == reporterId)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new MyReportDto
+                {
+                    ReportId = r.PostReportId,
+                    ReportType = r.ReportType,
+                    Status = r.Status,
+                    Reason = r.Reason,
+                    CreatedAt = r.CreatedAt,
 
-            return await q.ToListAsync();
+                    PostId = r.AffectedPostId,
+                    PostType = r.AffectedPostType,
+
+                    PostTitle = r.AffectedPostType == "EmployerPost"
+                        ? _db.EmployerPosts
+                            .Where(p => p.EmployerPostId == r.AffectedPostId)
+                            .Select(p => p.Title)
+                            .FirstOrDefault()
+                        : _db.JobSeekerPosts
+                            .Where(p => p.JobSeekerPostId == r.AffectedPostId)
+                            .Select(p => p.Title)
+                            .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return list;
         }
 
-        public Task<bool> HasRecentDuplicateAsync(int reporterId, string reportType, int reportedItemId, int withinMinutes)
+
+        // CHECK DUPLICATE REPORT (UNIFIED)
+
+        public Task<bool> HasRecentDuplicateAsync(int reporterId, string reportType, int affectedPostId, int withinMinutes)
         {
             var since = System.DateTime.UtcNow.AddMinutes(-withinMinutes);
+
             return _db.PostReports.AnyAsync(r =>
                 r.ReporterId == reporterId &&
                 r.ReportType == reportType &&
-                r.ReportedItemId == reportedItemId &&
+                r.AffectedPostId == affectedPostId &&
                 r.CreatedAt >= since &&
                 r.Status == "Pending");
         }
+        // SUPPORT TITLE FETCHING
 
-        //  NOTIFICATION SUPPORT (NEW)
         public async Task<string?> GetEmployerPostTitleAsync(int employerPostId)
         {
             return await _db.EmployerPosts
@@ -75,15 +89,15 @@ namespace PTJ_Data.Repositories.Implementations
                 .Select(p => p.Title)
                 .FirstOrDefaultAsync();
         }
-       public async Task<int> GetAdminUserIdAsync()
+
+        // GET ADMIN USER ID (ROLE = ADMIN)
+
+        public async Task<int> GetAdminUserIdAsync()
         {
             return await _db.Users
                 .Where(u => u.IsActive && u.Roles.Any(r => r.RoleId == 1))
                 .Select(u => u.UserId)
                 .FirstOrDefaultAsync();
         }
-
     }
-
 }
-

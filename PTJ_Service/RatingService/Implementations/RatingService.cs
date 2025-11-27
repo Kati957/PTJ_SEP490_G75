@@ -20,11 +20,11 @@ namespace PTJ_Service.RatingService.Implementations
 
         public async Task<bool> CreateRatingAsync(RatingCreateDto dto, int raterId)
         {
-            // ✅ 1. Kiểm tra giá trị hợp lệ
+            //  1. Kiểm tra giá trị hợp lệ
             if (dto.RatingValue < 0 || dto.RatingValue > 5)
                 throw new ArgumentException("Giá trị đánh giá phải từ 0 đến 5.");
 
-            // ✅ 2. Tìm submission
+            //  2. Tìm submission
             var submission = await _context.JobSeekerSubmissions
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.SubmissionId == dto.SubmissionId);
@@ -32,7 +32,7 @@ namespace PTJ_Service.RatingService.Implementations
             if (submission == null)
                 throw new Exception("Không tìm thấy hồ sơ ứng tuyển.");
 
-            // ✅ 3. Tìm employerId qua EmployerPost
+            //  3. Tìm employerId qua EmployerPost
             var employerId = await _context.EmployerPosts
                 .Where(p => p.EmployerPostId == submission.EmployerPostId)
                 .Select(p => p.UserId)
@@ -41,7 +41,7 @@ namespace PTJ_Service.RatingService.Implementations
             if (employerId == 0)
                 throw new Exception("Không tìm thấy nhà tuyển dụng của bài đăng.");
 
-            // ✅ 4. Kiểm tra quyền hợp lệ
+            //  4. Kiểm tra quyền hợp lệ
             bool isValidRelation =
                 (raterId == submission.JobSeekerId && dto.RateeId == employerId) ||
                 (raterId == employerId && dto.RateeId == submission.JobSeekerId);
@@ -49,11 +49,11 @@ namespace PTJ_Service.RatingService.Implementations
             if (!isValidRelation)
                 throw new Exception($"Bạn không có quyền đánh giá người này. (raterId={raterId}, jobSeeker={submission.JobSeekerId}, employer={employerId})");
 
-            // ✅ 5. Chỉ cho phép khi công việc đã hoàn tất
+            //  5. Chỉ cho phép khi công việc đã hoàn tất
             if (submission.Status != "Completed" && submission.Status != "Accepted")
                 throw new Exception("Chỉ có thể đánh giá sau khi công việc hoàn tất.");
 
-            // ✅ 6. Kiểm tra đã tồn tại chưa
+            //  6. Kiểm tra đã tồn tại chưa
             bool exists = await _context.Ratings.AnyAsync(r =>
                 r.RaterId == raterId &&
                 r.RateeId == dto.RateeId &&
@@ -62,7 +62,7 @@ namespace PTJ_Service.RatingService.Implementations
             if (exists)
                 throw new Exception("Bạn đã đánh giá người này rồi.");
 
-            // ✅ 7. Tạo mới rating
+            //  7. Tạo mới rating
             var rating = new Rating
             {
                 RaterId = raterId,
@@ -73,14 +73,14 @@ namespace PTJ_Service.RatingService.Implementations
                 CreatedAt = DateTime.Now
             };
 
-            // ✅ 8. Lưu DB
+            //  8. Lưu DB
             _context.Ratings.Add(rating);
             await _context.SaveChangesAsync();
 
             return true;
         }
 
-        // ✅ Lấy danh sách rating của 1 người
+        //  Lấy danh sách rating của 1 người
         public async Task<IEnumerable<RatingViewDto>> GetRatingsForUserAsync(int rateeId)
         {
             var ratings = await _ratingRepository.GetRatingsByRateeAsync(rateeId);
@@ -90,13 +90,13 @@ namespace PTJ_Service.RatingService.Implementations
                 RatingId = r.RatingId,
                 RaterId = r.RaterId,
                 RaterName = r.Rater?.Username,
-                RatingValue = r.RatingValue ?? 0, // ✅ Fix nullable
+                RatingValue = r.RatingValue ?? 0, //  Fix nullable
                 Comment = r.Comment,
                 CreatedAt = r.CreatedAt
             });
         }
 
-        // ✅ Lấy điểm trung bình của 1 người
+        //  Lấy điểm trung bình của 1 người
         public async Task<decimal> GetAverageRatingAsync(int rateeId)
         {
             return await _ratingRepository.GetAverageRatingByRateeAsync(rateeId);

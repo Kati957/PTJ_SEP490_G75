@@ -1,5 +1,5 @@
 ﻿using PTJ_Models.DTO.PostDTO;
-using PTJ_Models.DTO.ReportDTO.SearchDTO;
+using PTJ_Models.DTO.SearchDTO;
 
 namespace PTJ_Data.Repositories.Interfaces.JPost
 {

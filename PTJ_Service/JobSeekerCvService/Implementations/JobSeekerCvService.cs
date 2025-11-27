@@ -22,9 +22,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             _location = location;
             }
 
-        // =========================================================
+   
         // JobSeeker xem CV của chính mình
-        // =========================================================
+   
         public async Task<JobSeekerCvResultDto?> GetByIdAsync(int cvId, int jobSeekerId)
             {
             var cv = await _repo.GetByIdAsync(cvId);
@@ -34,9 +34,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             return await ToDto(cv);
             }
 
-        // =========================================================
+   
         // Employer xem CV – KHÔNG check owner
-        // =========================================================
+   
         public async Task<JobSeekerCvResultDto?> GetByIdForEmployerAsync(int cvId)
             {
             var cv = await _repo.GetByIdAsync(cvId);
@@ -46,9 +46,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             return await ToDto(cv);
             }
 
-        // =========================================================
+   
         // Lấy toàn bộ CV của ứng viên
-        // =========================================================
+   
         public async Task<IEnumerable<JobSeekerCvResultDto>> GetByJobSeekerAsync(int jobSeekerId)
             {
             var list = await _repo.GetByJobSeekerAsync(jobSeekerId);
@@ -62,9 +62,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             return result;
             }
 
-        // =========================================================
+   
         // Tạo CV
-        // =========================================================
+   
         public async Task<JobSeekerCvResultDto> CreateAsync(int jobSeekerId, JobSeekerCvCreateDto dto)
             {
             var cv = new JobSeekerCv
@@ -88,9 +88,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             return await ToDto(cv);
             }
 
-        // =========================================================
+   
         // Cập nhật CV
-        // =========================================================
+   
         public async Task<bool> UpdateAsync(int jobSeekerId, int cvId, JobSeekerCvUpdateDto dto)
             {
             var cv = await _repo.GetByIdAsync(cvId);
@@ -113,9 +113,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             return true;
             }
 
-        // =========================================================
+   
         // Xoá CV
-        // =========================================================
+   
         public async Task<bool> DeleteAsync(int jobSeekerId, int cvId)
             {
             var cv = await _repo.GetByIdAsync(cvId);
@@ -130,9 +130,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             }
 
 
-        // =========================================================
+   
         // Helper convert entity → DTO
-        // =========================================================
+   
         private async Task<JobSeekerCvResultDto> ToDto(JobSeekerCv cv)
             {
             var fullAddress = await _location.BuildAddressAsync(cv.ProvinceId, cv.DistrictId, cv.WardId);

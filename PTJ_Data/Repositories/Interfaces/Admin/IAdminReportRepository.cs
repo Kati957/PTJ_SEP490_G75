@@ -1,8 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using PTJ_Models.DTO.Admin;
+﻿using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
-using PTJ_Models.DTO;
 
 namespace PTJ_Data.Repositories.Interfaces.Admin
 {
@@ -19,10 +16,10 @@ namespace PTJ_Data.Repositories.Interfaces.Admin
             int page = 1,
             int pageSize = 10);
         Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId);
-        Task<PostReport?> GetReportByIdAsync(int reportId);
-        Task<EmployerPost?> GetEmployerPostByIdAsync(int postId);
-        Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int postId);
-        Task AddSolvedReportAsync(PostReportSolved solvedReport);
+        Task<PostReport?> GetReportByIdAsync(int id);
+        Task<EmployerPost?> GetEmployerPostByIdAsync(int id);
+        Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int id);
+        Task AddSolvedReportAsync(PostReportSolved solved);
         Task SaveChangesAsync();
     }
 }

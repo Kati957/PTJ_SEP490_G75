@@ -44,7 +44,7 @@ namespace PTJ_Data.Repositories.Implementations
         public async Task<IEnumerable<JobSeekerSubmission>> GetByEmployerPostWithDetailAsync(int employerPostId)
             {
             return await _db.JobSeekerSubmissions
-                .Include(x => x.Cv)                // ✅ Thêm dòng này để lấy CV
+                .Include(x => x.Cv)                //  Thêm dòng này để lấy CV
                 .Include(x => x.JobSeeker)
                 .Where(x => x.EmployerPostId == employerPostId)
                 .OrderByDescending(x => x.AppliedAt)
@@ -56,7 +56,7 @@ namespace PTJ_Data.Repositories.Implementations
             {
             return await _db.JobSeekerSubmissions
                 .Include(x => x.Cv)
-                .Include(x => x.JobSeeker)               // 🔥 Thêm dòng này
+                .Include(x => x.JobSeeker)               //  Thêm dòng này
                 .Include(x => x.EmployerPost)
                     .ThenInclude(p => p.User)
                 .Include(x => x.EmployerPost.Category)

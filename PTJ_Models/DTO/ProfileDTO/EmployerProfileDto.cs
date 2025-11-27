@@ -12,11 +12,11 @@ public class EmployerProfileDto
     public string? ContactEmail { get; set; }
     public string? Website { get; set; }
 
-    // ❗ Không trả lại ID
+    //  Không trả lại ID
     [JsonIgnore] public int ProvinceId { get; set; }
     [JsonIgnore] public int DistrictId { get; set; }
     [JsonIgnore] public int WardId { get; set; }
 
-    // ❗ Trả chuỗi location gộp
+    //  Trả chuỗi location gộp
     public string Location { get; set; } = string.Empty;
     }

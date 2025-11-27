@@ -9,7 +9,6 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
-using PTJ_Service.Implementations.Admin;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
@@ -43,7 +42,6 @@ using CloudinaryDotNet;
 using PTJ_Service.Helpers.Implementations;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Models.Models;
-using PTJ_Service.Implementations.Admin;
 using PTJ_Service.Interfaces.Admin;
 using PTJ_Service.Admin.Implementations;
 using PTJ_Data.Repositories.Interfaces.EPost;
@@ -125,6 +123,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IEmployerRankingService, EmployerRankingService>();
 builder.Services.AddScoped<IChangePasswordService, ChangePasswordService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -158,6 +157,7 @@ builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
 builder.Services.AddScoped<IAdminEmployerRegistrationService, AdminEmployerRegistrationService>();
 
 // Repository
+builder.Services.AddScoped<IEmployerRankingRepository, EmployerRankingRepository>();
 builder.Services.AddScoped<IAdminStatisticsRepository, AdminStatisticsRepository>();
 builder.Services.AddScoped<IHomeRepository, HomeRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();

@@ -1,47 +1,60 @@
-﻿using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PTJ_Models.DTO.Report;
+using PTJ_Models.DTO;
 using PTJ_Service.Interfaces;
+using System.Security.Claims;
 
 namespace PTJ_API.Controllers
 {
     [ApiController]
     [Route("api/reports")]
-    [Authorize] // người dùng phải đăng nhập mới report được
+    [Authorize]   
     public class ReportController : ControllerBase
     {
         private readonly IReportService _svc;
-        public ReportController(IReportService svc) => _svc = svc;
 
-        private int CurrentUserId
+        public ReportController(IReportService svc)
         {
-            get
+            _svc = svc;
+        }
+
+        // 1️⃣ TẠO REPORT BÀI ĐĂNG (EmployerPost / JobSeekerPost)
+
+        [HttpPost("post")]
+        public async Task<IActionResult> ReportPost([FromBody] CreatePostReportDto dto)
+        {
+            if (dto == null)
+                return BadRequest(new { message = "Thiếu dữ liệu report." });
+
+            if (dto.PostId <= 0)
+                return BadRequest(new { message = "PostId không hợp lệ." });
+
+            if (string.IsNullOrWhiteSpace(dto.PostType))
+                return BadRequest(new { message = "PostType không hợp lệ." });
+
+            int reporterId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            int reportId = await _svc.ReportPostAsync(reporterId, dto);
+
+            return Ok(new
             {
-                var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-                return int.TryParse(id, out var uid) ? uid : 0;
-            }
+                message = "Đã gửi báo cáo thành công.",
+                reportId = reportId
+            });
         }
 
-        // POST /api/reports/employer-post
-        [HttpPost("employer-post")]
-        public async Task<IActionResult> ReportEmployerPost([FromBody] CreateEmployerPostReportDto dto)
-        {
-            var id = await _svc.ReportEmployerPostAsync(CurrentUserId, dto);
-            return Ok(new { message = "Báo cáo đã được gửi thành công.", reportId = id });
-        }
 
-        // POST /api/reports/jobseeker-post
-        [HttpPost("jobseeker-post")]
-        public async Task<IActionResult> ReportJobSeekerPost([FromBody] CreateJobSeekerPostReportDto dto)
-        {
-            var id = await _svc.ReportJobSeekerPostAsync(CurrentUserId, dto);
-            return Ok(new { message = "Báo cáo đã được gửi thành công.", reportId = id });
-        }
 
-        // GET /api/reports/my
+        // 2️⃣ LẤY DANH SÁCH REPORT CỦA USER
+
         [HttpGet("my")]
         public async Task<IActionResult> GetMyReports()
-            => Ok(await _svc.GetMyReportsAsync(CurrentUserId));
+        {
+            int reporterId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+            var reports = await _svc.GetMyReportsAsync(reporterId);
+
+            return Ok(reports);
+        }
     }
 }

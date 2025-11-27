@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Models.Models;
+
 namespace PTJ_Data;
 
 public partial class JobMatchingDbContext : DbContext
@@ -316,7 +317,11 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<EmployerRegistrationRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__Employer__33A8517A31471ED2");
+            entity.HasKey(e => e.RequestId).HasName("PK__Employer__33A8517AC41CDA76");
+
+            entity.HasIndex(e => e.Email, "IX_EmployerRegRequests_Email").IsUnique();
+
+            entity.HasIndex(e => e.Username, "IX_EmployerRegRequests_Username").IsUnique();
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CompanyName).HasMaxLength(255);
@@ -403,7 +408,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<Image>(entity =>
         {
-            entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F4EC19291B74");
+            entity.HasKey(e => e.ImageId).HasName("PK__Images__7516F4EC5C1BE583");
 
             entity.Property(e => e.ImageId).HasColumnName("ImageID");
             entity.Property(e => e.CreatedAt)
@@ -418,7 +423,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<JobSeekerCv>(entity =>
         {
-            entity.HasKey(e => e.Cvid).HasName("PK__JobSeeke__A04CFC43DD1256F3");
+            entity.HasKey(e => e.Cvid).HasName("PK__JobSeeke__A04CFC4346274163");
 
             entity.ToTable("JobSeekerCVs");
 
@@ -570,7 +575,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<LocationCache>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC0765252704");
+            entity.HasKey(e => e.Id).HasName("PK__Location__3214EC072C85A09F");
 
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.LastUpdated).HasColumnType("datetime");
@@ -670,29 +675,19 @@ public partial class JobMatchingDbContext : DbContext
         modelBuilder.Entity<PostReport>(entity =>
         {
             entity.Property(e => e.PostReportId).HasColumnName("PostReportID");
+            entity.Property(e => e.AffectedPostType).HasMaxLength(50);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.EmployerPostId).HasColumnName("EmployerPostID");
-            entity.Property(e => e.JobSeekerPostId).HasColumnName("JobSeekerPostID");
             entity.Property(e => e.ReportType)
                 .HasMaxLength(20)
                 .IsUnicode(false);
-            entity.Property(e => e.ReportedItemId).HasColumnName("ReportedItemID");
             entity.Property(e => e.ReporterId).HasColumnName("ReporterID");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .IsUnicode(false)
                 .HasDefaultValue("Pending");
             entity.Property(e => e.TargetUserId).HasColumnName("TargetUserID");
-
-            entity.HasOne(d => d.EmployerPost).WithMany(p => p.PostReports)
-                .HasForeignKey(d => d.EmployerPostId)
-                .HasConstraintName("FK__PostRepor__Emplo__70A8B9AE");
-
-            entity.HasOne(d => d.JobSeekerPost).WithMany(p => p.PostReports)
-                .HasForeignKey(d => d.JobSeekerPostId)
-                .HasConstraintName("FK__PostRepor__JobSe__719CDDE7");
 
             entity.HasOne(d => d.Reporter).WithMany(p => p.PostReportReporters)
                 .HasForeignKey(d => d.ReporterId)
@@ -810,7 +805,7 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<SubCategory>(entity =>
         {
-            entity.HasKey(e => e.SubCategoryId).HasName("PK__SubCateg__26BE5B197DBCD9BB");
+            entity.HasKey(e => e.SubCategoryId).HasName("PK__SubCateg__26BE5B19694D949A");
 
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.Name).HasMaxLength(255);
