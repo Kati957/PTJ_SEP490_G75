@@ -105,9 +105,15 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // 4️⃣ Gửi thông báo cho follower của employer
             var followers = await _db.EmployerFollowers
-                .Where(f => f.EmployerId == post.UserId && f.IsActive)
-                .Select(f => f.JobSeekerId)
-                .ToListAsync();
+     .Where(f => f.EmployerId == post.UserId && f.IsActive)
+     .Select(f => f.JobSeekerId)
+     .ToListAsync();
+
+            // Lấy tên employer từ bảng EmployerProfiles
+            var employerName = await _db.EmployerProfiles
+                .Where(x => x.UserId == post.UserId)
+                .Select(x => x.DisplayName)
+                .FirstOrDefaultAsync() ?? "Nhà tuyển dụng";
 
             if (followers.Any())
             {
@@ -115,17 +121,18 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 {
                     await _noti.SendAsync(new CreateNotificationDto
                     {
-                        UserId = jsId,
+                        UserId = jsId,                                
                         NotificationType = "FollowEmployerPosted",
                         RelatedItemId = post.EmployerPostId,
                         Data = new()
-                {
-                    { "EmployerName", employerUser.Username },
-                    { "PostTitle", post.Title ?? "" }
-                }
+            {
+                { "EmployerName", employerName },         
+                { "PostTitle", post.Title ?? "" }
+            }
                     });
                 }
             }
+
 
             // 5️⃣ Upload ảnh bài đăng
             if (dto.Images != null && dto.Images.Any())
@@ -311,7 +318,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
                 SubCategoryName = p.SubCategory?.Name,
-                EmployerName = p.User.Username,
+                EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = p.CreatedAt,
                 Status = p.Status,
                 ImageUrls = imageLookup.ContainsKey(p.EmployerPostId)
@@ -360,7 +367,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
                 SubCategoryName = p.SubCategory?.Name,
-                EmployerName = p.User.Username,
+                EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = p.CreatedAt,
                 Status = p.Status,
 
@@ -425,7 +432,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 PhoneContact = post.PhoneContact,
                 CategoryName = post.Category?.Name,
                 SubCategoryName = post.SubCategory?.Name,
-                EmployerName = user.Username,
+                EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 CompanyLogo = user.EmployerProfile?.AvatarUrl ?? "",
@@ -1039,7 +1046,7 @@ ScoreAndFilterCandidatesAsync(
                 PhoneContact = post.PhoneContact,
                 CategoryName = category?.Name,
                 SubCategoryName = sub?.Name,
-                EmployerName = user?.Username ?? "",
+                EmployerName = user?.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = post.CreatedAt,
                 ImageUrls = images,
                 Status = post.Status

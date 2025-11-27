@@ -25,7 +25,6 @@ namespace PTJ_Service.FollowService
             var existing = await _context.EmployerFollowers
                 .FirstOrDefaultAsync(f => f.JobSeekerId == jobSeekerId && f.EmployerId == employerId);
 
-            // true nếu là follow mới hoặc re-follow sau khi từng unfollow
             bool isNewFollow = existing == null || existing.IsActive == false;
 
             if (existing != null)
@@ -46,29 +45,33 @@ namespace PTJ_Service.FollowService
 
             await _context.SaveChangesAsync();
 
-            //  Gửi noti cho Employer khi có follower mới
+            // Gửi thông báo
             if (isNewFollow)
             {
-                var seeker = await _context.Users
-                    .FirstOrDefaultAsync(u => u.UserId == jobSeekerId);
+                // Lấy full name của job seeker
+                var seekerName = await _context.JobSeekerProfiles
+                    .Where(x => x.UserId == jobSeekerId)
+                    .Select(x => x.FullName)
+                    .FirstOrDefaultAsync();
 
-                if (seeker != null)
+                if (seekerName != null)
                 {
                     await _noti.SendAsync(new CreateNotificationDto
                     {
-                        UserId = employerId, // employer là userId trong bảng Users
+                        UserId = employerId,    // employer là người nhận
                         NotificationType = "JobSeekerFollowedEmployer",
                         RelatedItemId = jobSeekerId,
                         Data = new()
-                        {
-                            { "JobSeekerName", seeker.Username }
-                        }
+                {
+                    { "JobSeekerName", seekerName }
+                }
                     });
                 }
             }
 
             return true;
         }
+
 
         public async Task<bool> UnfollowEmployerAsync(int jobSeekerId, int employerId)
         {

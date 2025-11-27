@@ -27,19 +27,19 @@ namespace PTJ_Service.Implementations
 
         public async Task SendAsync(CreateNotificationDto dto)
         {
-            // 1. Load Notification Template
+            // 1. Load template
             var template = await _repo.GetTemplateAsync(dto.NotificationType);
             if (template == null)
                 throw new Exception($"Không tìm thấy mẫu thông báo: {dto.NotificationType}");
 
-            // 2. Auto inject FullName vào placeholder
+            // 2. Inject auto values 
             await InjectRealNamesIntoData(dto, template);
 
-            // 3. Render Title & Message
-            string title = RenderTemplate(template.TitleTemplate, dto.Data);
-            string message = RenderTemplate(template.MessageTemplate, dto.Data);
+            // 3. Render title & message
+            var title = RenderTemplate(template.TitleTemplate, dto.Data);
+            var message = RenderTemplate(template.MessageTemplate, dto.Data);
 
-            // 4. Create Notification Entity
+            // 4. Create Notification
             var noti = new Notification
             {
                 UserId = dto.UserId,
@@ -54,7 +54,7 @@ namespace PTJ_Service.Implementations
 
             await _repo.CreateAsync(noti);
 
-            // 5. PUSH REAL-TIME SIGNALR 
+            // 5. Push SignalR
             await _hub.Clients.Group($"user_{dto.UserId}")
                 .SendAsync("ReceiveNotification", new
                 {
@@ -88,61 +88,50 @@ namespace PTJ_Service.Implementations
             return _repo.MarkAsReadAsync(notificationId, userId);
         }
 
-
-        //   SUPPORT FUNCTIONS
-
+        //SUPPORT FUNCTIONS – SMART AUTO INJECT
 
         private async Task InjectRealNamesIntoData(CreateNotificationDto dto, NotificationTemplate template)
         {
-            bool needName =
-                template.TitleTemplate.Contains("{{Name}}") ||
-                template.MessageTemplate.Contains("{{Name}}");
-
-            bool needJS =
-                template.TitleTemplate.Contains("{{JobSeekerName}}") ||
-                template.MessageTemplate.Contains("{{JobSeekerName}}");
-
-            bool needEmp =
-                template.TitleTemplate.Contains("{{EmployerName}}") ||
-                template.MessageTemplate.Contains("{{EmployerName}}");
-
-            if (needName)
+           
+            if ((template.TitleTemplate.Contains("{{Name}}") ||
+                 template.MessageTemplate.Contains("{{Name}}"))
+                 && !dto.Data.ContainsKey("Name"))
             {
                 dto.Data["Name"] = await GetRealName(dto.UserId);
             }
-
-            if (needJS)
+            if ((template.TitleTemplate.Contains("{{JobSeekerName}}") ||
+                 template.MessageTemplate.Contains("{{JobSeekerName}}"))
+                 && !dto.Data.ContainsKey("JobSeekerName"))
             {
-                dto.Data["JobSeekerName"] = await GetRealName(dto.UserId);
+                dto.Data["JobSeekerName"] = "Ứng viên";
             }
-
-
-            if (needEmp)
+            if ((template.TitleTemplate.Contains("{{EmployerName}}") ||
+                 template.MessageTemplate.Contains("{{EmployerName}}"))
+                 && !dto.Data.ContainsKey("EmployerName"))
             {
-                dto.Data["EmployerName"] = await GetRealName(dto.UserId);
+                dto.Data["EmployerName"] = "Nhà tuyển dụng";
             }
         }
-
         private async Task<string> GetRealName(int userId)
         {
-     
             var js = await _db.JobSeekerProfiles
-                              .Where(x => x.UserId == userId)
-                              .Select(x => x.FullName)
-                              .FirstOrDefaultAsync();
+                .Where(x => x.UserId == userId)
+                .Select(x => x.FullName)
+                .FirstOrDefaultAsync();
+
             if (js != null) return js;
 
             var emp = await _db.EmployerProfiles
-                               .Where(x => x.UserId == userId)
-                               .Select(x => x.DisplayName)
-                               .FirstOrDefaultAsync();
+                .Where(x => x.UserId == userId)
+                .Select(x => x.DisplayName)
+                .FirstOrDefaultAsync();
+
             if (emp != null) return emp;
 
-    
             return await _db.Users
-                            .Where(x => x.UserId == userId)
-                            .Select(x => x.Username)
-                            .FirstOrDefaultAsync() ?? "";
+                .Where(x => x.UserId == userId)
+                .Select(x => x.Username)
+                .FirstOrDefaultAsync() ?? "";
         }
 
         private string RenderTemplate(string template, Dictionary<string, string> data)
