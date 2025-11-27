@@ -1,8 +1,10 @@
-﻿using PTJ_Data.Repositories.Interfaces;
+﻿using PTJ_Data;
+using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.DTO.Notification;
 using PTJ_Models.Models;
 using PTJ_Service.Interfaces;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using PTJ_Service.Hubs;
 
 namespace PTJ_Service.Implementations
@@ -11,13 +13,16 @@ namespace PTJ_Service.Implementations
     {
         private readonly INotificationRepository _repo;
         private readonly IHubContext<NotificationHub> _hub;
+        private readonly JobMatchingDbContext _db;
 
         public NotificationService(
             INotificationRepository repo,
-            IHubContext<NotificationHub> hub)
+            IHubContext<NotificationHub> hub,
+            JobMatchingDbContext db)
         {
             _repo = repo;
             _hub = hub;
+            _db = db;
         }
 
         public async Task SendAsync(CreateNotificationDto dto)
@@ -27,11 +32,14 @@ namespace PTJ_Service.Implementations
             if (template == null)
                 throw new Exception($"Không tìm thấy mẫu thông báo: {dto.NotificationType}");
 
-            // 2. Render Title & Message (replace placeholders)
+            // 2. Auto inject FullName vào placeholder
+            await InjectRealNamesIntoData(dto, template);
+
+            // 3. Render Title & Message
             string title = RenderTemplate(template.TitleTemplate, dto.Data);
             string message = RenderTemplate(template.MessageTemplate, dto.Data);
 
-            // 3. Create Notification Entity
+            // 4. Create Notification Entity
             var noti = new Notification
             {
                 UserId = dto.UserId,
@@ -44,10 +52,9 @@ namespace PTJ_Service.Implementations
                 UpdatedAt = DateTime.Now
             };
 
-            // Save to DB
             await _repo.CreateAsync(noti);
 
-            // 4. PUSH REAL-TIME SIGNALR 
+            // 5. PUSH REAL-TIME SIGNALR 
             await _hub.Clients.Group($"user_{dto.UserId}")
                 .SendAsync("ReceiveNotification", new
                 {
@@ -79,6 +86,63 @@ namespace PTJ_Service.Implementations
         public Task<bool> MarkAsReadAsync(int notificationId, int userId)
         {
             return _repo.MarkAsReadAsync(notificationId, userId);
+        }
+
+
+        //   SUPPORT FUNCTIONS
+
+
+        private async Task InjectRealNamesIntoData(CreateNotificationDto dto, NotificationTemplate template)
+        {
+            bool needName =
+                template.TitleTemplate.Contains("{{Name}}") ||
+                template.MessageTemplate.Contains("{{Name}}");
+
+            bool needJS =
+                template.TitleTemplate.Contains("{{JobSeekerName}}") ||
+                template.MessageTemplate.Contains("{{JobSeekerName}}");
+
+            bool needEmp =
+                template.TitleTemplate.Contains("{{EmployerName}}") ||
+                template.MessageTemplate.Contains("{{EmployerName}}");
+
+            if (needName)
+            {
+                dto.Data["Name"] = await GetRealName(dto.UserId);
+            }
+
+            if (needJS)
+            {
+                dto.Data["JobSeekerName"] = await GetRealName(dto.UserId);
+            }
+
+
+            if (needEmp)
+            {
+                dto.Data["EmployerName"] = await GetRealName(dto.UserId);
+            }
+        }
+
+        private async Task<string> GetRealName(int userId)
+        {
+     
+            var js = await _db.JobSeekerProfiles
+                              .Where(x => x.UserId == userId)
+                              .Select(x => x.FullName)
+                              .FirstOrDefaultAsync();
+            if (js != null) return js;
+
+            var emp = await _db.EmployerProfiles
+                               .Where(x => x.UserId == userId)
+                               .Select(x => x.DisplayName)
+                               .FirstOrDefaultAsync();
+            if (emp != null) return emp;
+
+    
+            return await _db.Users
+                            .Where(x => x.UserId == userId)
+                            .Select(x => x.Username)
+                            .FirstOrDefaultAsync() ?? "";
         }
 
         private string RenderTemplate(string template, Dictionary<string, string> data)
