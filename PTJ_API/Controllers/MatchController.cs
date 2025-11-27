@@ -6,6 +6,7 @@ using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Models.DTO.FilterDTO;
 using PTJ_Service.JobSeekerPostService.Implementations;
 using PTJ_Models.Models;
+using PTJ_Service.JobSeekerPostService.cs.Interfaces;
 
 namespace YourProject.Controllers
     {
@@ -14,12 +15,13 @@ namespace YourProject.Controllers
     public class MatchController : ControllerBase
         {
         private readonly JobMatchingDbContext _db;
-        private readonly JobSeekerPostService _seekerService;
-        public MatchController(JobMatchingDbContext db, JobSeekerPostService seekerService)
-            {
+        private readonly IJobSeekerPostService _seekerService;
+
+        public MatchController(JobMatchingDbContext db, IJobSeekerPostService seekerService)
+        {
             _seekerService = seekerService;
             _db = db;
-            }
+        }
 
         [HttpGet("search-by-province")]
         public async Task<IActionResult> SearchByProvince(int provinceId)

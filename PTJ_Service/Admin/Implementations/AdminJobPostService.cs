@@ -23,7 +23,7 @@ namespace PTJ_Service.Admin.Implementations
             _noti = noti;
         }
 
-        // ========================= EMPLOYER POSTS =========================
+        //  EMPLOYER POSTS 
 
         public Task<PagedResult<AdminEmployerPostDto>> GetEmployerPostsAsync(
             string? status, int? categoryId, string? keyword, int page, int pageSize)
@@ -41,7 +41,7 @@ namespace PTJ_Service.Admin.Implementations
             return dto;
         }
 
-        // ⭐⭐ Admin khóa/mở khóa EMPLOYER POST + gửi Notification ⭐⭐
+        //  Admin khóa/mở khóa EMPLOYER POST + gửi Notification 
         public async Task ToggleEmployerPostBlockedAsync(int id, string? reason, int adminId)
         {
             // 1️⃣ Lấy bài đăng
@@ -71,7 +71,7 @@ namespace PTJ_Service.Admin.Implementations
             });
         }
 
-        // ========================= JOB SEEKER POSTS =========================
+        //  JOB SEEKER POSTS 
 
         public Task<PagedResult<AdminJobSeekerPostDto>> GetJobSeekerPostsAsync(
             string? status, int? categoryId, string? keyword, int page, int pageSize)
@@ -89,7 +89,7 @@ namespace PTJ_Service.Admin.Implementations
             return dto;
         }
 
-        // ⭐⭐ Admin lưu trữ/khôi phục JOB SEEKER POST + gửi Notification ⭐⭐
+        //  Admin lưu trữ/khôi phục JOB SEEKER POST + gửi Notification 
         public async Task ToggleJobSeekerPostArchivedAsync(int id, string? reason, int adminId)
         {
             // 1️⃣ Lấy bài đăng
