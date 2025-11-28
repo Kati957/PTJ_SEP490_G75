@@ -65,15 +65,12 @@ namespace PTJ_Data.Repositories.Implementations.Admin
               {
                   UserId = u.UserId,
 
-                  // ⭐ HIỂN THỊ TÊN THẬT RA ADMIN
+                 
                   DisplayName =
-        u.Roles.Any(r => r.RoleName == "Employer")
-            ? u.EmployerProfile.DisplayName
-            : u.JobSeekerProfile.FullName,
-
-                  // ⭐ Username chỉ để admin nhìn khi mở chi tiết
+                  u.Roles.Any(r => r.RoleName == "Employer")
+                  ? u.EmployerProfile.DisplayName
+                  : u.JobSeekerProfile.FullName,
                   Username = u.Username,
-
                   Email = u.Email,
                   Role = u.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
                   IsActive = u.IsActive,
