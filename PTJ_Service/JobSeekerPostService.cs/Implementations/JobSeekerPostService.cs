@@ -245,7 +245,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                         x.Job.WorkHours,
                         x.Job.PhoneContact,
                         CategoryName = x.Job.Category?.Name,
-                        EmployerName = x.Job.User.EmployerProfile.ContactName,
+                        EmployerName = x.Job.User.EmployerProfile?.ContactName,
                         IsSaved = savedIds.Contains(x.Job.EmployerPostId)
                         }
                     })
@@ -288,7 +288,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
                     SubCategoryName = p.SubCategory?.Name,
-                    SeekerName = p.User.JobSeekerProfile.FullName,
+                    SeekerName = p.User.JobSeekerProfile?.FullName,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
@@ -321,7 +321,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
                     SubCategoryName = p.SubCategory?.Name,
-                    SeekerName = p.User.JobSeekerProfile.FullName,
+                    SeekerName = p.User.JobSeekerProfile?.FullName,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
@@ -369,7 +369,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 CategoryID = post.CategoryId ?? 0,
                 CategoryName = post.Category?.Name,
                 SubCategoryName = post.SubCategory?.Name,
-                SeekerName = post.User.JobSeekerProfile.FullName,
+                SeekerName = post.User.JobSeekerProfile?.FullName,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 CvId = post.SelectedCvId,
@@ -622,7 +622,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                         x.Job.Salary,
                         x.Job.Location,
                         x.Job.WorkHours,
-                        EmployerName = x.Job.User.EmployerProfile.ContactName,
+                        EmployerName = x.Job.User.EmployerProfile?.ContactName,
                         IsSaved = savedIds.Contains(x.Job.EmployerPostId)
                         }
                     })
@@ -753,30 +753,32 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             }
 
         public async Task<IEnumerable<object>> GetSavedJobsAsync(int jobSeekerId)
-            {
+        {
             return await _db.JobSeekerShortlistedJobs
-                 .Include(x => x.EmployerPost)
-                 .ThenInclude(e => e.User)
-                 .Where(x =>
-                     x.JobSeekerId == jobSeekerId &&
-                     x.EmployerPost.Status == "Active" &&
-                     x.EmployerPost.User.IsActive == true
-                 )
-
-                .Include(x => x.EmployerPost)
-                .ThenInclude(e => e.User)
                 .Where(x => x.JobSeekerId == jobSeekerId)
+                .Include(x => x.EmployerPost)
+                    .ThenInclude(p => p.User)
+                        .ThenInclude(u => u.EmployerProfile)
+                .Where(x =>
+                    x.EmployerPost.Status == "Active" &&
+                    x.EmployerPost.User.IsActive
+                )
                 .Select(x => new
-                    {
+                {
                     x.EmployerPostId,
-                    x.EmployerPost.Title,
-                    x.EmployerPost.Location,
-                    EmployerName = x.EmployerPost.User.EmployerProfile.ContactName,
+                    Title = x.EmployerPost.Title,
+                    Location = x.EmployerPost.Location,
+
+                    EmployerName =
+                        x.EmployerPost.User.EmployerProfile != null
+                            ? x.EmployerPost.User.EmployerProfile.DisplayName
+                            : x.EmployerPost.User.Username,
+
                     x.Note,
                     x.AddedAt
-                    }).ToListAsync();
-            }
-
+                })
+                .ToListAsync();
+        }
 
         // Lấy lại danh sách job đã được AI đề xuất
         public async Task<IEnumerable<JobSeekerJobSuggestionDto>> GetSuggestionsByPostAsync(
