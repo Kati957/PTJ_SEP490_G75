@@ -31,6 +31,9 @@ namespace PTJ_Models.DTO.PostDTO
         [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
         public string WorkHourEnd { get; set; } = string.Empty;
 
+        public DateTime? ExpiredAt { get; set; }
+
+
         [Range(1, int.MaxValue)]
         public int ProvinceId { get; set; }
 
@@ -90,8 +93,6 @@ namespace PTJ_Models.DTO.PostDTO
 
         [Range(1, int.MaxValue)]
         public int? CategoryID { get; set; }
-
-        public int? SubCategoryId { get; set; }
 
         [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$")]
         public string? PhoneContact { get; set; }

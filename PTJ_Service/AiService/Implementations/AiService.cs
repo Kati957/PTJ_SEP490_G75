@@ -146,5 +146,26 @@ namespace PTJ_Service.AiService.Implementations
                 throw new Exception("Không thể kết nối LM Studio. Vui lòng mở LM Studio và bật Local Server (Settings → Developer → Enable Local Inference Server).");
                 }
             }
+
+        public async Task DeleteVectorAsync(string ns, string id)
+            {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+            var payload = new
+                {
+                ids = new[] { id },
+                @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
+                };
+
+            var res = await client.PostAsJsonAsync($"{_pineconeUrl}/vectors/delete", payload);
+
+            if (!res.IsSuccessStatusCode)
+                {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new Exception($"Pinecone DELETE failed: {res.StatusCode} - {body}");
+                }
+            }
         }
     }

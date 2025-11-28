@@ -88,12 +88,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                             : dto.Salary,
                 Requirements = dto.Requirements,
                 WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}",
+                ExpiredAt = dto.ExpiredAt,
                 Location = fullLocation,
                 ProvinceId = dto.ProvinceId,
                 DistrictId = dto.DistrictId,
                 WardId = dto.WardId,
                 CategoryId = dto.CategoryID,
-                SubCategoryId = dto.SubCategoryId,
                 PhoneContact = dto.PhoneContact,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now,
@@ -166,6 +166,17 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (freshPost == null)
                 throw new Exception("Không thể load lại bài đăng vừa tạo.");
 
+            // Realtime expiry check
+            if (freshPost.ExpiredAt != null && freshPost.ExpiredAt.Value.Date < DateTime.Today)
+                {
+                // Không chạy AI vì bài đã hết hạn
+                return new EmployerPostResultDto
+                    {
+                    Post = await BuildCleanPostDto(freshPost),
+                    SuggestedCandidates = new List<AIResultDto>()
+                    };
+                }
+
             var category = await _db.Categories.FindAsync(freshPost.CategoryId);
 
             string embedText =
@@ -186,14 +197,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 ns: "employer_posts",
                 id: $"EmployerPost:{freshPost.EmployerPostId}",
                 vector: vector,
-                metadata: new
-                {
-                    title = freshPost.Title ?? "",
-                    location = freshPost.Location ?? "",
-                    salary = freshPost.Salary ?? 0,
-                    categoryId = freshPost.CategoryId ?? 0,
-                    postId = freshPost.EmployerPostId
-                });
+               metadata: new
+                   {
+                   postId = post.EmployerPostId,
+                   title = post.Title ?? "",
+                   status = post.Status
+                   });
 
             // 8️⃣ Query ứng viên tương tự
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
@@ -220,13 +229,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // 9️⃣ Tính điểm
             var scored = await ScoreAndFilterCandidatesAsync(
-                matches,
+                vector,
                 freshPost.CategoryId,
-                freshPost.SubCategoryId,
-                freshPost.Location ?? "",
-                freshPost.Title ?? "",
-                freshPost.Requirements ?? ""
+                freshPost.Location
             );
+
 
             // 1️⃣0️⃣ Lưu gợi ý
             var scoredWithCv = scored.Select(x => (x.Seeker, x.Score, x.CvId)).ToList();
@@ -288,8 +295,14 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var posts = await _db.EmployerPosts
                 .Include(p => p.User).ThenInclude(u => u.EmployerProfile)
                 .Include(p => p.Category)
-                .Include(p => p.SubCategory)
-                .Where(p => p.Status == "Active" && p.User.IsActive)
+                .Where(p =>
+                p.Status == "Active" &&
+                p.User.IsActive &&
+                (
+                    p.ExpiredAt == null ||                     // bài bình thường
+                    p.ExpiredAt.Value.Date >= DateTime.Today   // bài thời vụ còn hạn
+                ))
+
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
 
@@ -317,7 +330,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory?.Name,
                 EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = p.CreatedAt,
                 Status = p.Status,
@@ -338,7 +350,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // 2️⃣ Loại bỏ Deleted, sắp xếp mới nhất → cũ nhất
             posts = posts
-                .Where(x => x.Status != "Deleted")
+                .Where(x =>
+                x.Status != "Deleted" &&
+                (
+                    x.ExpiredAt == null ||
+                    x.ExpiredAt.Value.Date >= DateTime.Today
+                ))
+
                 .OrderByDescending(x => x.CreatedAt)
                 .ToList();
 
@@ -366,7 +384,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
-                SubCategoryName = p.SubCategory?.Name,
                 EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = p.CreatedAt,
                 Status = p.Status,
@@ -409,6 +426,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (post.Status == "Archived" && !isOwner && !isAdmin)
                 return null;
 
+            // REJECT nếu bài đã hết hạn (ngày < hôm nay)
+            if (post.ExpiredAt != null && post.ExpiredAt.Value.Date < DateTime.Today)
+                {
+                if (!isAdmin && !isOwner)
+                    return null; // hoặc throw "Bài đăng đã hết hạn."
+                }
+
             // 5️⃣ Load ảnh (1 query)
             var images = await _db.Images
                 .Where(i => i.EntityType == "EmployerPost" && i.EntityId == post.EmployerPostId)
@@ -431,7 +455,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 WardId = post.WardId,
                 PhoneContact = post.PhoneContact,
                 CategoryName = post.Category?.Name,
-                SubCategoryName = post.SubCategory?.Name,
                 EmployerName = post.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
@@ -490,7 +513,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             post.WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}";
             post.CategoryId = dto.CategoryID;
-            post.SubCategoryId = dto.SubCategoryId;
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;
 
@@ -545,13 +567,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 id: $"EmployerPost:{post.EmployerPostId}",
                 vector: vector,
                 metadata: new
-                {
+                    {
+                    postId = post.EmployerPostId,
                     title = post.Title ?? "",
-                    location = post.Location ?? "",
-                    salary = post.Salary ?? 0,
-                    categoryId = post.CategoryId ?? 0,
-                    postId = post.EmployerPostId
-                });
+                    status = post.Status
+                    });
 
             return await BuildCleanPostDto(post);
         }
@@ -595,6 +615,16 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (post == null)
                 throw new Exception("Bài đăng không tồn tại.");
 
+            // Không chạy AI nếu bài đã hết hạn
+            if (post.ExpiredAt != null && post.ExpiredAt.Value.Date < DateTime.Today)
+                {
+                return new EmployerPostResultDto
+                    {
+                    Post = await BuildCleanPostDto(post),
+                    SuggestedCandidates = new List<AIResultDto>()
+                    };
+                }
+
             bool isOwner = requesterId.HasValue && requesterId == post.UserId;
 
             //  Deleted → không ai refresh
@@ -631,13 +661,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 id: $"EmployerPost:{post.EmployerPostId}",
                 vector: vector,
                 metadata: new
-                {
+                    {
+                    postId = post.EmployerPostId,
                     title = post.Title ?? "",
-                    location = post.Location ?? "",
-                    salary = post.Salary ?? 0,
-                    categoryId = post.CategoryId ?? 0,
-                    postId = post.EmployerPostId
-                });
+                    status = post.Status
+                    });
 
             //  Query ứng viên tương tự (Embedding)
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
@@ -653,13 +681,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             //  Chấm điểm & lọc ứng viên
             var scored = await ScoreAndFilterCandidatesAsync(
-                matches,
-                post.CategoryId,
-                post.SubCategoryId,
-                post.Location ?? "",
-                post.Title ?? "",
-                post.Requirements ?? ""
-            );
+                 vector,
+                 post.CategoryId,
+                 post.Location
+             );
+
 
             //  Upsert top 5 vào DB
             await UpsertSuggestionsAsync(
@@ -710,88 +736,108 @@ namespace PTJ_Service.EmployerPostService.Implementations
             };
         }
 
-
-
-
-        // SCORING
-
-
         //  SCORING LOGIC (Category filter + Distance ≤100km + Hybrid score)
 
         private async Task<List<(JobSeekerPost Seeker, double Score, int? CvId)>>
 ScoreAndFilterCandidatesAsync(
-    List<(string Id, double Score)> matches,
+    float[] employerVector,
     int? mustMatchCategoryId,
-    int? mustMatchSubCategoryId,
-    string employerLocation,
-    string employerTitle,
-    string employerRequirements)
-        {
-            var result = new List<(JobSeekerPost, double, int?)>();
-
-            foreach (var m in matches)
+    string employerLocation)
             {
+            // 1) LỌC CATEGORY
+            var categoryFiltered = await _db.JobSeekerPosts
+                .Where(js =>
+                    js.Status == "Active" &&
+                    js.CategoryId == mustMatchCategoryId)
+                .Include(js => js.User)
+                .Include(js => js.Category)
+                .ToListAsync();
+
+
+            if (!categoryFiltered.Any())
+                return new List<(JobSeekerPost, double, int?)>();
+
+            // 2) LỌC LOCATION
+            var locationFiltered = new List<JobSeekerPost>();
+
+            foreach (var js in categoryFiltered)
+                {
+                if (await IsWithinDistanceAsync(employerLocation, js.PreferredLocation))
+                    locationFiltered.Add(js);
+                }
+
+            if (!locationFiltered.Any())
+                return new List<(JobSeekerPost, double, int?)>();
+
+            // 3) LẤY DANH SÁCH ID ĐÃ QUA HARD FILTER
+            var allowedIds = locationFiltered.Select(x => x.JobSeekerPostId).ToHashSet();
+
+            // 4) QUERY PINECONE (KHÔNG FILTER)
+            var pineconeMatches = await _ai.QuerySimilarAsync(
+                "job_seeker_posts",
+                employerVector,
+                topK: 100
+            );
+
+            if (!pineconeMatches.Any())
+                return new List<(JobSeekerPost, double, int?)>();
+
+            // 5) CHỈ GIỮ LẠI SCORE CHO allowedIds
+            var results = new List<(JobSeekerPost, double, int?)>();
+
+            foreach (var m in pineconeMatches)
+                {
                 if (!m.Id.StartsWith("JobSeekerPost:"))
                     continue;
 
-                if (!int.TryParse(m.Id.Split(':')[1], out var seekerPostId))
+                if (!int.TryParse(m.Id.Split(':')[1], out int seekerId))
                     continue;
 
-                var seeker = await _db.JobSeekerPosts
-                    .Include(x => x.User)
-                    .Include(x => x.Category)
-                    .FirstOrDefaultAsync(x => x.JobSeekerPostId == seekerPostId);
+                if (!allowedIds.Contains(seekerId))
+                    continue; // loại ứng viên chưa qua HARD FILTER
 
-                if (seeker == null || seeker.Status != "Active")
+                var seeker = locationFiltered
+                    .FirstOrDefault(x => x.JobSeekerPostId == seekerId);
+
+                if (seeker == null)
                     continue;
 
-                // CATEGORY FILTER
-                if (mustMatchCategoryId.HasValue &&
-                    seeker.CategoryId != mustMatchCategoryId.Value)
-                    continue;
+                results.Add((seeker, m.Score, seeker.SelectedCvId));
+                }
 
-                if (mustMatchSubCategoryId.HasValue &&
-                    seeker.SubCategoryId != mustMatchSubCategoryId.Value)
-                    continue;
-
-                // LOCATION FILTER (chỉ lọc, không tính điểm)
-                if (!await IsWithinDistanceAsync(employerLocation, seeker.PreferredLocation))
-                    continue;
-
-                //  ONLY 1 SCORE: embedding score
-                double finalScore = m.Score;
-
-                result.Add((seeker, finalScore, seeker.SelectedCvId));
+            return results;
             }
 
-            return result;
-        }
+
 
         private async Task<bool> IsWithinDistanceAsync(string employerLocation, string? seekerLocation)
-        {
-            try
             {
+            try
+                {
                 if (!string.IsNullOrWhiteSpace(employerLocation) &&
                     !string.IsNullOrWhiteSpace(seekerLocation))
-                {
+                    {
                     var employerCoord = await _map.GetCoordinatesAsync(employerLocation);
                     var seekerCoord = await _map.GetCoordinatesAsync(seekerLocation);
 
                     if (employerCoord != null && seekerCoord != null)
-                    {
+                        {
                         double distanceKm = _map.ComputeDistanceKm(
                             employerCoord.Value.lat, employerCoord.Value.lng,
                             seekerCoord.Value.lat, seekerCoord.Value.lng);
 
-                        return distanceKm <= 100; //  Lọc, không tính điểm
+                        return distanceKm <= 100;
+                        }
                     }
                 }
+            catch
+                {
+                // có lỗi: coi như không đạt điều kiện
+                }
+
+            // fallback: mọi trường hợp không return true ở trên đều coi là fail
+            return false;
             }
-            catch { }
-
-            return true; // fallback
-        }
-
 
 
         // SHORTLIST
@@ -860,7 +906,6 @@ ScoreAndFilterCandidatesAsync(
                 join jsp in _db.JobSeekerPosts
                 .Include(x => x.User)
                 .Include(x => x.Category)
-                .Include(x => x.SubCategory)
                      on s.TargetId equals jsp.JobSeekerPostId
                 where jsp.Status == "Active"
                 orderby s.MatchPercent descending, s.RawScore descending, s.CreatedAt descending
@@ -894,7 +939,6 @@ ScoreAndFilterCandidatesAsync(
                 PreferredWorkHours = x.Post.PreferredWorkHours,
                 PhoneContact = x.Post.PhoneContact,
                 CategoryName = x.Category?.Name,
-                SubCategoryName = x.Post.SubCategory != null ? x.Post.SubCategory.Name : null,
                 SeekerName = x.User.Username,
 
                 MatchPercent = x.Suggest.MatchPercent,
@@ -957,7 +1001,7 @@ ScoreAndFilterCandidatesAsync(
                     EntityType = entityType,
                     EntityId = entityId,
                     ContentHash = hash,
-                    Model = "text-embedding-3-large",
+                    Model = "text-embedding-nomic-embed-text-v2-moe",
                     VectorDim = vector.Length,
                     PineconeId = $"{entityType}:{entityId}",
                     Status = "OK",
@@ -995,7 +1039,7 @@ ScoreAndFilterCandidatesAsync(
                 EntityType = entityType,
                 EntityId = 0,
                 ContentHash = hash,
-                Model = "text-embedding-3-small",
+                Model = "text-embedding-nomic-embed-text-v2-moe",
                 VectorDim = vector.Length,
                 PineconeId = $"{entityType}:{hash[..12]}",
                 Status = "OK",
@@ -1011,7 +1055,6 @@ ScoreAndFilterCandidatesAsync(
         {
             var category = await _db.Categories.FindAsync(post.CategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
-            var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             var images = await _db.Images
     .Where(i => i.EntityType == "EmployerPost" && i.EntityId == post.EmployerPostId)
     .Select(i => i.Url)
@@ -1045,7 +1088,6 @@ ScoreAndFilterCandidatesAsync(
 
                 PhoneContact = post.PhoneContact,
                 CategoryName = category?.Name,
-                SubCategoryName = sub?.Name,
                 EmployerName = user?.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = post.CreatedAt,
                 ImageUrls = images,

@@ -37,7 +37,7 @@ public partial class EmployerPost
 
     public int WardId { get; set; }
 
-    public int? SubCategoryId { get; set; }
+    public DateTime? ExpiredAt { get; set; }
 
     public virtual Category? Category { get; set; }
 
@@ -48,8 +48,6 @@ public partial class EmployerPost
     public virtual ICollection<JobSeekerShortlistedJob> JobSeekerShortlistedJobs { get; set; } = new List<JobSeekerShortlistedJob>();
 
     public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
-
-    public virtual SubCategory? SubCategory { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

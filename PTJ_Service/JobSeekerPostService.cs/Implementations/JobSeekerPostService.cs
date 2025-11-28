@@ -99,7 +99,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 WardId = dto.WardId,
 
                 CategoryId = dto.CategoryID,
-                SubCategoryId = dto.SubCategoryId,
 
                 PhoneContact = dto.PhoneContact,
                 SelectedCvId = dto.SelectedCvId,   // GẮN CV VÀO BÀI ĐĂNG
@@ -205,12 +204,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 freshPost.CategoryId,
-                freshPost.SubCategoryId,
-                freshPost.PreferredLocation ?? "",
-                freshPost.Title,
-                freshPost.UserId,
-                freshPost.SelectedCvId
+                freshPost.PreferredLocation ?? ""
             );
+
 
             await UpsertSuggestionsAsync(
                 "JobSeekerPost",
@@ -266,7 +262,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var posts = await _db.JobSeekerPosts
                 .Include(x => x.User)
                 .Include(x => x.Category)
-                .Include(x => x.SubCategory)
                 .Where(x => x.Status == "Active" && x.User.IsActive)
                 .ToListAsync();
 
@@ -287,7 +282,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     Description = p.Description,
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
-                    SubCategoryName = p.SubCategory?.Name,
                     SeekerName = p.User.Username,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
@@ -320,7 +314,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     Description = p.Description,
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
-                    SubCategoryName = p.SubCategory?.Name,
                     SeekerName = p.User.Username,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
@@ -368,7 +361,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 PhoneContact = post.PhoneContact,
                 CategoryID = post.CategoryId ?? 0,
                 CategoryName = post.Category?.Name,
-                SubCategoryName = post.SubCategory?.Name,
                 SeekerName = post.User.Username,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
@@ -426,7 +418,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
 
             post.CategoryId = dto.CategoryID;
-            post.SubCategoryId = dto.SubCategoryId;
             post.PhoneContact = dto.PhoneContact;
             post.SelectedCvId = dto.SelectedCvId;
             post.UpdatedAt = DateTime.Now;
@@ -584,12 +575,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             var scored = await ScoreAndFilterJobsAsync(
                 matches,
                 post.CategoryId,
-                post.SubCategoryId,
-                post.PreferredLocation ?? "",
-                post.Title ?? "",
-                post.UserId,
-                post.SelectedCvId
+                post.PreferredLocation ?? ""
             );
+
 
             await UpsertSuggestionsAsync(
                 "JobSeekerPost",
@@ -638,87 +626,88 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
         // SCORING – 1 SCORE DUY NHẤT TỪ PINECONE
         private async Task<List<(EmployerPost Job, double Score)>>
-            ScoreAndFilterJobsAsync(
-                List<(string Id, double Score)> matches,
-                int? mustMatchCategoryId,
-                int? mustMatchSubCategoryId,
-                string preferredLocation,
-                string seekerTitle,
-                int seekerUserId,
-                int? selectedCvId
-            )
-        {
+ScoreAndFilterJobsAsync(
+    List<(string Id, double Score)> matches,
+    int? mustMatchCategoryId,
+    string seekerLocation
+)
+            {
+            // 1) HARD FILTER CATEGORY
+            var categoryFiltered = await _db.EmployerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category)
+                .Where(x =>
+                    x.Status == "Active" &&
+                    x.User.IsActive &&
+                    x.CategoryId == mustMatchCategoryId)
+                .ToListAsync();
+
+            if (!categoryFiltered.Any())
+                return new List<(EmployerPost, double)>();
+
+            // 2) HARD FILTER LOCATION
+            var locationPassed = new List<EmployerPost>();
+            foreach (var job in categoryFiltered)
+                {
+                if (await IsWithinDistanceAsync(seekerLocation, job.Location))
+                    locationPassed.Add(job);
+                }
+
+            if (!locationPassed.Any())
+                return new List<(EmployerPost, double)>();
+
+            // 3) Allowed IDs
+            var allowedIds = locationPassed.Select(x => x.EmployerPostId).ToHashSet();
+
+            // 4) Score từ Pinecone nhưng chỉ giữ allowedIds
             var results = new List<(EmployerPost Job, double Score)>();
 
             foreach (var m in matches)
-            {
+                {
                 if (!m.Id.StartsWith("EmployerPost:"))
                     continue;
 
-                if (!int.TryParse(m.Id.Split(':')[1], out int employerPostId))
+                if (!int.TryParse(m.Id.Split(':')[1], out int jobId))
                     continue;
 
-                var job = await _db.EmployerPosts
-                    .Include(x => x.User)
-                    .Include(x => x.Category)
-                    .FirstOrDefaultAsync(x => x.EmployerPostId == employerPostId);
-
-                if (job == null || job.Status != "Active")
+                if (!allowedIds.Contains(jobId))
                     continue;
 
-                if (job.User == null || job.User.IsActive == false)
-                    continue;
-
-                // Category Filter
-                if (mustMatchCategoryId.HasValue &&
-                    job.CategoryId != mustMatchCategoryId.Value)
-                    continue;
-
-                // SubCategory Filter
-                if (mustMatchSubCategoryId.HasValue &&
-                    job.SubCategoryId != mustMatchSubCategoryId.Value)
-                    continue;
-
-                // Location Filter: chỉ lọc, không cộng điểm
-                if (!await IsWithinDistanceAsync(preferredLocation, job.Location))
-                    continue;
-
-                // FINAL SCORE = Pinecone similarity
-                double finalScore = m.Score;
-
-                results.Add((job, finalScore));
-            }
+                var job = locationPassed.First(x => x.EmployerPostId == jobId);
+                results.Add((job, m.Score));
+                }
 
             return results;
-        }
+            }
 
         // LOCATION FILTER HELPER – lọc <= 100km, không tính điểm
         private async Task<bool> IsWithinDistanceAsync(string fromLocation, string? toLocation)
-        {
-            if (string.IsNullOrWhiteSpace(fromLocation) ||
-                string.IsNullOrWhiteSpace(toLocation))
-                return true; // nếu thiếu info, không loại
-
+            {
             try
-            {
-                var fromCoord = await _map.GetCoordinatesAsync(fromLocation);
-                var toCoord = await _map.GetCoordinatesAsync(toLocation);
+                {
+                if (!string.IsNullOrWhiteSpace(fromLocation) &&
+                    !string.IsNullOrWhiteSpace(toLocation))
+                    {
+                    var fromCoord = await _map.GetCoordinatesAsync(fromLocation);
+                    var toCoord = await _map.GetCoordinatesAsync(toLocation);
 
-                if (fromCoord == null || toCoord == null)
-                    return true; // không xác định được thì bỏ qua
+                    if (fromCoord != null && toCoord != null)
+                        {
+                        double dist = _map.ComputeDistanceKm(
+                            fromCoord.Value.lat, fromCoord.Value.lng,
+                            toCoord.Value.lat, toCoord.Value.lng);
 
-                double distanceKm = _map.ComputeDistanceKm(
-                    fromCoord.Value.lat, fromCoord.Value.lng,
-                    toCoord.Value.lat, toCoord.Value.lng);
-
-                return distanceKm <= 100;
-            }
+                        return dist <= 100;
+                        }
+                    }
+                }
             catch
-            {
-                return true; // lỗi API thì không loại
-            }
-        }
+                {
+                // lỗi API → coi như thất bại
+                }
 
+            return false; // fallback = false (đúng HARD FILTER)
+            }
 
         // SHORTLIST
 
@@ -819,7 +808,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     WorkHours = ep.WorkHours,
                     PhoneContact = ep.PhoneContact,
                     CategoryName = ep.Category != null ? ep.Category.Name : null,
-                    SubCategoryName = ep.SubCategory != null ? ep.SubCategory.Name : null,
                     EmployerName = ep.User.Username,
 
                     MatchPercent = s.MatchPercent,
@@ -867,7 +855,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     EntityType = entityType,
                     EntityId = entityId,
                     ContentHash = hash,
-                    Model = "text-embedding-3-large",
+                    Model = "text-embedding-nomic-embed-text-v2-moe",
                     VectorDim = vector.Length,
                     PineconeId = $"{entityType}:{entityId}",
                     Status = "OK",
@@ -905,7 +893,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 EntityType = entityType,
                 EntityId = 0,
                 ContentHash = hash,
-                Model = "text-embedding-3-small",
+                Model = "text-embedding-nomic-embed-text-v2-moe",
                 VectorDim = vector.Length,
                 PineconeId = $"{entityType}:{hash[..12]}",
                 Status = "OK",
@@ -920,7 +908,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         private async Task<JobSeekerPostDtoOut> BuildCleanPostDto(JobSeekerPostModel post)
         {
             var category = await _db.Categories.FindAsync(post.CategoryId);
-            var sub = await _db.SubCategories.FindAsync(post.SubCategoryId);
             var user = await _db.Users.FindAsync(post.UserId);
 
             //  Lấy danh sách ảnh
@@ -943,7 +930,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     : null,
 
                 CategoryName = category?.Name,
-                SubCategoryName = sub?.Name,
                 SeekerName = user?.Username ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,

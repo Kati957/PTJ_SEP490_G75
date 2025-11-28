@@ -15,8 +15,6 @@
         public string? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
 
-        public string? SubCategoryName { get; set; }
-
         // Tên nhà tuyển dụng
         public string EmployerName { get; set; } = string.Empty;
 

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.DTO.Employer;
+using PTJ_Models.Models;
 
 namespace PTJ_Data.Repositories.Implementations
 {

@@ -70,7 +70,7 @@ using PTJ_Data.Repositories.Interfaces.Home;
 using PTJ_Service.HomeService;
 using PTJ_Service.CategoryService.Implementations;
 using PTJ_Service.CategoryService.Interfaces;
-using PTJ_Service.SearchService.Services;
+using PTJ_Service.SearchService.Implementations;
 using System.Security.Claims;
 
 
@@ -144,7 +144,6 @@ builder.Services.AddScoped<ISearchSuggestionService, SearchSuggestionService>();
 builder.Services.AddScoped<IEmployerProfileService, EmployerProfileService>();
 builder.Services.AddScoped<IJobSeekerProfileService, JobSeekerProfileService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
-builder.Services.AddScoped<ISubCategoryService, SubCategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
@@ -179,6 +178,7 @@ builder.Services.AddScoped<IUserActivityRepository, UserActivityRepository>();
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
+builder.Services.AddHostedService<PostExpirationService>();
 
 
 // Other Services
