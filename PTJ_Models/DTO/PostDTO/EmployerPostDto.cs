@@ -12,7 +12,7 @@ namespace PTJ_Models.DTO.PostDTO
         public string Title { get; set; } = string.Empty;
 
         [Required]
-        [StringLength(5000, MinimumLength = 20)]
+        //[StringLength(5000, MinimumLength = 20)]
         public string Description { get; set; } = string.Empty;
 
         [Range(0, double.MaxValue)]
