@@ -88,7 +88,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                             : dto.Salary,
                 Requirements = dto.Requirements,
                 WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}",
-                ExpiredAt = dto.ExpiredAt,
+                ExpiredAt = ParseDate(dto.ExpiredAt),
                 Location = fullLocation,
                 ProvinceId = dto.ProvinceId,
                 DistrictId = dto.DistrictId,
@@ -477,6 +477,69 @@ namespace PTJ_Service.EmployerPostService.Implementations
             };
         }
 
+        public async Task<IEnumerable<EmployerPostDtoOut>> FilterAsync(string status, int? currentUserId, bool isAdmin)
+            {
+            status = status.ToLower();
+
+            IQueryable<EmployerPost> query = _db.EmployerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category);
+
+            switch (status)
+                {
+                case "active":
+                    query = query.Where(x =>
+                        x.Status == "Active" &&
+                        x.User.IsActive &&
+                        (x.ExpiredAt == null || x.ExpiredAt.Value.Date >= DateTime.Today));
+                    break;
+
+                case "archived":
+                    query = query.Where(x =>
+                        x.Status == "Archived" &&
+                        (isAdmin || x.UserId == currentUserId));
+                    break;
+
+                case "expired":
+                    query = query.Where(x =>
+                        x.ExpiredAt != null &&
+                        x.ExpiredAt.Value.Date < DateTime.Today &&
+                        (isAdmin || x.UserId == currentUserId));
+                    break;
+
+                case "blocked":
+                    if (!isAdmin) return Enumerable.Empty<EmployerPostDtoOut>();
+                    query = query.Where(x => x.Status == "Blocked");
+                    break;
+
+                case "deleted":
+                    if (!isAdmin) return Enumerable.Empty<EmployerPostDtoOut>();
+                    query = query.Where(x => x.Status == "Deleted");
+                    break;
+
+                default:
+                    throw new Exception("Trạng thái không hợp lệ.");
+                }
+
+            var posts = await query.OrderByDescending(x => x.CreatedAt).ToListAsync();
+
+            return posts.Select(x => new EmployerPostDtoOut
+                {
+                EmployerPostId = x.EmployerPostId,
+                EmployerId = x.UserId,
+                Title = x.Title,
+                Description = x.Description,
+                Salary = x.Salary,
+                Requirements = x.Requirements,
+                WorkHours = x.WorkHours,
+                Location = x.Location,
+                PhoneContact = x.PhoneContact,
+                CategoryName = x.Category?.Name,
+                EmployerName = x.User?.EmployerProfile?.DisplayName,
+                CreatedAt = x.CreatedAt,
+                Status = x.Status
+                });
+            }
 
 
         // UPDATE
@@ -529,6 +592,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
             post.CategoryId = dto.CategoryID;
             post.PhoneContact = dto.PhoneContact;
             post.UpdatedAt = DateTime.Now;
+            if (!string.IsNullOrWhiteSpace(dto.ExpiredAt))
+                {
+                post.ExpiredAt = ParseDate(dto.ExpiredAt);
+                }
+
 
             await _repo.UpdateAsync(post);
 
@@ -1097,6 +1165,7 @@ ScoreAndFilterCandidatesAsync(
                 ? post.WorkHours.Split('-')[1].Trim()
                 : null,
 
+                ExpiredAtText = post.ExpiredAt?.ToString("dd/MM/yyyy"),
 
                 Location = post.Location,
 
@@ -1264,5 +1333,34 @@ ScoreAndFilterCandidatesAsync(
 
             return "Đã mở lại bài đăng.";
         }
+
+        private DateTime? ParseDate(string? input)
+            {
+            if (string.IsNullOrWhiteSpace(input))
+                return null;
+
+            string[] formats =
+            {
+        "dd/MM/yyyy",
+        "dd/MM/yyyy HH:mm",
+        "dd-MM-yyyy",
+        "dd-MM-yyyy HH:mm",
+        "d/M/yyyy",
+        "d/M/yyyy HH:mm",
+    };
+
+            if (DateTime.TryParseExact(
+                input,
+                formats,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out DateTime parsed))
+                {
+                return parsed;
+                }
+
+            throw new Exception($"Ngày hết hạn không hợp lệ. Hãy nhập theo dạng dd/MM/yyyy (VD: 30/11/2025).");
+            }
+
+        }
     }
-}

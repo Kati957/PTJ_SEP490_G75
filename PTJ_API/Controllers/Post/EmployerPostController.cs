@@ -224,5 +224,24 @@ namespace PTJ_API.Controllers.Post
 
             return Ok(new { success, message });
         }
+
+        [HttpGet("filter")]
+        [Authorize]
+        public async Task<IActionResult> Filter([FromQuery] string status)
+            {
+            var userId = GetCurrentUserId();
+            bool isAdmin = User.IsInRole("Admin");
+
+            try
+                {
+                var data = await _service.FilterAsync(status, userId, isAdmin);
+                return Ok(new { success = true, total = data.Count(), data });
+                }
+            catch (Exception ex)
+                {
+                return BadRequest(new { success = false, message = ex.Message });
+                }
+            }
+
+        }
     }
-}

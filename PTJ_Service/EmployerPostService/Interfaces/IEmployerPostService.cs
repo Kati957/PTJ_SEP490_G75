@@ -36,4 +36,6 @@ public interface IEmployerPostService
     Task<string> CloseEmployerPostAsync(int id);
     Task<string> ReopenEmployerPostAsync(int id);
 
-}
+    Task<IEnumerable<EmployerPostDtoOut>> FilterAsync(string status, int? currentUserId, bool isAdmin);
+
+    }

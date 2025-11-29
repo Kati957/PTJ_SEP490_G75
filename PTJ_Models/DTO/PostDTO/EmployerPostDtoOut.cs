@@ -22,6 +22,8 @@ namespace PTJ_Models.DTO.PostDTO
         public string? WorkHourStart { get; set; }
         public string? WorkHourEnd { get; set; }
 
+        public string? ExpiredAtText { get; set; }  // format dd/MM/yyyy để client dùng thẳng
+
         public string? Location { get; set; }
         public int ProvinceId { get; set; }
         public int DistrictId { get; set; }

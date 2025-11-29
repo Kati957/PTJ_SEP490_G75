@@ -187,7 +187,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 {
                     EntityType = "JobSeekerPost",
                     EntityId = freshPost.JobSeekerPostId,
-                    Lang = "vi",
+                    Lang = "auto",
                     CanonicalText = embedText,
                     Hash = hash,
                     LastPreparedAt = DateTime.Now
@@ -367,7 +367,58 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 CvId = post.SelectedCvId,
             };
         }
+        public async Task<IEnumerable<JobSeekerPostDtoOut>> FilterAsync(string status, int? userId, bool isAdmin)
+            {
+            status = status.ToLower();
 
+            IQueryable<JobSeekerPost> query = _db.JobSeekerPosts
+                .Include(x => x.User)
+                .Include(x => x.Category);
+
+            switch (status)
+                {
+                case "active":
+                    query = query.Where(x =>
+                        x.Status == "Active" &&
+                        x.User.IsActive);
+                    break;
+
+                case "archived":
+                    query = query.Where(x =>
+                        x.Status == "Archived" &&
+                        (isAdmin || x.UserId == userId));
+                    break;
+
+                case "blocked":
+                    if (!isAdmin) return Enumerable.Empty<JobSeekerPostDtoOut>();
+                    query = query.Where(x => x.Status == "Blocked");
+                    break;
+
+                case "deleted":
+                    if (!isAdmin) return Enumerable.Empty<JobSeekerPostDtoOut>();
+                    query = query.Where(x => x.Status == "Deleted");
+                    break;
+
+                default:
+                    throw new Exception("Trạng thái không hợp lệ.");
+                }
+
+            var posts = await query.OrderByDescending(x => x.CreatedAt).ToListAsync();
+
+            return posts.Select(p => new JobSeekerPostDtoOut
+                {
+                JobSeekerPostId = p.JobSeekerPostId,
+                UserID = p.UserId,
+                Title = p.Title,
+                Description = p.Description,
+                PreferredLocation = p.PreferredLocation,
+                CategoryName = p.Category?.Name,
+                SeekerName = p.User.Username,
+                CreatedAt = p.CreatedAt,
+                Status = p.Status,
+                CvId = p.SelectedCvId
+                });
+            }
 
 
         // UPDATE
