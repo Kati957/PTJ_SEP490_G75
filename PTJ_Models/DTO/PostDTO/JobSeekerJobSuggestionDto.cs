@@ -9,7 +9,12 @@
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string? Requirements { get; set; }
-        public decimal? Salary { get; set; }
+
+        public decimal? SalaryMin { get; set; }
+        public decimal? SalaryMax { get; set; }
+        public int? SalaryType { get; set; }
+        public string SalaryDisplay { get; set; } = string.Empty;
+
         public string? Location { get; set; }
         public string? WorkHours { get; set; }
         public string? PhoneContact { get; set; }

@@ -14,8 +14,10 @@ namespace PTJ_Models.DTO.PostDTO
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
 
-        public decimal? Salary { get; set; }
-        public string? SalaryText { get; set; }
+        public decimal? SalaryMin { get; set; }
+        public decimal? SalaryMax { get; set; }
+        public int? SalaryType { get; set; }
+        public string SalaryDisplay { get; set; } = string.Empty;
 
         public string? Requirements { get; set; }
         public string? WorkHours { get; set; }

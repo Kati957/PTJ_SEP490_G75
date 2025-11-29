@@ -75,7 +75,11 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     EmployerPostId = p.EmployerPostId,
                     Title = p.Title,
                     Description = p.Description,
-                    Salary = p.Salary,
+                    SalaryMin = p.SalaryMin,
+                    SalaryMax = p.SalaryMax,
+                    SalaryType = p.SalaryType,
+                    SalaryDisplay = FormatSalary(p.SalaryMin, p.SalaryMax, p.SalaryType),
+
                     Requirements = p.Requirements,
                     WorkHours = p.WorkHours,
 
@@ -237,5 +241,32 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 .Include(p => p.User)
                 .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
         }
-    }
+
+        private string FormatSalary(decimal? min, decimal? max, int? type)
+            {
+            if (min == null && max == null && type == null)
+                return "Thỏa thuận";
+
+            string unit = type switch
+                {
+                    1 => "/giờ",
+                    2 => "/ca",
+                    3 => "/ngày",
+                    4 => "/tháng",
+                    5 => "/dự án",
+                    _ => ""
+                    };
+
+            if (min != null && max != null)
+                return $"{min:N0} - {max:N0}{unit}";
+
+            if (min != null)
+                return $"Từ {min:N0}{unit}";
+
+            if (max != null)
+                return $"Đến {max:N0}{unit}";
+
+            return "Thỏa thuận";
+            }
+        }
 }

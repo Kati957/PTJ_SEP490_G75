@@ -82,10 +82,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 UserId = dto.UserID,
                 Title = dto.Title,
                 Description = dto.Description,
-                Salary = (!string.IsNullOrEmpty(dto.SalaryText) &&
-                          dto.SalaryText.ToLower().Contains("thoả thuận"))
-                            ? null
-                            : dto.Salary,
+
+                SalaryMin = dto.SalaryMin,
+                SalaryMax = dto.SalaryMax,
+                SalaryType = dto.SalaryType,
+
                 Requirements = dto.Requirements,
                 WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}",
                 ExpiredAt = ParseDate(dto.ExpiredAt),
@@ -101,6 +102,24 @@ namespace PTJ_Service.EmployerPostService.Implementations
             };
 
             await _repo.AddAsync(post);
+
+            // --- Validate Salary ---
+            if (post.SalaryMin == null && post.SalaryMax == null && post.SalaryType == null)
+                {
+                // Thỏa thuận → giữ nguyên null
+                }
+            else
+                {
+                if (post.SalaryMin < 0)
+                    throw new Exception("SalaryMin không hợp lệ.");
+
+                if (post.SalaryMax < post.SalaryMin)
+                    throw new Exception("SalaryMax phải ≥ SalaryMin.");
+
+                if (post.SalaryType == null)
+                    throw new Exception("SalaryType là bắt buộc.");
+                }
+
             await _db.SaveChangesAsync();
 
             // 4️⃣ Gửi thông báo cho follower của employer
@@ -182,7 +201,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             string embedText =
                 $@"Tiêu đề: {freshPost.Title}
                 Mô tả công việc: {freshPost.Description}
-                Yêu cầu ứng viên: {freshPost.Requirements}";
+                Yêu cầu ứng viên: {freshPost.Requirements}
+                Giờ làm việc: {freshPost.WorkHours}";
+
 
 
             var (vector, hash) = await EnsureEmbeddingAsync(
@@ -323,7 +344,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 EmployerId = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
-                Salary = p.Salary,
+
+                SalaryMin = p.SalaryMin,
+                SalaryMax = p.SalaryMax,
+                SalaryType = p.SalaryType,
+                SalaryDisplay = FormatSalary(p.SalaryMin, p.SalaryMax, p.SalaryType),
+
                 Requirements = p.Requirements,
                 WorkHours = p.WorkHours,
                 Location = p.Location,
@@ -395,7 +421,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 EmployerId = p.UserId,
                 Title = p.Title,
                 Description = p.Description,
-                Salary = p.Salary,
+
+                SalaryMin = p.SalaryMin,
+                SalaryMax = p.SalaryMax,
+                SalaryType = p.SalaryType,
+                SalaryDisplay = FormatSalary(p.SalaryMin, p.SalaryMax, p.SalaryType),
+
                 Requirements = p.Requirements,
                 WorkHours = p.WorkHours,
                 Location = p.Location,
@@ -460,7 +491,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 EmployerId = post.UserId,
                 Title = post.Title,
                 Description = post.Description,
-                Salary = post.Salary,
+
+                SalaryMin = post.SalaryMin,
+                SalaryMax = post.SalaryMax,
+                SalaryType = post.SalaryType,
+                SalaryDisplay = FormatSalary(post.SalaryMin, post.SalaryMax, post.SalaryType),
+
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
                 Location = post.Location,
@@ -529,7 +565,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 EmployerId = x.UserId,
                 Title = x.Title,
                 Description = x.Description,
-                Salary = x.Salary,
+
+                SalaryMin = x.SalaryMin,
+                SalaryMax = x.SalaryMax,
+                SalaryType = x.SalaryType,
+                SalaryDisplay = FormatSalary(x.SalaryMin, x.SalaryMax, x.SalaryType),
+
                 Requirements = x.Requirements,
                 WorkHours = x.WorkHours,
                 Location = x.Location,
@@ -577,9 +618,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
             //  Update dữ liệu bài post
             post.Title = dto.Title;
             post.Description = dto.Description;
-            post.Salary = (!string.IsNullOrEmpty(dto.SalaryText) && dto.SalaryText.Contains("thoả thuận"))
-                ? null
-                : dto.Salary;
+
+            post.SalaryMin = dto.SalaryMin;
+            post.SalaryMax = dto.SalaryMax;
+            post.SalaryType = dto.SalaryType;
 
             post.Requirements = dto.Requirements;
             post.Location = fullLocation;
@@ -599,6 +641,24 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
 
             await _repo.UpdateAsync(post);
+
+            // --- Validate Salary ---
+            if (post.SalaryMin == null && post.SalaryMax == null && post.SalaryType == null)
+                {
+                // Thỏa thuận → giữ null
+                }
+            else
+                {
+                if (post.SalaryMin < 0)
+                    throw new Exception("SalaryMin không hợp lệ.");
+
+                if (post.SalaryMax < post.SalaryMin)
+                    throw new Exception("SalaryMax phải ≥ SalaryMin.");
+
+                if (post.SalaryType == null)
+                    throw new Exception("SalaryType là bắt buộc.");
+                }
+
 
             //  XÓA ẢNH CŨ
             if (dto.DeleteImageIds?.Any() == true)
@@ -643,7 +703,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             string embedText =
                 $@"Tiêu đề: {post.Title}
                 Mô tả công việc: {post.Description}
-                Yêu cầu ứng viên: {post.Requirements}";
+                Yêu cầu ứng viên: {post.Requirements}
+                Giờ làm việc: { post.WorkHours}";
+            
 
 
             var (vector, _) = await EnsureEmbeddingAsync("EmployerPost", post.EmployerPostId, embedText);
@@ -732,7 +794,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
             string embedText =
                 $@"Tiêu đề: {post.Title}
                 Mô tả công việc: {post.Description}
-                Yêu cầu ứng viên: {post.Requirements}";
+                Yêu cầu ứng viên: {post.Requirements}
+                Giờ làm việc: {post.WorkHours}";
 
 
             //  Tạo embedding
@@ -1167,8 +1230,12 @@ ScoreAndFilterCandidatesAsync(
 
                 Title = post.Title,
                 Description = post.Description,
-                Salary = post.Salary,
-                SalaryText = post.Salary == null ? "Thỏa thuận" : null,
+
+                SalaryMin = post.SalaryMin,
+                SalaryMax = post.SalaryMax,
+                SalaryType = post.SalaryType,
+                SalaryDisplay = FormatSalary(post.SalaryMin, post.SalaryMax, post.SalaryType),
+
 
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
@@ -1324,6 +1391,33 @@ ScoreAndFilterCandidatesAsync(
 
             return "Đã đóng bài đăng.";
         }
+
+        private string FormatSalary(decimal? min, decimal? max, int? type)
+            {
+            if (min == null && max == null && type == null)
+                return "Thỏa thuận";
+
+            string unit = type switch
+                {
+                    1 => "/giờ",
+                    2 => "/ca",
+                    3 => "/ngày",
+                    4 => "/tháng",
+                    5 => "/dự án",
+                    _ => ""
+                    };
+
+            if (min != null && max != null)
+                return $"{min:N0} - {max:N0}{unit}";
+
+            if (min != null)
+                return $"Từ {min:N0}{unit}";
+
+            if (max != null)
+                return $"Đến {max:N0}{unit}";
+
+            return "Thỏa thuận";
+            }
 
 
         public async Task<string> ReopenEmployerPostAsync(int id)

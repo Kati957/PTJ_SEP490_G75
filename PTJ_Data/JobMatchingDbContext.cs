@@ -262,7 +262,8 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.PhoneContact)
                 .HasMaxLength(20)
                 .IsUnicode(false);
-            entity.Property(e => e.Salary).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SalaryMax).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SalaryMin).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValue("Active");

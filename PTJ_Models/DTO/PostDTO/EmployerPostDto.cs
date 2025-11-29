@@ -17,11 +17,11 @@ namespace PTJ_Models.DTO.PostDTO
         [StringLength(5000, MinimumLength = 20)]
         public string Description { get; set; } = string.Empty;
 
-        [Range(0, double.MaxValue)]
-        public decimal? Salary { get; set; }
+        public decimal? SalaryMin { get; set; }
+        public decimal? SalaryMax { get; set; }
 
-        [StringLength(50)]
-        public string? SalaryText { get; set; }
+        [Range(1, 5)] // enum 1..5
+        public int? SalaryType { get; set; }
 
         public string? Requirements { get; set; }
 
@@ -68,11 +68,10 @@ namespace PTJ_Models.DTO.PostDTO
         [StringLength(5000, MinimumLength = 20)]
         public string? Description { get; set; }
 
-        [Range(0, double.MaxValue)]
-        public decimal? Salary { get; set; }
+        public decimal? SalaryMin { get; set; }
+        public decimal? SalaryMax { get; set; }
+        public int? SalaryType { get; set; }
 
-        [StringLength(50)]
-        public string? SalaryText { get; set; }
 
         public string? Requirements { get; set; }
 

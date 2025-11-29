@@ -152,8 +152,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             string embedText =
                 $"{freshPost.Title}. " +
                 $"{freshPost.Description}. " +
-                $"Giờ làm: {freshPost.PreferredWorkHours}. " +
-                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+                $"Giờ làm: {freshPost.PreferredWorkHours}. ";
+
 
             if (selectedCv != null)
             {
@@ -172,11 +172,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 vector: vector,
                 metadata: new
                 {
-                    title = freshPost.Title,
-                    location = freshPost.PreferredLocation,
-                    categoryId = freshPost.CategoryId,
-                    postId = freshPost.JobSeekerPostId
-                });
+                    postId = freshPost.JobSeekerPostId,
+                    title = freshPost.Title ?? "",
+                    status = freshPost.Status
+                    });
 
             // 4) TÌM JOB MATCHING
             //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
@@ -237,7 +236,11 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                         x.Job.Title,
                         x.Job.Description,
                         x.Job.Requirements,
-                        x.Job.Salary,
+                        SalaryMin = x.Job.SalaryMin,
+                        SalaryMax = x.Job.SalaryMax,
+                        SalaryType = x.Job.SalaryType,
+                        SalaryDisplay = FormatSalary(x.Job.SalaryMin, x.Job.SalaryMax, x.Job.SalaryType),
+
                         x.Job.Location,
                         x.Job.WorkHours,
                         x.Job.PhoneContact,
@@ -503,8 +506,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 $"{post.Title}. " +
                 $"{post.Description}. " +
                 $"Giờ làm: {post.PreferredWorkHours}. " +
-                $"{cvText} " +
-                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+                $"{cvText}.";
+                
 
             var (vector, _) = await EnsureEmbeddingAsync(
                 "JobSeekerPost",
@@ -518,11 +521,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 vector: vector,
                 metadata: new
                 {
+                    postId = post.JobSeekerPostId,
                     title = post.Title ?? "",
-                    location = post.PreferredLocation ?? "",
-                    categoryId = post.CategoryId ?? 0,
-                    postId = post.JobSeekerPostId
-                });
+                    status = post.Status
+                    });
 
             return await BuildCleanPostDto(post);
         }
@@ -593,8 +595,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 $"{post.Title}. " +
                 $"{post.Description}. " +
                 $"Giờ làm: {post.PreferredWorkHours}. " +
-                $"{cvText} " +
-                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+                $"{cvText}. "; 
 
             var (vector, _) = await EnsureEmbeddingAsync(
                 "JobSeekerPost",
@@ -608,11 +609,10 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 vector: vector,
                 metadata: new
                 {
+                    postId = post.JobSeekerPostId,
                     title = post.Title ?? "",
-                    location = post.PreferredLocation ?? "",
-                    categoryId = post.CategoryId ?? 0,
-                    postId = post.JobSeekerPostId
-                });
+                    status = post.Status
+                    });
 
             //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
             //if (!matches.Any())
@@ -658,7 +658,11 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                         x.Job.Title,
                         x.Job.Description,
                         x.Job.Requirements,
-                        x.Job.Salary,
+                        SalaryMin = x.Job.SalaryMin,
+                        SalaryMax = x.Job.SalaryMax,
+                        SalaryType = x.Job.SalaryType,
+                        SalaryDisplay = FormatSalary(x.Job.SalaryMin, x.Job.SalaryMax, x.Job.SalaryType),
+
                         x.Job.Location,
                         x.Job.WorkHours,
                         EmployerName = x.Job.User.Username,
@@ -867,7 +871,12 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     Title = ep.Title ?? string.Empty,
                     Description = ep.Description ?? string.Empty,
                     Requirements = ep.Requirements,
-                    Salary = ep.Salary,
+
+                    SalaryMin = ep.SalaryMin,
+                    SalaryMax = ep.SalaryMax,
+                    SalaryType = ep.SalaryType,
+                    SalaryDisplay = FormatSalary(ep.SalaryMin, ep.SalaryMax, ep.SalaryType),
+
                     Location = ep.Location,
                     WorkHours = ep.WorkHours,
                     PhoneContact = ep.PhoneContact,
@@ -1123,5 +1132,31 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             await _repo.UpdateAsync(post);
             return true;
         }
+
+        private string FormatSalary(decimal? min, decimal? max, int? type)
+            {
+            if (min == null && max == null)
+                return "Thỏa thuận";
+
+            string unit = type switch
+                {
+                    1 => "/giờ",
+                    2 => "/ca",
+                    3 => "/ngày",
+                    4 => "/tháng",
+                    5 => "/dự án",
+                    _ => ""
+                    };
+
+            if (min != null && max != null)
+                return $"{min:N0} - {max:N0}{unit}";
+            if (min != null)
+                return $"Từ {min:N0}{unit}";
+            if (max != null)
+                return $"Đến {max:N0}{unit}";
+
+            return "Thỏa thuận";
+            }
+
+        }
     }
-}

@@ -8,7 +8,11 @@
         public string? Description { get; set; }
         public string? Location { get; set; }
         public string? CategoryName { get; set; }
-        public decimal? Salary { get; set; }
+        public decimal? SalaryMin { get; set; }
+        public decimal? SalaryMax { get; set; }
+        public int? SalaryType { get; set; }
+        public string SalaryDisplay { get; set; } = string.Empty;
+
         public string? WorkHours { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? AuthorName { get; set; }  // Employer hoặc JobSeeker name
