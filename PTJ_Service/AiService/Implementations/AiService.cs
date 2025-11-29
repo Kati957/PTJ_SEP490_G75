@@ -97,7 +97,41 @@ namespace PTJ_Service.AiService.Implementations
 
         //  Query Similar from Pinecone
 
-        public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
+        //public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
+        //    {
+        //    using var client = new HttpClient();
+        //    client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
+        //    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+        //    var payload = new
+        //        {
+        //        vector,
+        //        topK,
+        //        includeMetadata = true,
+        //        @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
+        //        };
+
+        //    var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
+        //    res.EnsureSuccessStatusCode();
+
+        //    var json = await res.Content.ReadFromJsonAsync<JsonElement>();
+        //    var list = new List<(string Id, double Score)>();
+
+        //    if (json.TryGetProperty("matches", out var matches))
+        //        {
+        //        foreach (var m in matches.EnumerateArray())
+        //            list.Add((m.GetProperty("id").GetString()!, m.GetProperty("score").GetDouble()));
+        //        }
+
+        //    return list;
+        //    }
+
+        //so sánh với những ứng viên bạn đã lọc theo Category + Location trong SQL
+        public async Task<List<(string Id, double Score)>> QueryWithIDsAsync(
+    string ns,
+    float[] vector,
+    IEnumerable<string> allowedIds,
+    int topK = 50)
             {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
@@ -108,7 +142,11 @@ namespace PTJ_Service.AiService.Implementations
                 vector,
                 topK,
                 includeMetadata = true,
-                @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
+                @namespace = ns,
+                filter = new
+                    {
+                    id = new { _in = allowedIds } // Pinecone filter by ID list
+                    }
                 };
 
             var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
@@ -120,7 +158,9 @@ namespace PTJ_Service.AiService.Implementations
             if (json.TryGetProperty("matches", out var matches))
                 {
                 foreach (var m in matches.EnumerateArray())
+                    {
                     list.Add((m.GetProperty("id").GetString()!, m.GetProperty("score").GetDouble()));
+                    }
                 }
 
             return list;

@@ -179,33 +179,34 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 });
 
             // 4) TÌM JOB MATCHING
-            var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
+            //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
 
-            if (!matches.Any())
-            {
-                _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
-                {
-                    EntityType = "JobSeekerPost",
-                    EntityId = freshPost.JobSeekerPostId,
-                    Lang = "auto",
-                    CanonicalText = embedText,
-                    Hash = hash,
-                    LastPreparedAt = DateTime.Now
-                });
-                await _db.SaveChangesAsync();
+            //if (!matches.Any())
+            //{
+            //    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
+            //    {
+            //        EntityType = "JobSeekerPost",
+            //        EntityId = freshPost.JobSeekerPostId,
+            //        Lang = "auto",
+            //        CanonicalText = embedText,
+            //        Hash = hash,
+            //        LastPreparedAt = DateTime.Now
+            //    });
+            //    await _db.SaveChangesAsync();
 
-                return new JobSeekerPostResultDto
-                {
-                    Post = await BuildCleanPostDto(freshPost),
-                    SuggestedJobs = new List<AIResultDto>()
-                };
-            }
+            //    return new JobSeekerPostResultDto
+            //    {
+            //        Post = await BuildCleanPostDto(freshPost),
+            //        SuggestedJobs = new List<AIResultDto>()
+            //    };
+            //}
 
             var scored = await ScoreAndFilterJobsAsync(
-                matches,
+                vector, // embedding của seeker
                 freshPost.CategoryId,
                 freshPost.PreferredLocation ?? ""
             );
+
 
 
             await UpsertSuggestionsAsync(
@@ -613,22 +614,21 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     postId = post.JobSeekerPostId
                 });
 
-            var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
-            if (!matches.Any())
-            {
-                return new JobSeekerPostResultDto
-                {
-                    Post = await BuildCleanPostDto(post),
-                    SuggestedJobs = new List<AIResultDto>()
-                };
-            }
+            //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
+            //if (!matches.Any())
+            //{
+            //    return new JobSeekerPostResultDto
+            //    {
+            //        Post = await BuildCleanPostDto(post),
+            //        SuggestedJobs = new List<AIResultDto>()
+            //    };
+            //}
 
             var scored = await ScoreAndFilterJobsAsync(
-                matches,
+                vector,
                 post.CategoryId,
                 post.PreferredLocation ?? ""
             );
-
 
             await UpsertSuggestionsAsync(
                 "JobSeekerPost",
@@ -676,14 +676,15 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
 
         // SCORING – 1 SCORE DUY NHẤT TỪ PINECONE
+        // SCORING – Query Pinecone chỉ trong các bài Employer đã qua HARD FILTER
         private async Task<List<(EmployerPost Job, double Score)>>
-ScoreAndFilterJobsAsync(
-    List<(string Id, double Score)> matches,
-    int? mustMatchCategoryId,
-    string seekerLocation
-)
+            ScoreAndFilterJobsAsync(
+                float[] seekerVector,
+                int? mustMatchCategoryId,
+                string seekerLocation
+            )
             {
-            // 1) HARD FILTER CATEGORY
+            // 1) LỌC CATEGORY
             var categoryFiltered = await _db.EmployerPosts
                 .Include(x => x.User)
                 .Include(x => x.Category)
@@ -696,7 +697,7 @@ ScoreAndFilterJobsAsync(
             if (!categoryFiltered.Any())
                 return new List<(EmployerPost, double)>();
 
-            // 2) HARD FILTER LOCATION
+            // 2) LỌC LOCATION
             var locationPassed = new List<EmployerPost>();
             foreach (var job in categoryFiltered)
                 {
@@ -707,13 +708,26 @@ ScoreAndFilterJobsAsync(
             if (!locationPassed.Any())
                 return new List<(EmployerPost, double)>();
 
-            // 3) Allowed IDs
-            var allowedIds = locationPassed.Select(x => x.EmployerPostId).ToHashSet();
+            // 3) LẤY DANH SÁCH ID CHO PINECONE
+            var allowedIds = locationPassed
+                .Select(x => $"EmployerPost:{x.EmployerPostId}")
+                .ToList();
 
-            // 4) Score từ Pinecone nhưng chỉ giữ allowedIds
+            // 4) QUERY Pinecone CHỈ TRONG allowedIds
+            var pineconeMatches = await _ai.QueryWithIDsAsync(
+                "employer_posts",
+                seekerVector,
+                allowedIds,
+                topK: allowedIds.Count
+            );
+
+            if (!pineconeMatches.Any())
+                return new List<(EmployerPost, double)>();
+
+            // 5) BUILD KẾT QUẢ
             var results = new List<(EmployerPost Job, double Score)>();
 
-            foreach (var m in matches)
+            foreach (var m in pineconeMatches)
                 {
                 if (!m.Id.StartsWith("EmployerPost:"))
                     continue;
@@ -721,15 +735,14 @@ ScoreAndFilterJobsAsync(
                 if (!int.TryParse(m.Id.Split(':')[1], out int jobId))
                     continue;
 
-                if (!allowedIds.Contains(jobId))
-                    continue;
-
                 var job = locationPassed.First(x => x.EmployerPostId == jobId);
+
                 results.Add((job, m.Score));
                 }
 
             return results;
             }
+
 
         // LOCATION FILTER HELPER – lọc <= 100km, không tính điểm
         private async Task<bool> IsWithinDistanceAsync(string fromLocation, string? toLocation)

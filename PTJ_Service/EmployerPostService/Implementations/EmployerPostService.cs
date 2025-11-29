@@ -203,28 +203,28 @@ namespace PTJ_Service.EmployerPostService.Implementations
                    status = post.Status
                    });
 
-            // 8️⃣ Query ứng viên tương tự
-            var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
+            //// 8️⃣ Query ứng viên tương tự
+            //var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
-            if (!matches.Any())
-                {
-                _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
-                    {
-                    EntityType = "EmployerPost",
-                    EntityId = freshPost.EmployerPostId,
-                    Lang = "auto",
-                    CanonicalText = $"{freshPost.Title}. {freshPost.Description}. {freshPost.Requirements}. {freshPost.Location}. {freshPost.Salary}",
-                    Hash = hash,
-                    LastPreparedAt = DateTime.Now
-                    });
-                await _db.SaveChangesAsync();
+            //if (!matches.Any())
+            //    {
+            //    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
+            //        {
+            //        EntityType = "EmployerPost",
+            //        EntityId = freshPost.EmployerPostId,
+            //        Lang = "auto",
+            //        CanonicalText = $"{freshPost.Title}. {freshPost.Description}. {freshPost.Requirements}. {freshPost.Location}. {freshPost.Salary}",
+            //        Hash = hash,
+            //        LastPreparedAt = DateTime.Now
+            //        });
+            //    await _db.SaveChangesAsync();
 
-                return new EmployerPostResultDto
-                    {
-                    Post = await BuildCleanPostDto(freshPost),
-                    SuggestedCandidates = new List<AIResultDto>()
-                    };
-                }
+            //    return new EmployerPostResultDto
+            //        {
+            //        Post = await BuildCleanPostDto(freshPost),
+            //        SuggestedCandidates = new List<AIResultDto>()
+            //        };
+            //    }
 
             // 9️⃣ Tính điểm
             var scored = await ScoreAndFilterCandidatesAsync(
@@ -755,16 +755,16 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     });
 
             //  Query ứng viên tương tự (Embedding)
-            var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
+            //var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
-            if (!matches.Any())
-            {
-                return new EmployerPostResultDto
-                {
-                    Post = await BuildCleanPostDto(post),
-                    SuggestedCandidates = new List<AIResultDto>()
-                };
-            }
+            //if (!matches.Any())
+            //{
+            //    return new EmployerPostResultDto
+            //    {
+            //        Post = await BuildCleanPostDto(post),
+            //        SuggestedCandidates = new List<AIResultDto>()
+            //    };
+            //}
 
             //  Chấm điểm & lọc ứng viên
             var scored = await ScoreAndFilterCandidatesAsync(
@@ -860,14 +860,27 @@ ScoreAndFilterCandidatesAsync(
             var allowedIds = locationFiltered.Select(x => x.JobSeekerPostId).ToHashSet();
 
             // 4) QUERY PINECONE (KHÔNG FILTER)
-            var pineconeMatches = await _ai.QuerySimilarAsync(
+            //var pineconeMatches = await _ai.QuerySimilarAsync(
+            //    "job_seeker_posts",
+            //    employerVector,
+            //    topK: 100
+            //);
+
+            // 4) QUERY PINECONE VỚI ID ĐÃ QUA HARD FILTER
+            var allowedPineconeIds = allowedIds
+                .Select(id => $"JobSeekerPost:{id}")
+                .ToList();
+
+            var pineconeMatches = await _ai.QueryWithIDsAsync(
                 "job_seeker_posts",
                 employerVector,
-                topK: 100
+                allowedPineconeIds,
+                topK: allowedPineconeIds.Count
             );
 
             if (!pineconeMatches.Any())
                 return new List<(JobSeekerPost, double, int?)>();
+
 
             // 5) CHỈ GIỮ LẠI SCORE CHO allowedIds
             var results = new List<(JobSeekerPost, double, int?)>();
