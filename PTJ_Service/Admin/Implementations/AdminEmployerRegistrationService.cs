@@ -146,7 +146,7 @@ namespace PTJ_Service.Admin.Implementations
             // 4️⃣ Cập nhật trạng thái request
             req.Status = "Approved";
             req.ReviewedAt = DateTime.UtcNow;
-            req.AdminNote = $"Duyệt bởi admin {adminId}";
+            req.AdminNote = "Hồ sơ đã được kiểm tra và phê duyệt";
             await _db.SaveChangesAsync();
 
             // 5️⃣ Tạo verify token

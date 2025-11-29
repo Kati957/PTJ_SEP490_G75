@@ -44,7 +44,7 @@ namespace PTJ_Data.Repositories.Implementations
         public async Task<IEnumerable<JobSeekerSubmission>> GetByEmployerPostWithDetailAsync(int employerPostId)
             {
             return await _db.JobSeekerSubmissions
-                .Include(x => x.Cv)                //  Thêm dòng này để lấy CV
+                .Include(x => x.Cv)                
                 .Include(x => x.JobSeeker)
                 .Where(x => x.EmployerPostId == employerPostId)
                 .OrderByDescending(x => x.AppliedAt)
@@ -56,7 +56,7 @@ namespace PTJ_Data.Repositories.Implementations
             {
             return await _db.JobSeekerSubmissions
                 .Include(x => x.Cv)
-                .Include(x => x.JobSeeker)               //  Thêm dòng này
+                .Include(x => x.JobSeeker)               
                 .Include(x => x.EmployerPost)
                     .ThenInclude(p => p.User)
                 .Include(x => x.EmployerPost.Category)
@@ -66,52 +66,56 @@ namespace PTJ_Data.Repositories.Implementations
             }
 
         public async Task<ApplicationSummaryDto> GetFullSummaryAsync(int? employerId)
-            {
-            var query = _db.JobSeekerSubmissions
+        {
+           
+            var baseQuery = _db.JobSeekerSubmissions
                 .Include(x => x.JobSeeker)
                 .Include(x => x.EmployerPost)
                 .AsQueryable();
 
             if (employerId.HasValue)
-                query = query.Where(x => x.EmployerPost.UserId == employerId.Value);
-
-            var list = await query.ToListAsync();
-
-            var pending = list
+                baseQuery = baseQuery.Where(x => x.EmployerPost.UserId == employerId.Value);
+            var pendingQuery = baseQuery
                 .Where(x => x.Status == "Pending")
+                .OrderByDescending(x => x.AppliedAt)
                 .Select(x => new ApplicationSimpleDto
-                    {
-                    SubmissionId = x.SubmissionId,
-                    JobSeekerId = x.JobSeekerId,
-                    Username = x.JobSeeker.Username,
-                    PostId = x.EmployerPostId,
-                    PostTitle = x.EmployerPost.Title,
-                    Status = x.Status,
-                    AppliedAt = x.AppliedAt
-                    }).ToList();
-
-            var reviewed = list
-                .Where(x => x.Status == "Accepted" || x.Status == "Rejected" || x.Status == "Interviewing")
-                .Select(x => new ApplicationSimpleDto
-                    {
-                    SubmissionId = x.SubmissionId,
-                    JobSeekerId = x.JobSeekerId,
-                    Username = x.JobSeeker.Username,
-                    PostId = x.EmployerPostId,
-                    PostTitle = x.EmployerPost.Title,
-                    Status = x.Status,
-                    AppliedAt = x.AppliedAt
-                    }).ToList();
-
-            return new ApplicationSummaryDto
                 {
+                    SubmissionId = x.SubmissionId,
+                    JobSeekerId = x.JobSeekerId,
+                    Username = x.JobSeeker.Username,
+                    PostId = x.EmployerPostId,
+                    PostTitle = x.EmployerPost.Title,
+                    Status = x.Status,
+                    AppliedAt = x.AppliedAt
+                });
+
+            var pending = await pendingQuery.ToListAsync();
+            var reviewedQuery = baseQuery
+                .Where(x => x.Status == "Accepted"
+                         || x.Status == "Rejected"
+                         || x.Status == "Interviewing")
+                .OrderByDescending(x => x.AppliedAt)
+                .Select(x => new ApplicationSimpleDto
+                {
+                    SubmissionId = x.SubmissionId,
+                    JobSeekerId = x.JobSeekerId,
+                    Username = x.JobSeeker.Username,
+                    PostId = x.EmployerPostId,
+                    PostTitle = x.EmployerPost.Title,
+                    Status = x.Status,
+                    AppliedAt = x.AppliedAt
+                });
+
+            var reviewed = await reviewedQuery.ToListAsync();
+            return new ApplicationSummaryDto
+            {
                 PendingTotal = pending.Count,
                 ReviewedTotal = reviewed.Count,
-
                 PendingApplications = pending,
                 ReviewedApplications = reviewed
-                };
-            }
+            };
+        }
+
 
 
         public async Task UpdateAsync(JobSeekerSubmission entity)

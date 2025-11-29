@@ -61,22 +61,31 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(u => new AdminUserDto
-                {
-                    UserId = u.UserId,
-                    Username = u.Username,
-                    Email = u.Email,
-                    Role = u.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
-                    IsActive = u.IsActive,
-                    IsVerified = u.IsVerified,
-                    CreatedAt = u.CreatedAt,
-                    LastLogin = u.LastLogin,
-                    AvatarUrl = u.JobSeekerProfile != null
-                        ? u.JobSeekerProfile.ProfilePicture
-                        : u.EmployerProfile != null
-                            ? u.EmployerProfile.AvatarUrl
-                            : null
-                })
+              .Select(u => new AdminUserDto
+              {
+                  UserId = u.UserId,
+
+                 
+                  DisplayName =
+                  u.Roles.Any(r => r.RoleName == "Employer")
+                  ? u.EmployerProfile.DisplayName
+                  : u.JobSeekerProfile.FullName,
+                  Username = u.Username,
+                  Email = u.Email,
+                  Role = u.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
+                  IsActive = u.IsActive,
+                  IsVerified = u.IsVerified,
+                  CreatedAt = u.CreatedAt,
+                  LastLogin = u.LastLogin,
+
+                  AvatarUrl = u.JobSeekerProfile != null
+        ? u.JobSeekerProfile.ProfilePicture
+        : u.EmployerProfile != null
+            ? u.EmployerProfile.AvatarUrl
+            : null
+              })
+
+
                 .ToListAsync();
 
             return new PagedResult<AdminUserDto>(items, total, page, pageSize);
@@ -144,11 +153,11 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         }
 
         public Task<User?> GetUserEntityAsync(int id)
-            {
+        {
             return _db.Users
-                .Include(u => u.Roles)      
+                .Include(u => u.Roles)
                 .FirstOrDefaultAsync(x => x.UserId == id);
-            }
+        }
 
         public Task SaveChangesAsync() => _db.SaveChangesAsync();
 

@@ -30,7 +30,7 @@ namespace PTJ_Data.Repositories.Implementations.JPost
                 .Include(p => p.User)
                 .Include(p => p.Category)
                 .Include(p => p.SubCategory)
-                .Where(p => p.UserId == userId && p.Status == "Active")
+                .Where(x => x.UserId == userId)
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
         }
