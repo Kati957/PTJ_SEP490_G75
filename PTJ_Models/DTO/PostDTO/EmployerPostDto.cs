@@ -1,5 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using CommandLine.Text;
 using Microsoft.AspNetCore.Http;
+using NHibernate.Criterion;
 
 namespace PTJ_Models.DTO.PostDTO
 {
@@ -80,6 +82,7 @@ namespace PTJ_Models.DTO.PostDTO
         [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
         public string? WorkHourEnd { get; set; }
 
+        [RegularExpression(@"^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\d{4}$")]
         public string? ExpiredAt { get; set; }
 
 
