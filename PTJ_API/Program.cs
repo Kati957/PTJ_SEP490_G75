@@ -75,7 +75,9 @@ using System.Security.Claims;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 var builder = WebApplication.CreateBuilder(args);
+
 
 builder.Services.AddAuthorization();
 
@@ -330,7 +332,9 @@ app.UseCors("AllowLocalhost");   // Phải đặt trước Authentication
 app.UseAuthentication();
 app.UseAuthorization();
 // SignalR Hub Registration
-app.MapHub<NotificationHub>("/hubs/notification");
-app.MapControllers();
 app.UseMiddleware<ErrorHandlingMiddleware>();
+app.MapHub<NotificationHub>("/hubs/notification");
+
+app.MapControllers();
+
 app.Run();

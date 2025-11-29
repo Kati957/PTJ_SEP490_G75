@@ -62,26 +62,24 @@ namespace PTJ_API.Controllers.Post
 
 
         // GET BY USER 
-
         [HttpGet("by-user/{userId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetByUser(int userId)
-        {
+            {
             var currentUserId = GetCurrentUserId();
             bool isEmployer = User.IsInRole("Employer");
             bool isAdmin = User.IsInRole("Admin");
+            bool isOwner = isEmployer && currentUserId == userId;
 
-            if (isEmployer && currentUserId != userId)
+            // ❌ Nếu employer nhưng không phải chủ bài và không phải admin → chặn
+            if (isEmployer && !isOwner && !isAdmin)
                 return Forbidden("Bạn chỉ được xem bài đăng của mình.");
 
-            var items = await _service.GetByUserAsync(userId);
-
-            if (!isAdmin && !User.IsInRole("Employer"))
-                items = items.Where(x => x.Status == "Active");
+            // ✅ Truyền quyền xuống service
+            var items = await _service.GetByUserAsync(userId, isAdmin, isOwner);
 
             return Ok(new { success = true, total = items.Count(), data = items });
-        }
-
+            }
 
         // GET BY ID 
 

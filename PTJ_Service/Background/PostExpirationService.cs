@@ -8,46 +8,59 @@ using PTJ_Service.AiService;
 public class PostExpirationService : BackgroundService
     {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IAIService _ai;
 
-    public PostExpirationService(IServiceScopeFactory scopeFactory, IAIService ai)
+    public PostExpirationService(IServiceScopeFactory scopeFactory)
         {
         _scopeFactory = scopeFactory;
-        _ai = ai;
         }
 
-    protected override async Task ExecuteAsync(CancellationToken token)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-        while (!token.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested)
             {
-            using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<JobMatchingDbContext>();
-
-            var today = DateTime.Today;
-
-            var expiredPosts = await db.EmployerPosts
-                .Where(p =>
-                    p.Status == "Active" &&
-                    p.ExpiredAt != null &&
-                    p.ExpiredAt.Value.Date < today)
-                .ToListAsync(token);
-
-            foreach (var post in expiredPosts)
+            try
                 {
-                post.Status = "Expired";
-                post.UpdatedAt = DateTime.Now;
+                // Tính thời điểm chạy tiếp theo: 00:00
+                var now = DateTime.Now;
+                var midnight = DateTime.Today.AddDays(1);
+                var delay = midnight - now;
 
-                await _ai.DeleteVectorAsync(
-                    "employer_posts",
-                    $"EmployerPost:{post.EmployerPostId}"
-                );
+                await Task.Delay(delay, stoppingToken);
+
+                await ProcessExpiredPosts(stoppingToken);
                 }
-
-            await db.SaveChangesAsync();
-
-            // chạy mỗi ngày lúc 00:10
-            var nextRun = DateTime.Today.AddDays(1).AddMinutes(10);
-            await Task.Delay(nextRun - DateTime.Now, token);
+            catch (Exception ex)
+                {
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                }
             }
+        }
+
+    private async Task ProcessExpiredPosts(CancellationToken token)
+        {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<JobMatchingDbContext>();
+        var ai = scope.ServiceProvider.GetRequiredService<IAIService>();
+
+        var today = DateTime.Today;
+
+        var expired = await db.EmployerPosts
+            .Where(p => p.Status == "Active" &&
+                        p.ExpiredAt != null &&
+                        p.ExpiredAt.Value.Date < today)
+            .ToListAsync(token);
+
+        foreach (var post in expired)
+            {
+            post.Status = "Expired";
+            post.UpdatedAt = DateTime.Now;
+
+            await ai.DeleteVectorAsync(
+                "employer_posts",
+                $"EmployerPost:{post.EmployerPostId}"
+            );
+            }
+
+        await db.SaveChangesAsync(token);
         }
     }

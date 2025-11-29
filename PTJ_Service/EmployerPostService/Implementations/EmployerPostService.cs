@@ -180,11 +180,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var category = await _db.Categories.FindAsync(freshPost.CategoryId);
 
             string embedText =
-                $"{freshPost.Title}. " +
-                $"{freshPost.Description}. " +
-                $"Yêu cầu: {freshPost.Requirements}. " +
-                $"Lương: {freshPost.Salary}. " +
-                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+                $@"Tiêu đề: {freshPost.Title}
+                Mô tả công việc: {freshPost.Description}
+                Yêu cầu ứng viên: {freshPost.Requirements}";
+
 
             var (vector, hash) = await EnsureEmbeddingAsync(
                 "EmployerPost",
@@ -208,24 +207,24 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
 
             if (!matches.Any())
-            {
-                _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
                 {
+                _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
+                    {
                     EntityType = "EmployerPost",
                     EntityId = freshPost.EmployerPostId,
-                    Lang = "vi",
+                    Lang = "auto",
                     CanonicalText = $"{freshPost.Title}. {freshPost.Description}. {freshPost.Requirements}. {freshPost.Location}. {freshPost.Salary}",
                     Hash = hash,
                     LastPreparedAt = DateTime.Now
-                });
+                    });
                 await _db.SaveChangesAsync();
 
                 return new EmployerPostResultDto
-                {
+                    {
                     Post = await BuildCleanPostDto(freshPost),
                     SuggestedCandidates = new List<AIResultDto>()
-                };
-            }
+                    };
+                }
 
             // 9️⃣ Tính điểm
             var scored = await ScoreAndFilterCandidatesAsync(
@@ -343,24 +342,42 @@ namespace PTJ_Service.EmployerPostService.Implementations
         }
 
 
-        public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId)
-        {
-            // 1️⃣ Lấy bài đăng của employer
+        public async Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId, bool isAdmin = false, bool isOwner = false)
+            {
+            // 1️⃣ Lấy tất cả bài đăng của employer đó
             var posts = await _repo.GetByUserAsync(userId);
 
-            // 2️⃣ Loại bỏ Deleted, sắp xếp mới nhất → cũ nhất
-            posts = posts
-                .Where(x =>
-                x.Status != "Deleted" &&
-                (
-                    x.ExpiredAt == null ||
-                    x.ExpiredAt.Value.Date >= DateTime.Today
-                ))
+            // 2️⃣ Lọc theo quyền truy cập
+            if (isAdmin)
+                {
+                //  Admin xem được tất cả — kể cả Deleted, Blocked, Archived, Expired
+                posts = posts
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ToList();
+                }
+            else if (isOwner)
+                {
+                //  Employer đang đăng nhập (chính chủ)
+                // xem được tất cả bài trừ Deleted
+                posts = posts
+                    .Where(x => x.Status != "Deleted")
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ToList();
+                }
+            else
+                {
+                //  Seeker hoặc người ngoài chỉ thấy bài Active + còn hạn
+                posts = posts
+                    .Where(x =>
+                        x.Status == "Active" &&
+                        x.User.IsActive &&
+                        (x.ExpiredAt == null || x.ExpiredAt.Value.Date >= DateTime.Today)
+                    )
+                    .OrderByDescending(x => x.CreatedAt)
+                    .ToList();
+                }
 
-                .OrderByDescending(x => x.CreatedAt)
-                .ToList();
-
-            // 3️⃣ Lấy toàn bộ ảnh bằng 1 query
+            // 3️⃣ Lấy toàn bộ ảnh bài đăng (chỉ 1 query)
             var postIds = posts.Select(x => x.EmployerPostId).ToList();
 
             var imageLookup = await _db.Images
@@ -371,9 +388,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     g => g.Select(i => i.Url).ToList()
                 );
 
-            // 4️⃣ Map ra DTO — không query thêm trong vòng lặp
+            // 4️⃣ Map ra DTO
             var result = posts.Select(p => new EmployerPostDtoOut
-            {
+                {
                 EmployerPostId = p.EmployerPostId,
                 EmployerId = p.UserId,
                 Title = p.Title,
@@ -387,16 +404,13 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = p.CreatedAt,
                 Status = p.Status,
-
                 ImageUrls = imageLookup.ContainsKey(p.EmployerPostId)
                             ? imageLookup[p.EmployerPostId]
                             : new List<string>()
-            })
-            .ToList();
+                }).ToList();
 
             return result;
-        }
-
+            }
 
         public async Task<EmployerPostDtoOut?> GetByIdAsync(int id, int? requesterId = null, bool isAdmin = false)
         {
@@ -558,7 +572,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
             //  Update embedding và AI
             var category = await _db.Categories.FindAsync(post.CategoryId);
 
-            string embedText = $"{post.Title}. {post.Description}. Yêu cầu: {post.Requirements}. Lương: {post.Salary}. Ngành liên quan: {category?.Description ?? category?.Name}.";
+            string embedText =
+                $@"Tiêu đề: {post.Title}
+                Mô tả công việc: {post.Description}
+                Yêu cầu ứng viên: {post.Requirements}";
+
 
             var (vector, _) = await EnsureEmbeddingAsync("EmployerPost", post.EmployerPostId, embedText);
 
@@ -644,9 +662,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             //  Build text để embedding
             string embedText =
-                $"{post.Title}. {post.Description}. Yêu cầu: {post.Requirements}. " +
-                $"Địa điểm: {post.Location}. Lương: {post.Salary}. " +
-                $"Ngành liên quan: {category?.Description ?? category?.Name ?? ""}.";
+                $@"Tiêu đề: {post.Title}
+                Mô tả công việc: {post.Description}
+                Yêu cầu ứng viên: {post.Requirements}";
+
 
             //  Tạo embedding
             var (vector, _) = await EnsureEmbeddingAsync(

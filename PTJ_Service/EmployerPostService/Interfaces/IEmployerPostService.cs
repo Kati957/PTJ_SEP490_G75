@@ -14,8 +14,7 @@ public interface IEmployerPostService
     Task<IEnumerable<object>> GetShortlistedByPostAsync(int employerPostId);
 
     Task<IEnumerable<EmployerPostDtoOut>> GetAllAsync();
-    Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId);
-
+    Task<IEnumerable<EmployerPostDtoOut>> GetByUserAsync(int userId, bool isAdmin = false, bool isOwner = false);
     Task<EmployerPostDtoOut?> GetByIdAsync(
         int id,
         int? requesterId = null,
