@@ -167,15 +167,20 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             );
 
             await _ai.UpsertVectorAsync(
-                ns: "job_seeker_posts",
-                id: $"JobSeekerPost:{freshPost.JobSeekerPostId}",
-                vector: vector,
-                metadata: new
+            ns: "job_seeker_posts",
+            id: $"JobSeekerPost:{freshPost.JobSeekerPostId}",
+            vector: vector,
+            metadata: new
                 {
-                    postId = freshPost.JobSeekerPostId,
-                    title = freshPost.Title ?? "",
-                    status = freshPost.Status
-                    });
+                numericPostId = freshPost.JobSeekerPostId,
+                categoryId = freshPost.CategoryId,
+                provinceId = freshPost.ProvinceId,
+                districtId = freshPost.DistrictId,
+                wardId = freshPost.WardId,
+                title = freshPost.Title ?? "",
+                status = freshPost.Status
+                });
+
 
             // 4) TÌM JOB MATCHING
             //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
@@ -519,15 +524,20 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             );
 
             await _ai.UpsertVectorAsync(
-                ns: "job_seeker_posts",
-                id: $"JobSeekerPost:{post.JobSeekerPostId}",
-                vector: vector,
-                metadata: new
+            ns: "job_seeker_posts",
+            id: $"JobSeekerPost:{post.JobSeekerPostId}",
+            vector: vector,
+            metadata: new
                 {
-                    postId = post.JobSeekerPostId,
-                    title = post.Title ?? "",
-                    status = post.Status
-                    });
+                numericPostId = post.JobSeekerPostId,
+                categoryId = post.CategoryId,
+                provinceId = post.ProvinceId,
+                districtId = post.DistrictId,
+                wardId = post.WardId,
+                title = post.Title ?? "",
+                status = post.Status
+                });
+
 
             return await BuildCleanPostDto(post);
         }
@@ -607,15 +617,20 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             );
 
             await _ai.UpsertVectorAsync(
-                ns: "job_seeker_posts",
-                id: $"JobSeekerPost:{post.JobSeekerPostId}",
-                vector: vector,
-                metadata: new
+            ns: "job_seeker_posts",
+            id: $"JobSeekerPost:{post.JobSeekerPostId}",
+            vector: vector,
+            metadata: new
                 {
-                    postId = post.JobSeekerPostId,
-                    title = post.Title ?? "",
-                    status = post.Status
-                    });
+                numericPostId = post.JobSeekerPostId,
+                categoryId = post.CategoryId,
+                provinceId = post.ProvinceId,
+                districtId = post.DistrictId,
+                wardId = post.WardId,
+                title = post.Title ?? "",
+                status = post.Status
+                });
+
 
             //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
             //if (!matches.Any())
@@ -685,11 +700,11 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         // SCORING – 1 SCORE DUY NHẤT TỪ PINECONE
         // SCORING – Query Pinecone chỉ trong các bài Employer đã qua HARD FILTER
         private async Task<List<(EmployerPost Job, double Score)>>
-            ScoreAndFilterJobsAsync(
-                float[] seekerVector,
-                int? mustMatchCategoryId,
-                string seekerLocation
-            )
+     ScoreAndFilterJobsAsync(
+         float[] seekerVector,
+         int? mustMatchCategoryId,
+         string seekerLocation
+     )
             {
             // 1) LỌC CATEGORY
             var categoryFiltered = await _db.EmployerPosts
@@ -704,23 +719,57 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             if (!categoryFiltered.Any())
                 return new List<(EmployerPost, double)>();
 
-            // 2) LỌC LOCATION
+
+            // 2) LẤY THÔNG TIN SEEKER (Province/District/Ward)
+            var seekerPost = await _db.JobSeekerPosts
+                .AsNoTracking()
+                .Where(x => x.PreferredLocation == seekerLocation)
+                .FirstOrDefaultAsync();
+
+            // fallback nếu không khớp chính xác
+            if (seekerPost == null)
+                {
+                seekerPost = await _db.JobSeekerPosts
+                    .AsNoTracking()
+                    .OrderByDescending(x => x.CreatedAt)
+                    .FirstOrDefaultAsync();
+                }
+
+            if (seekerPost == null)
+                return new List<(EmployerPost, double)>();
+
+
+            // 3) LỌC LOCATION (WARD → DISTRICT → PROVINCE → <=100km)
             var locationPassed = new List<EmployerPost>();
+
             foreach (var job in categoryFiltered)
                 {
-                if (await IsWithinDistanceAsync(seekerLocation, job.Location))
+                bool ok = await IsWithinDistanceAsync(
+                    seekerProvince: seekerPost.ProvinceId,
+                    seekerDistrict: seekerPost.DistrictId,
+                    seekerWard: seekerPost.WardId,
+                    jobProvince: job.ProvinceId,
+                    jobDistrict: job.DistrictId,
+                    jobWard: job.WardId,
+                    seekerLocation: seekerLocation,
+                    jobLocation: job.Location
+                );
+
+                if (ok)
                     locationPassed.Add(job);
                 }
 
             if (!locationPassed.Any())
                 return new List<(EmployerPost, double)>();
 
-            // 3) LẤY DANH SÁCH ID CHO PINECONE
+
+            // 4) LẤY LIST ID EMPLOYERPOST ĐỂ QUERY PINECONE
             var allowedIds = locationPassed
-                .Select(x => $"EmployerPost:{x.EmployerPostId}")
+                .Select(x => x.EmployerPostId)
                 .ToList();
 
-            // 4) QUERY Pinecone CHỈ TRONG allowedIds
+
+            // 5) QUERY PINECONE CHỈ TRONG allowedIds
             var pineconeMatches = await _ai.QueryWithIDsAsync(
                 "employer_posts",
                 seekerVector,
@@ -731,7 +780,8 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             if (!pineconeMatches.Any())
                 return new List<(EmployerPost, double)>();
 
-            // 5) BUILD KẾT QUẢ
+
+            // 6) GHÉP JOB + SCORE
             var results = new List<(EmployerPost Job, double Score)>();
 
             foreach (var m in pineconeMatches)
@@ -742,42 +792,60 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 if (!int.TryParse(m.Id.Split(':')[1], out int jobId))
                     continue;
 
-                var job = locationPassed.First(x => x.EmployerPostId == jobId);
-
-                results.Add((job, m.Score));
+                var job = locationPassed.FirstOrDefault(x => x.EmployerPostId == jobId);
+                if (job != null)
+                    results.Add((job, m.Score));
                 }
 
             return results;
             }
 
-
-        // LOCATION FILTER HELPER – lọc <= 100km, không tính điểm
-        private async Task<bool> IsWithinDistanceAsync(string fromLocation, string? toLocation)
+        // LOCATION FILTER – ưu tiên ward → district → province → cuối cùng khoảng cách <= 100km
+        private async Task<bool> IsWithinDistanceAsync(
+    int seekerProvince,
+    int seekerDistrict,
+    int seekerWard,
+    int jobProvince,
+    int jobDistrict,
+    int jobWard,
+    string seekerLocation,
+    string jobLocation
+)
             {
+            // 1) TRÙNG WARD → match
+            if (seekerWard != 0 && seekerWard == jobWard)
+                return true;
+
+            // 2) TRÙNG DISTRICT
+            if (seekerDistrict != 0 && seekerDistrict == jobDistrict)
+                return true;
+
+            // 3) TRÙNG PROVINCE
+            if (seekerProvince != 0 && seekerProvince == jobProvince)
+                return true;
+
+            // 4) Khoảng cách <= 100km
             try
                 {
-                if (!string.IsNullOrWhiteSpace(fromLocation) &&
-                    !string.IsNullOrWhiteSpace(toLocation))
+                seekerLocation = NormalizeLocation(seekerLocation);
+                jobLocation = NormalizeLocation(jobLocation);
+
+                var fromCoord = await _map.GetCoordinatesAsync(seekerLocation);
+                var toCoord = await _map.GetCoordinatesAsync(jobLocation);
+
+                if (fromCoord != null && toCoord != null)
                     {
-                    var fromCoord = await _map.GetCoordinatesAsync(fromLocation);
-                    var toCoord = await _map.GetCoordinatesAsync(toLocation);
+                    double dist = _map.ComputeDistanceKm(
+                        fromCoord.Value.lat, fromCoord.Value.lng,
+                        toCoord.Value.lat, toCoord.Value.lng
+                    );
 
-                    if (fromCoord != null && toCoord != null)
-                        {
-                        double dist = _map.ComputeDistanceKm(
-                            fromCoord.Value.lat, fromCoord.Value.lng,
-                            toCoord.Value.lat, toCoord.Value.lng);
-
-                        return dist <= 100;
-                        }
+                    return dist <= 100;
                     }
                 }
-            catch
-                {
-                // lỗi API → coi như thất bại
-                }
+            catch { }
 
-            return false; // fallback = false (đúng HARD FILTER)
+            return false;
             }
 
         // SHORTLIST
@@ -1141,7 +1209,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             return true;
         }
 
-        private string FormatSalary(decimal? min, decimal? max, int? type)
+        private static string FormatSalary(decimal? min, decimal? max, int? type)
             {
             if (min == null && max == null)
                 return "Thỏa thuận";
@@ -1165,6 +1233,43 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             return "Thỏa thuận";
             }
+
+        private string NormalizeLocation(string raw)
+            {
+            if (string.IsNullOrWhiteSpace(raw))
+                return raw;
+
+            // Đổi dấu gạch ngang sang dấu phẩy
+            // "Hà Nội - Ba Đình" → "Hà Nội , Ba Đình"
+            raw = raw.Replace("-", ",");
+
+            // Tách thành phần theo dấu phẩy
+            var parts = raw
+                .Split(',')
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            if (parts.Count == 0)
+                return raw;
+
+            // Nếu có >= 3 phần → trả về 3 phần cuối
+            if (parts.Count >= 3)
+                {
+                var ward = parts[^3];
+                var district = parts[^2];
+                var province = parts[^1];
+                return $"{ward}, {district}, {province}";
+                }
+
+            // Nếu có 2 phần → District, Province
+            if (parts.Count == 2)
+                return $"{parts[0]}, {parts[1]}";
+
+            // Nếu chỉ 1 phần
+            return parts[0];
+            }
+
 
         }
     }

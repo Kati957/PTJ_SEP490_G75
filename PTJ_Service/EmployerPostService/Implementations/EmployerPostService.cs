@@ -15,6 +15,7 @@ using PTJ_Service.Interfaces;
 using PTJ_Models.DTO.Notification;
 
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
+using Microsoft.Extensions.Hosting;
 
 namespace PTJ_Service.EmployerPostService.Implementations
 {
@@ -214,15 +215,20 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // 7️⃣ Upsert vector vào Pinecone
             await _ai.UpsertVectorAsync(
-                ns: "employer_posts",
-                id: $"EmployerPost:{freshPost.EmployerPostId}",
-                vector: vector,
-               metadata: new
-                   {
-                   postId = post.EmployerPostId,
-                   title = post.Title ?? "",
-                   status = post.Status
-                   });
+    ns: "employer_posts",
+    id: $"EmployerPost:{freshPost.EmployerPostId}",
+    vector: vector,
+    metadata: new
+        {
+        numericPostId = freshPost.EmployerPostId,
+        categoryId = freshPost.CategoryId,
+        provinceId = freshPost.ProvinceId,
+        districtId = freshPost.DistrictId,
+        wardId = freshPost.WardId,
+        title = freshPost.Title ?? "",
+        status = freshPost.Status,
+        });
+
 
             //// 8️⃣ Query ứng viên tương tự
             //var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
@@ -719,7 +725,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Mô tả công việc: {post.Description}
                 Yêu cầu ứng viên: {post.Requirements}
                 Giờ làm việc: { post.WorkHours}";
-            
+
 
 
             var (vector, _) = await EnsureEmbeddingAsync("EmployerPost", post.EmployerPostId, embedText);
@@ -730,7 +736,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 vector: vector,
                 metadata: new
                     {
-                    postId = post.EmployerPostId,
+                    numericPostId = post.EmployerPostId,
+                    categoryId = post.CategoryId,
+                    provinceId = post.ProvinceId,
+                    districtId = post.DistrictId,
+                    wardId = post.WardId,
                     title = post.Title ?? "",
                     status = post.Status
                     });
@@ -821,15 +831,20 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             //  Upsert vector vào Pinecone
             await _ai.UpsertVectorAsync(
-                ns: "employer_posts",
-                id: $"EmployerPost:{post.EmployerPostId}",
-                vector: vector,
-                metadata: new
-                    {
-                    postId = post.EmployerPostId,
-                    title = post.Title ?? "",
-                    status = post.Status
-                    });
+            ns: "employer_posts",
+            id: $"EmployerPost:{post.EmployerPostId}",
+            vector: vector,
+            metadata: new
+                {
+                numericPostId = post.EmployerPostId,
+                categoryId = post.CategoryId,
+                provinceId = post.ProvinceId,
+                districtId = post.DistrictId,
+                wardId = post.WardId,
+                title = post.Title ?? "",
+                status = post.Status
+                });
+
 
             //  Query ứng viên tương tự (Embedding)
             //var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
@@ -901,14 +916,26 @@ namespace PTJ_Service.EmployerPostService.Implementations
         }
 
         //  SCORING LOGIC (Category filter + Distance ≤100km + Hybrid score)
-
         private async Task<List<(JobSeekerPost Seeker, double Score, int? CvId)>>
-ScoreAndFilterCandidatesAsync(
-    float[] employerVector,
-    int? mustMatchCategoryId,
-    string employerLocation)
+        ScoreAndFilterCandidatesAsync(
+            float[] employerVector,
+            int? mustMatchCategoryId,
+            string employerLocation)
             {
-            // 1) LỌC CATEGORY
+            // ---------------------------------------
+            // 1) LẤY THÔNG TIN ĐỊA CHỈ EMPLOYER (NGUỒN)
+            // ---------------------------------------
+            var employerPost = await _db.EmployerPosts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Location == employerLocation);
+
+            int employerProvinceId = employerPost?.ProvinceId ?? 0;
+            int employerDistrictId = employerPost?.DistrictId ?? 0;
+            int employerWardId = employerPost?.WardId ?? 0;
+
+            // ---------------------------------------
+            // 2) LỌC THEO CATEGORY
+            // ---------------------------------------
             var categoryFiltered = await _db.JobSeekerPosts
                 .Where(js =>
                     js.Status == "Active" &&
@@ -917,49 +944,59 @@ ScoreAndFilterCandidatesAsync(
                 .Include(js => js.Category)
                 .ToListAsync();
 
-
             if (!categoryFiltered.Any())
                 return new List<(JobSeekerPost, double, int?)>();
 
-            // 2) LỌC LOCATION
+            // ---------------------------------------
+            // 3) LỌC DISTANCE / ĐỊA CHỈ
+            // ---------------------------------------
             var locationFiltered = new List<JobSeekerPost>();
 
             foreach (var js in categoryFiltered)
                 {
-                if (await IsWithinDistanceAsync(employerLocation, js.PreferredLocation))
+                bool ok = await IsWithinDistanceAsync(
+                    seekerProvince: js.ProvinceId,
+                    seekerDistrict: js.DistrictId,
+                    seekerWard: js.WardId,
+                    jobProvince: employerProvinceId,
+                    jobDistrict: employerDistrictId,
+                    jobWard: employerWardId,
+                    seekerLocation: js.PreferredLocation,
+                    jobLocation: employerLocation
+                );
+
+                if (ok)
                     locationFiltered.Add(js);
                 }
 
             if (!locationFiltered.Any())
                 return new List<(JobSeekerPost, double, int?)>();
 
-            // 3) LẤY DANH SÁCH ID ĐÃ QUA HARD FILTER
-            var allowedIds = locationFiltered.Select(x => x.JobSeekerPostId).ToHashSet();
+            // ---------------------------------------
+            // 4) DANH SÁCH ID ĐÃ QUA HARD FILTER
+            // ---------------------------------------
+            var allowedIds = locationFiltered
+                .Select(x => x.JobSeekerPostId)
+                .ToHashSet();
 
-            // 4) QUERY PINECONE (KHÔNG FILTER)
-            //var pineconeMatches = await _ai.QuerySimilarAsync(
-            //    "job_seeker_posts",
-            //    employerVector,
-            //    topK: 100
-            //);
+            var pineconeIds = allowedIds.ToList();
 
-            // 4) QUERY PINECONE VỚI ID ĐÃ QUA HARD FILTER
-            var allowedPineconeIds = allowedIds
-                .Select(id => $"JobSeekerPost:{id}")
-                .ToList();
-
+            // ---------------------------------------
+            // 5) QUERY PINECONE CHỈ TRÊN allowedIds
+            // ---------------------------------------
             var pineconeMatches = await _ai.QueryWithIDsAsync(
                 "job_seeker_posts",
                 employerVector,
-                allowedPineconeIds,
-                topK: allowedPineconeIds.Count
+                pineconeIds,
+                topK: pineconeIds.Count
             );
 
             if (!pineconeMatches.Any())
                 return new List<(JobSeekerPost, double, int?)>();
 
-
-            // 5) CHỈ GIỮ LẠI SCORE CHO allowedIds
+            // ---------------------------------------
+            // 6) GHÉP SCORE TRỞ LẠI
+            // ---------------------------------------
             var results = new List<(JobSeekerPost, double, int?)>();
 
             foreach (var m in pineconeMatches)
@@ -971,7 +1008,7 @@ ScoreAndFilterCandidatesAsync(
                     continue;
 
                 if (!allowedIds.Contains(seekerId))
-                    continue; // loại ứng viên chưa qua HARD FILTER
+                    continue;
 
                 var seeker = locationFiltered
                     .FirstOrDefault(x => x.JobSeekerPostId == seekerId);
@@ -985,37 +1022,48 @@ ScoreAndFilterCandidatesAsync(
             return results;
             }
 
-
-
-        private async Task<bool> IsWithinDistanceAsync(string employerLocation, string? seekerLocation)
+        private async Task<bool> IsWithinDistanceAsync(
+     int seekerProvince,
+     int seekerDistrict,
+     int seekerWard,
+     int jobProvince,
+     int jobDistrict,
+     int jobWard,
+     string seekerLocation,
+     string jobLocation)
             {
+            // 1) TRÙNG WARD → MATCH
+            if (seekerWard == jobWard && seekerWard != 0)
+                return true;
+
+            // 2) TRÙNG DISTRICT → MATCH
+            if (seekerDistrict == jobDistrict && seekerDistrict != 0)
+                return true;
+
+            // 3) TRÙNG PROVINCE → MATCH
+            if (seekerProvince == jobProvince && seekerProvince != 0)
+                return true;
+
+            // 4) Nếu không trùng → tính khoảng cách <=100km
             try
                 {
-                if (!string.IsNullOrWhiteSpace(employerLocation) &&
-                    !string.IsNullOrWhiteSpace(seekerLocation))
+                var fromCoord = await _map.GetCoordinatesAsync(seekerLocation);
+                var toCoord = await _map.GetCoordinatesAsync(jobLocation);
+
+                if (fromCoord != null && toCoord != null)
                     {
-                    var employerCoord = await _map.GetCoordinatesAsync(employerLocation);
-                    var seekerCoord = await _map.GetCoordinatesAsync(seekerLocation);
+                    double dist = _map.ComputeDistanceKm(
+                        fromCoord.Value.lat, fromCoord.Value.lng,
+                        toCoord.Value.lat, toCoord.Value.lng
+                    );
 
-                    if (employerCoord != null && seekerCoord != null)
-                        {
-                        double distanceKm = _map.ComputeDistanceKm(
-                            employerCoord.Value.lat, employerCoord.Value.lng,
-                            seekerCoord.Value.lat, seekerCoord.Value.lng);
-
-                        return distanceKm <= 100;
-                        }
+                    return dist <= 100;
                     }
                 }
-            catch
-                {
-                // có lỗi: coi như không đạt điều kiện
-                }
+            catch { }
 
-            // fallback: mọi trường hợp không return true ở trên đều coi là fail
             return false;
             }
-
 
         // SHORTLIST
 
@@ -1406,7 +1454,7 @@ ScoreAndFilterCandidatesAsync(
             return "Đã đóng bài đăng.";
         }
 
-        private string FormatSalary(decimal? min, decimal? max, int? type)
+        private static string FormatSalary(decimal? min, decimal? max, int? type)
             {
             if (min == null && max == null && type == null)
                 return "Thỏa thuận";
@@ -1481,6 +1529,44 @@ ScoreAndFilterCandidatesAsync(
                 }
 
             throw new Exception($"Ngày hết hạn không hợp lệ. Hãy nhập theo dạng dd/MM/yyyy (VD: 30/11/2025).");
+            }
+
+        private string NormalizeLocation(string raw)
+            {
+            if (string.IsNullOrWhiteSpace(raw))
+                return raw;
+
+            // Đổi dấu gạch ngang sang phẩy để unify format
+            // Ví dụ: "Hà Nội - Ba Đình" → "Hà Nội , Ba Đình"
+            raw = raw.Replace("-", ",");
+
+            // Tách mọi thành phần dựa vào dấu phẩy
+            var parts = raw
+                .Split(',')
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            if (parts.Count == 0)
+                return raw;
+
+            // Nếu có >= 3 phần → lấy 3 phần cuối (Ward, District, Province)
+            if (parts.Count >= 3)
+                {
+                var ward = parts[parts.Count - 3];
+                var district = parts[parts.Count - 2];
+                var province = parts[parts.Count - 1];
+                return $"{ward}, {district}, {province}";
+                }
+
+            // Nếu có 2 phần → District, Province
+            if (parts.Count == 2)
+                {
+                return $"{parts[0]}, {parts[1]}";
+                }
+
+            // Nếu chỉ có 1 phần → trả nguyên
+            return parts[0];
             }
 
         }

@@ -128,14 +128,26 @@ namespace PTJ_Service.AiService.Implementations
 
         //so sánh với những ứng viên bạn đã lọc theo Category + Location trong SQL
         public async Task<List<(string Id, double Score)>> QueryWithIDsAsync(
-    string ns,
-    float[] vector,
-    IEnumerable<string> allowedIds,
-    int topK = 50)
+     string ns,
+     float[] vector,
+     IEnumerable<int> allowedIds,
+     int topK = 50)
             {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+            // Ép về int[] cho chắc
+            var idArray = allowedIds.ToArray();
+
+            // Xây filter đúng cú pháp: { "numericPostId": { "$in": [1,2,3] } }
+            var filter = new Dictionary<string, object>
+                {
+                ["numericPostId"] = new Dictionary<string, object>
+                    {
+                    ["$in"] = idArray    // ✅ đúng: $in
+                    }
+                };
 
             var payload = new
                 {
@@ -143,14 +155,15 @@ namespace PTJ_Service.AiService.Implementations
                 topK,
                 includeMetadata = true,
                 @namespace = ns,
-                filter = new
-                    {
-                    id = new { _in = allowedIds } // Pinecone filter by ID list
-                    }
+                filter
                 };
 
             var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
-            res.EnsureSuccessStatusCode();
+            if (!res.IsSuccessStatusCode)
+                {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new Exception($"Pinecone QUERY failed: {res.StatusCode} - {body}");
+                }
 
             var json = await res.Content.ReadFromJsonAsync<JsonElement>();
             var list = new List<(string Id, double Score)>();
@@ -159,13 +172,15 @@ namespace PTJ_Service.AiService.Implementations
                 {
                 foreach (var m in matches.EnumerateArray())
                     {
-                    list.Add((m.GetProperty("id").GetString()!, m.GetProperty("score").GetDouble()));
+                    list.Add((
+                        m.GetProperty("id").GetString()!,
+                        m.GetProperty("score").GetDouble()
+                    ));
                     }
                 }
 
             return list;
             }
-
 
         //  Kiểm tra kết nối LM Studio
 

@@ -20,17 +20,16 @@ namespace PTJ_Service.LocationService
 
         //  Lấy tọa độ từ địa chỉ (có cache DB)
         public async Task<(double lat, double lng)?> GetCoordinatesAsync(string address)
-        {
+            {
             if (string.IsNullOrWhiteSpace(address))
                 return null;
 
-            //  Kiểm tra cache
+            // cache phải theo FULL ADDRESS
             var cached = _db.LocationCaches.FirstOrDefault(x => x.Address == address);
             if (cached != null)
                 return (cached.Lat, cached.Lng);
 
-            //  Gọi OpenStreetMap API
-            var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(address)}&format=json&addressdetails=1&limit=1";
+            var url = $"https://nominatim.openstreetmap.org/search?q={Uri.EscapeDataString(address)}&format=json&limit=1";
             var response = await _http.GetStringAsync(url);
             var json = JsonConvert.DeserializeObject<dynamic>(response);
 
@@ -40,19 +39,19 @@ namespace PTJ_Service.LocationService
             double lat = double.Parse((string)json[0].lat, CultureInfo.InvariantCulture);
             double lng = double.Parse((string)json[0].lon, CultureInfo.InvariantCulture);
 
-            //  Lưu vào cache
-            var entity = new LocationCache
-            {
+            // lưu đầy đủ, KHÔNG rút gọn
+            _db.LocationCaches.Add(new LocationCache
+                {
                 Address = address,
                 Lat = lat,
                 Lng = lng,
                 LastUpdated = DateTime.Now
-            };
-            _db.LocationCaches.Add(entity);
+                });
+
             await _db.SaveChangesAsync();
 
             return (lat, lng);
-        }
+            }
 
         //  Tính khoảng cách giữa 2 tọa độ (km)
         public double ComputeDistanceKm(double lat1, double lon1, double lat2, double lon2)
@@ -68,5 +67,5 @@ namespace PTJ_Service.LocationService
             double c = 2 * Math.Asin(Math.Sqrt(a));
             return R * c;
         }
+        }
     }
-}
