@@ -243,6 +243,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
                         x.Job.Location,
                         x.Job.WorkHours,
+
+                        ExpiredAtText = x.Job.ExpiredAt?.ToString("dd/MM/yyyy"),
+
                         x.Job.PhoneContact,
                         CategoryName = x.Job.Category?.Name,
                         EmployerName = x.Job.User.Username,
@@ -879,6 +882,11 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
                     Location = ep.Location,
                     WorkHours = ep.WorkHours,
+
+                    ExpiredAtText = ep.ExpiredAt == null
+                                    ? null
+                                    : ep.ExpiredAt.Value.ToString("dd/MM/yyyy"),
+
                     PhoneContact = ep.PhoneContact,
                     CategoryName = ep.Category != null ? ep.Category.Name : null,
                     EmployerName = ep.User.Username,

@@ -352,6 +352,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Requirements = p.Requirements,
                 WorkHours = p.WorkHours,
+
+                ExpiredAtText = p.ExpiredAt?.ToString("dd/MM/yyyy"),
+
+
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
@@ -429,6 +433,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Requirements = p.Requirements,
                 WorkHours = p.WorkHours,
+
+                ExpiredAtText = p.ExpiredAt?.ToString("dd/MM/yyyy"),
+
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
                 CategoryName = p.Category?.Name,
@@ -499,6 +506,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Requirements = post.Requirements,
                 WorkHours = post.WorkHours,
+
+                ExpiredAtText = post.ExpiredAt?.ToString("dd/MM/yyyy"),
+
                 Location = post.Location,
                 ProvinceId = post.ProvinceId,
                 DistrictId = post.DistrictId,
@@ -573,6 +583,10 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Requirements = x.Requirements,
                 WorkHours = x.WorkHours,
+
+                ExpiredAtText = x.ExpiredAt?.ToString("dd/MM/yyyy"),
+
+
                 Location = x.Location,
                 PhoneContact = x.PhoneContact,
                 CategoryName = x.Category?.Name,

@@ -17,6 +17,9 @@
 
         public string? Location { get; set; }
         public string? WorkHours { get; set; }
+
+        public string? ExpiredAtText { get; set; }
+
         public string? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
 
