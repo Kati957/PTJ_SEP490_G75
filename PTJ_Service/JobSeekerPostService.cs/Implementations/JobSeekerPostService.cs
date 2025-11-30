@@ -273,6 +273,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
         {
             var posts = await _db.JobSeekerPosts
                 .Include(x => x.User)
+                .ThenInclude(u => u.JobSeekerProfile)
                 .Include(x => x.Category)
                 .Where(x => x.Status == "Active" && x.User.IsActive)
                 .ToListAsync();
@@ -294,7 +295,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     Description = p.Description,
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
-                    SeekerName = p.User.Username,
+                    SeekerName = p.User.JobSeekerProfile?.FullName,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
@@ -326,7 +327,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     Description = p.Description,
                     PreferredLocation = p.PreferredLocation,
                     CategoryName = p.Category?.Name,
-                    SeekerName = p.User.Username,
+                    SeekerName = p.User.JobSeekerProfile?.FullName,
                     CreatedAt = p.CreatedAt,
                     Status = p.Status,
                     CvId = p.SelectedCvId,
@@ -373,7 +374,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 PhoneContact = post.PhoneContact,
                 CategoryID = post.CategoryId ?? 0,
                 CategoryName = post.Category?.Name,
-                SeekerName = post.User.Username,
+                SeekerName = post.User.JobSeekerProfile?.FullName,
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
                 CvId = post.SelectedCvId,
@@ -385,6 +386,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
             IQueryable<JobSeekerPost> query = _db.JobSeekerPosts
                 .Include(x => x.User)
+                .ThenInclude(u => u.JobSeekerProfile)
                 .Include(x => x.Category);
 
             switch (status)
@@ -425,7 +427,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 Description = p.Description,
                 PreferredLocation = p.PreferredLocation,
                 CategoryName = p.Category?.Name,
-                SeekerName = p.User.Username,
+                SeekerName = p.User.JobSeekerProfile?.FullName,
                 CreatedAt = p.CreatedAt,
                 Status = p.Status,
                 CvId = p.SelectedCvId
@@ -885,6 +887,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
             return await _db.JobSeekerShortlistedJobs
                  .Include(x => x.EmployerPost)
                  .ThenInclude(e => e.User)
+                 .ThenInclude(u => u.EmployerProfile)
                  .Where(x =>
                      x.JobSeekerId == jobSeekerId &&
                      x.EmployerPost.Status == "Active" &&
@@ -899,7 +902,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     x.EmployerPostId,
                     x.EmployerPost.Title,
                     x.EmployerPost.Location,
-                    EmployerName = x.EmployerPost.User.Username,
+                    EmployerName = x.EmployerPost.User.EmployerProfile == null
+                     ? null
+                    : x.EmployerPost.User.EmployerProfile.DisplayName,
                     x.Note,
                     x.AddedAt
                 }).ToListAsync();
@@ -929,7 +934,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 where s.SourceType == "JobSeekerPost"
                    && s.SourceId == jobSeekerPostId
                    && s.TargetType == "EmployerPost"
-                join ep in _db.EmployerPosts.Include(e => e.User)
+                join ep in _db.EmployerPosts.Include(e => e.User).ThenInclude(u => u.EmployerProfile)
                      on s.TargetId equals ep.EmployerPostId
                 where ep.Status == "Active"
                    && ep.User.IsActive == true
@@ -957,8 +962,9 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
                     PhoneContact = ep.PhoneContact,
                     CategoryName = ep.Category != null ? ep.Category.Name : null,
-                    EmployerName = ep.User.Username,
-
+                    EmployerName = ep.User.EmployerProfile == null
+                                     ? ep.User.Username
+                                     : ep.User.EmployerProfile.DisplayName,
                     MatchPercent = s.MatchPercent,
                     RawScore = Math.Round(s.RawScore, 4),
 
@@ -1079,7 +1085,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     : null,
 
                 CategoryName = category?.Name,
-                SeekerName = user?.Username ?? "",
+                SeekerName = user?.JobSeekerProfile?.FullName ?? "",
                 CreatedAt = post.CreatedAt,
                 Status = post.Status,
             };

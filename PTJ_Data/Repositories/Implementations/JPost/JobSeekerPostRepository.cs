@@ -17,6 +17,7 @@ namespace PTJ_Data.Repositories.Implementations.JPost
         {
             return await _db.JobSeekerPosts
                 .Include(p => p.User)
+                .ThenInclude(u => u.JobSeekerProfile)
                 .Include(p => p.Category)
                 .Where(p => p.Status == "Active")
                 .OrderByDescending(p => p.CreatedAt)
@@ -27,6 +28,7 @@ namespace PTJ_Data.Repositories.Implementations.JPost
         {
             return await _db.JobSeekerPosts
                 .Include(p => p.User)
+                .ThenInclude(u => u.JobSeekerProfile)
                 .Include(p => p.Category)
                 .Where(x => x.UserId == userId)
                 .OrderByDescending(p => p.CreatedAt)
@@ -36,10 +38,12 @@ namespace PTJ_Data.Repositories.Implementations.JPost
         public async Task<JobSeekerPost?> GetByIdAsync(int id)
         {
             return await _db.JobSeekerPosts
-                .Include(p => p.User)
-                .Include(p => p.Category)
-                .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
+                .Include(x => x.User)
+                .ThenInclude(u => u.JobSeekerProfile)
+                .Include(x => x.Category)
+                .FirstOrDefaultAsync(x => x.JobSeekerPostId == id);
         }
+
 
         public async Task AddAsync(JobSeekerPost post)
         {
