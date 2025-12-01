@@ -172,14 +172,19 @@ namespace PTJ_Service.AiService.Implementations
                 {
                 foreach (var m in matches.EnumerateArray())
                     {
-                    list.Add((
-                        m.GetProperty("id").GetString()!,
-                        m.GetProperty("score").GetDouble()
-                    ));
+                    var id = m.GetProperty("id").GetString();
+                    var score = m.GetProperty("score").GetDouble();
+
+                    // ✅ chỉ lấy những vector có score >= 0.5
+                    if (score >= 0.55)
+                        {
+                        list.Add((id!, score));
+                        }
                     }
                 }
 
-            return list;
+            // Sắp xếp giảm dần theo score
+            return list.OrderByDescending(x => x.Score).ToList();
             }
 
         //  Kiểm tra kết nối LM Studio

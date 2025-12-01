@@ -229,30 +229,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
         status = freshPost.Status,
         });
 
-
-            //// 8️⃣ Query ứng viên tương tự
-            //var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
-
-            //if (!matches.Any())
-            //    {
-            //    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
-            //        {
-            //        EntityType = "EmployerPost",
-            //        EntityId = freshPost.EmployerPostId,
-            //        Lang = "auto",
-            //        CanonicalText = $"{freshPost.Title}. {freshPost.Description}. {freshPost.Requirements}. {freshPost.Location}. {freshPost.Salary}",
-            //        Hash = hash,
-            //        LastPreparedAt = DateTime.Now
-            //        });
-            //    await _db.SaveChangesAsync();
-
-            //    return new EmployerPostResultDto
-            //        {
-            //        Post = await BuildCleanPostDto(freshPost),
-            //        SuggestedCandidates = new List<AIResultDto>()
-            //        };
-            //    }
-
             // 9️⃣ Tính điểm
             var scored = await ScoreAndFilterCandidatesAsync(
                 vector,
@@ -845,19 +821,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 status = post.Status
                 });
 
-
-            //  Query ứng viên tương tự (Embedding)
-            //var matches = await _ai.QuerySimilarAsync("job_seeker_posts", vector, 100);
-
-            //if (!matches.Any())
-            //{
-            //    return new EmployerPostResultDto
-            //    {
-            //        Post = await BuildCleanPostDto(post),
-            //        SuggestedCandidates = new List<AIResultDto>()
-            //    };
-            //}
-
             //  Chấm điểm & lọc ứng viên
             var scored = await ScoreAndFilterCandidatesAsync(
                  vector,
@@ -1114,7 +1077,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         }
 
         public async Task<IEnumerable<EmployerPostSuggestionDto>> GetSuggestionsByPostAsync(
-    int employerPostId, int take = 10, int skip = 0)
+    int employerPostId, int take = 5, int skip = 0)
         {
             // Danh sách ứng viên đã được employer "save"
             var savedIds = await _db.EmployerShortlistedCandidates

@@ -135,7 +135,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                     EntityType = "JobSeekerCV",
                     EntityId = selectedCv.Cvid,
                     ContentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(cvText))),
-                    Model = "text-embedding-3-large",
+                    Model = "text-embedding-nomic-embed-text-v2-moe",
                     VectorDim = cvEmbedding.Length,
                     PineconeId = $"JobSeekerCV:{selectedCv.Cvid}",
                     Status = "OK",
@@ -180,30 +180,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 title = freshPost.Title ?? "",
                 status = freshPost.Status
                 });
-
-
-            // 4) TÌM JOB MATCHING
-            //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
-
-            //if (!matches.Any())
-            //{
-            //    _db.AiContentForEmbeddings.Add(new AiContentForEmbedding
-            //    {
-            //        EntityType = "JobSeekerPost",
-            //        EntityId = freshPost.JobSeekerPostId,
-            //        Lang = "auto",
-            //        CanonicalText = embedText,
-            //        Hash = hash,
-            //        LastPreparedAt = DateTime.Now
-            //    });
-            //    await _db.SaveChangesAsync();
-
-            //    return new JobSeekerPostResultDto
-            //    {
-            //        Post = await BuildCleanPostDto(freshPost),
-            //        SuggestedJobs = new List<AIResultDto>()
-            //    };
-            //}
 
             var scored = await ScoreAndFilterJobsAsync(
                 vector, // embedding của seeker
@@ -634,16 +610,6 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
                 });
 
 
-            //var matches = await _ai.QuerySimilarAsync("employer_posts", vector, 100);
-            //if (!matches.Any())
-            //{
-            //    return new JobSeekerPostResultDto
-            //    {
-            //        Post = await BuildCleanPostDto(post),
-            //        SuggestedJobs = new List<AIResultDto>()
-            //    };
-            //}
-
             var scored = await ScoreAndFilterJobsAsync(
                 vector,
                 post.CategoryId,
@@ -913,7 +879,7 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
 
         // Lấy lại danh sách job đã được AI đề xuất
         public async Task<IEnumerable<JobSeekerJobSuggestionDto>> GetSuggestionsByPostAsync(
-            int jobSeekerPostId, int take = 10, int skip = 0)
+            int jobSeekerPostId, int take = 5, int skip = 0)
         {
             var seekerPost = await _db.JobSeekerPosts
                 .AsNoTracking()
