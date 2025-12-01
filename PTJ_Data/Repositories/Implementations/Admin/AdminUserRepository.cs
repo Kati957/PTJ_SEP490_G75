@@ -61,29 +61,33 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-              .Select(u => new AdminUserDto
-              {
-                  UserId = u.UserId,
+     .Select(u => new AdminUserDto
+     {
+         UserId = u.UserId,
 
-                 
-                  DisplayName =
-                  u.Roles.Any(r => r.RoleName == "Employer")
-                  ? u.EmployerProfile.DisplayName
-                  : u.JobSeekerProfile.FullName,
-                  Username = u.Username,
-                  Email = u.Email,
-                  Role = u.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
-                  IsActive = u.IsActive,
-                  IsVerified = u.IsVerified,
-                  CreatedAt = u.CreatedAt,
-                  LastLogin = u.LastLogin,
+         Role = u.Roles.Select(r => r.RoleName).FirstOrDefault() ?? "Unknown",
 
-                  AvatarUrl = u.JobSeekerProfile != null
-        ? u.JobSeekerProfile.ProfilePicture
-        : u.EmployerProfile != null
-            ? u.EmployerProfile.AvatarUrl
-            : null
-              })
+         DisplayName =
+        (u.Roles.Select(r => r.RoleName).FirstOrDefault() == "Employer"
+            ? (u.EmployerProfile != null ? u.EmployerProfile.DisplayName : "")
+            : (u.JobSeekerProfile != null ? u.JobSeekerProfile.FullName : "")
+        ),
+
+         Username = u.Username,
+         Email = u.Email,
+
+         IsActive = u.IsActive,
+         IsVerified = u.IsVerified,
+         CreatedAt = u.CreatedAt,
+         LastLogin = u.LastLogin,
+
+         AvatarUrl =
+        (u.Roles.Select(r => r.RoleName).FirstOrDefault() == "Employer"
+            ? (u.EmployerProfile != null ? u.EmployerProfile.AvatarUrl : null)
+            : (u.JobSeekerProfile != null ? u.JobSeekerProfile.ProfilePicture : null)
+        )
+     })
+
 
 
                 .ToListAsync();
