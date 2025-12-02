@@ -27,6 +27,10 @@ public partial class User
 
     public DateTime? LockoutEnd { get; set; }
 
+    public string? PhoneNumber { get; set; }
+
+    public string? Address { get; set; }
+
     public virtual ICollection<EmailVerificationToken> EmailVerificationTokens { get; set; } = new List<EmailVerificationToken>();
 
     public virtual ICollection<EmployerCandidatesList> EmployerCandidatesLists { get; set; } = new List<EmployerCandidatesList>();

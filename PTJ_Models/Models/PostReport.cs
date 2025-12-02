@@ -9,7 +9,7 @@ public partial class PostReport
 
     public int ReporterId { get; set; }
 
-    public string ReportType { get; set; } = null!;
+    public string? ReportType { get; set; }
 
     public int? TargetUserId { get; set; }
 

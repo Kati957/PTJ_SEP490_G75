@@ -25,5 +25,7 @@ namespace PTJ_Service.JobSeekerPostService.cs.Interfaces
         Task<bool> CloseJobSeekerPostAsync(int id);
         Task<bool> ReopenJobSeekerPostAsync(int id);
 
+        Task<IEnumerable<JobSeekerPostDtoOut>> FilterAsync(string status, int? userId, bool isAdmin);
+
         }
     }

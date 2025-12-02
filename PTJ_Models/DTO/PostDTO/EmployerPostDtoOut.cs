@@ -14,13 +14,17 @@ namespace PTJ_Models.DTO.PostDTO
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
 
-        public decimal? Salary { get; set; }
-        public string? SalaryText { get; set; }
+        public decimal? SalaryMin { get; set; }
+        public decimal? SalaryMax { get; set; }
+        public int? SalaryType { get; set; }
+        public string SalaryDisplay { get; set; } = string.Empty;
 
         public string? Requirements { get; set; }
         public string? WorkHours { get; set; }
         public string? WorkHourStart { get; set; }
         public string? WorkHourEnd { get; set; }
+
+        public string? ExpiredAtText { get; set; }  // format dd/MM/yyyy để client dùng thẳng
 
         public string? Location { get; set; }
         public int ProvinceId { get; set; }
@@ -29,7 +33,6 @@ namespace PTJ_Models.DTO.PostDTO
 
         public string? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
-        public string? SubCategoryName { get; set; }
         public string EmployerName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
 

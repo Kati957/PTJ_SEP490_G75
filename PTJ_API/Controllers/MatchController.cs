@@ -115,10 +115,10 @@ namespace YourProject.Controllers
                 .Where(x => x.Status == "Active")
                 .AsQueryable();
 
-            // 1️⃣ Nếu người dùng CHỌN "Thỏa thuận"
+            // 1️⃣ Nếu chọn "Thỏa thuận"
             if (dto.Negotiable)
                 {
-                query = query.Where(x => x.Salary == null);
+                query = query.Where(x => x.SalaryMin == null && x.SalaryMax == null);
 
                 var negotiableJobs = await query.Select(x => new {
                     x.EmployerPostId,
@@ -134,33 +134,39 @@ namespace YourProject.Controllers
                 return Ok(negotiableJobs);
                 }
 
-            // 2️⃣ Nếu lọc theo khoảng lương
+            // 2️⃣ Lọc theo MinSalary
             if (dto.MinSalary.HasValue)
                 {
-                query = query.Where(x => x.Salary != null && x.Salary >= dto.MinSalary.Value);
+                query = query.Where(x =>
+                    (x.SalaryMin.HasValue && x.SalaryMin >= dto.MinSalary.Value) ||
+                    (x.SalaryMax.HasValue && x.SalaryMax >= dto.MinSalary.Value)
+                );
                 }
 
+            // 3️⃣ Lọc theo MaxSalary
             if (dto.MaxSalary.HasValue)
                 {
-                query = query.Where(x => x.Salary != null && x.Salary <= dto.MaxSalary.Value);
+                query = query.Where(x =>
+                    (x.SalaryMax.HasValue && x.SalaryMax <= dto.MaxSalary.Value) ||
+                    (x.SalaryMin.HasValue && x.SalaryMin <= dto.MaxSalary.Value)
+                );
                 }
 
-            // 3️⃣ Optional: bao gồm job thỏa thuận nếu chọn IncludeNegotiable = true
-            if (dto.IncludeNegotiable)
+            // 4️⃣ Bao gồm job "thỏa thuận" hay không?
+            if (!dto.IncludeNegotiable)
                 {
-                query = query.Where(x => x.Salary == null || x.Salary != null);
-                }
-            else
-                {
-                query = query.Where(x => x.Salary != null);
+                query = query.Where(x => x.SalaryMin != null || x.SalaryMax != null);
                 }
 
+            // 5️⃣ Trả kết quả
             var result = await query.Select(x => new {
                 x.EmployerPostId,
                 x.Title,
                 x.Description,
-                Salary = x.Salary,
-                SalaryText = x.Salary == null ? "Thỏa thuận" : $"{x.Salary:#,###}",
+                SalaryRange =
+                    (x.SalaryMin == null && x.SalaryMax == null)
+                        ? "Thỏa thuận"
+                        : $"{(x.SalaryMin ?? 0):#,###} - {(x.SalaryMax ?? 0):#,###}",
                 CategoryName = x.Category.Name,
                 EmployerName = x.User.Username,
                 x.Location,
@@ -169,5 +175,6 @@ namespace YourProject.Controllers
 
             return Ok(result);
             }
+
         }
     }

@@ -4,22 +4,23 @@ namespace PTJ_Models.DTO.ApplicationDTO
     {
     public class JobApplicationResultDto
         {
-
+        // ================================
         // THÔNG TIN ỨNG VIÊN
-
+        // ================================
         public int CandidateListId { get; set; }
         public int JobSeekerId { get; set; }
         public string Username { get; set; } = string.Empty;
 
-        //  Giữ lại tạm thời cho tương thích (Profile cũ)
+        // Giữ lại tạm thời cho tương thích
         public string? FullName { get; set; }
         public string? Gender { get; set; }
         public int? BirthYear { get; set; }
         public string? ProfilePicture { get; set; }
 
 
+        // ================================
         // THÔNG TIN CV ỨNG VIÊN
-
+        // ================================
         public int? CvId { get; set; }
         public string? CvTitle { get; set; }
         public string? SkillSummary { get; set; }
@@ -29,26 +30,40 @@ namespace PTJ_Models.DTO.ApplicationDTO
         public string? ContactPhone { get; set; }
 
 
+        // ================================
         // TRẠNG THÁI & THỜI GIAN
-
+        // ================================
         public string Status { get; set; } = "Pending";
         public DateTime ApplicationDate { get; set; }
         public string? Notes { get; set; }
 
 
+        // ================================
         // THÔNG TIN BÀI ĐĂNG TUYỂN
-
+        // ================================
         public int EmployerPostId { get; set; }
         public string? PostTitle { get; set; }
         public string? CategoryName { get; set; }
         public string? EmployerName { get; set; }
         public string? Location { get; set; }
-        public decimal? Salary { get; set; }
+
+        // ⭐ LƯƠNG — THEO MODEL EmployerPost MỚI
+        public decimal? SalaryMin { get; set; }
+        public decimal? SalaryMax { get; set; }
+        public int? SalaryType { get; set; }
+
+        // ⭐ TEXT HIỂN THỊ LƯƠNG CHUẨN
+        public string SalaryDisplay { get; set; } = string.Empty;
+
         public string? WorkHours { get; set; }
         public string? PhoneContact { get; set; }
         public int EmployerId { get; set; }
         }
 
+
+    // ==============================================
+    // SUMMARY DTO KHÔNG CẦN SỬA — GIỮ NGUYÊN
+    // ==============================================
     public class ApplicationSummaryDto
         {
         public int PendingTotal { get; set; }
@@ -70,5 +85,4 @@ namespace PTJ_Models.DTO.ApplicationDTO
         public string Status { get; set; } = string.Empty;
         public DateTime AppliedAt { get; set; }
         }
-
     }

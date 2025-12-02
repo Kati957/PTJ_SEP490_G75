@@ -23,7 +23,7 @@ public partial class PostReportSolved
 
     public int? NotificationId { get; set; }
 
-    public bool AppliedAction { get; set; }
+    public string? AppliedAction { get; set; }
 
     public DateTime SolvedAt { get; set; }
 

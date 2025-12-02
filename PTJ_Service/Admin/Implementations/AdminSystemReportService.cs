@@ -2,6 +2,7 @@
 using PTJ_Data;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.DTO;
+using PTJ_Models.Models;
 
 namespace PTJ_Service.Admin.Implementations
 {

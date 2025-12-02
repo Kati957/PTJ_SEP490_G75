@@ -346,5 +346,18 @@ namespace PTJ_API.Controllers.Post
             var ok = await _service.ReopenJobSeekerPostAsync(id);
             return Ok(new { success = ok, message = "Đã mở lại bài đăng." });
             }
+
+        [HttpGet("filter")]
+        public async Task<IActionResult> Filter([FromQuery] string status)
+            {
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier) ?? User.FindFirst("sub");
+            int currentUserId = int.Parse(sub.Value);
+
+            bool isAdmin = User.IsInRole("Admin");
+
+            var data = await _service.FilterAsync(status, currentUserId, isAdmin);
+            return Ok(new { success = true, total = data.Count(), data });
+            }
+
         }
     }

@@ -15,7 +15,6 @@
         public string? PreferredWorkHours { get; set; }
         public string? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
-        public string? SubCategoryName { get; set; }
         // Tên ứng viên
         public string SeekerName { get; set; } = string.Empty;
 

@@ -220,7 +220,18 @@ namespace PTJ_Service.JobApplicationService.Implementations
                     CategoryName = category?.Name,
                     EmployerName = employerName, 
                     Location = post?.Location,
-                    Salary = post?.Salary,
+                    SalaryMin = post?.SalaryMin,
+                    SalaryMax = post?.SalaryMax,
+                    SalaryType = post?.SalaryType,
+                    SalaryDisplay =
+                    (post?.SalaryMin == null && post?.SalaryMax == null)
+                        ? "Thỏa thuận"
+                        : (post?.SalaryMin != null && post?.SalaryMax != null)
+                            ? $"{post?.SalaryMin:#,###} - {post?.SalaryMax:#,###}"
+                            : (post?.SalaryMin != null)
+                                ? $"Từ {post?.SalaryMin:#,###}"
+                                : $"Đến {post?.SalaryMax:#,###}",
+
                     WorkHours = post?.WorkHours,
                     PhoneContact = post?.PhoneContact,
                     CvId = cv?.Cvid,
