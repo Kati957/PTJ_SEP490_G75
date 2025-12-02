@@ -9,6 +9,7 @@ using PTJ_Models.Models;
 using PTJ_Service.LocationService;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace PTJ_Services.Implementations
     {
@@ -17,7 +18,7 @@ namespace PTJ_Services.Implementations
         private readonly IEmployerProfileRepository _repo;
         private readonly Cloudinary _cloudinary;
         private readonly VnPostLocationService _locationService;
-
+        private readonly JobMatchingDbContext _db;
         private const string DefaultAvatarUrl =
             "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
 
@@ -26,8 +27,10 @@ namespace PTJ_Services.Implementations
         public EmployerProfileService(
             IEmployerProfileRepository repo,
             IConfiguration config,
+            JobMatchingDbContext db,
             VnPostLocationService locationService)
             {
+            _db = db;
             _repo = repo;
             _locationService = locationService;
 
@@ -65,12 +68,24 @@ namespace PTJ_Services.Implementations
             }
 
         public async Task<EmployerProfileDto?> GetProfileByUserIdAsync(int targetUserId)
-            {
-            EmployerProfile? p = await _repo.GetByUserIdAsync(targetUserId);
-            if (p == null) return null;
+        {
+           
+            var user = await _db.Users
+                .Include(u => u.Roles)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.UserId == targetUserId);
+
+            if (user == null || user.IsActive == false)
+                return null;
+            var role = user.Roles.Select(r => r.RoleName).FirstOrDefault();
+            if (role == null || role != "Employer")
+                return null;
+            var p = await _repo.GetByUserIdAsync(targetUserId);
+            if (p == null)
+                return null;
 
             var dto = new EmployerProfileDto
-                {
+            {
                 UserId = p.UserId,
                 DisplayName = p.DisplayName,
                 Description = p.Description,
@@ -81,12 +96,13 @@ namespace PTJ_Services.Implementations
                 ProvinceId = p.ProvinceId,
                 DistrictId = p.DistrictId,
                 WardId = p.WardId
-                };
+            };
 
             dto.Location = await BuildLocationStringAsync(p);
 
             return dto;
-            }
+        }
+
 
         public async Task<bool> UpdateProfileAsync(int userId, EmployerProfileUpdateDto dto)
             {
