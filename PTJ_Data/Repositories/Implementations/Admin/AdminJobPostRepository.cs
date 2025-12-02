@@ -242,7 +242,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 .FirstOrDefaultAsync(p => p.JobSeekerPostId == id);
         }
 
-        private string FormatSalary(decimal? min, decimal? max, int? type)
+        private static string FormatSalary(decimal? min, decimal? max, int? type)
             {
             if (min == null && max == null && type == null)
                 return "Thỏa thuận";
