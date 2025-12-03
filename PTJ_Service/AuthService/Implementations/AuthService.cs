@@ -12,6 +12,8 @@ using PTJ_Data;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Service.Helpers.Implementations;
 
+
+
 namespace PTJ_Service.AuthService.Implementations;
 
 public sealed class AuthService : IAuthService
@@ -247,13 +249,11 @@ public sealed class AuthService : IAuthService
            
             await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "PendingEmployer");
 
-            _db.EmployerRegistrationRequests.Add(new EmployerRegistrationRequest
+            _db.GoogleEmployerRequests.Add(new GoogleEmployerRequest
             {
-                UserId = user.UserId,                             
-                Email = email,
-                Username = user.Username,
-                PasswordHash = "",                                  
-                CompanyName = payload.Name ?? user.Username,
+                UserId = user.UserId,
+                DisplayName = payload.Name ?? user.Username,
+                PictureUrl = payload.Picture,
                 Status = "Pending",
                 CreatedAt = DateTime.UtcNow
             });

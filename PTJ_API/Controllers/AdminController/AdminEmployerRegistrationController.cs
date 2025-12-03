@@ -16,20 +16,18 @@ namespace PTJ_API.Controllers.Admin
         {
             _svc = svc;
         }
-
-        //  Lấy danh sách hồ sơ đăng ký employer
         [HttpGet]
         public async Task<IActionResult> GetRequests(
-            [FromQuery] string? status = null,
-            [FromQuery] string? keyword = null,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
+        [FromQuery] string? status = null,
+        [FromQuery] string? keyword = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
         {
             var data = await _svc.GetRequestsAsync(status, keyword, page, pageSize);
             return Ok(data);
         }
 
-        //  Lấy chi tiết 1 hồ sơ
+
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetDetail(int id)
         {
@@ -40,7 +38,6 @@ namespace PTJ_API.Controllers.Admin
             return Ok(detail);
         }
 
-        //  Duyệt hồ sơ → tạo User + EmployerProfile
         [HttpPost("{id:int}/approve")]
         public async Task<IActionResult> Approve(int id)
         {
@@ -50,12 +47,27 @@ namespace PTJ_API.Controllers.Admin
             return Ok(new { message = "Duyệt hồ sơ thành công." });
         }
 
-        // Từ chối hồ sơ
         [HttpPost("{id:int}/reject")]
         public async Task<IActionResult> Reject(int id, [FromBody] AdminEmployerRegRejectDto dto)
         {
             await _svc.RejectAsync(id, dto);
             return Ok(new { message = "Đã từ chối hồ sơ." });
+        }
+
+        [HttpPost("google/{id:int}/approve")]
+        public async Task<IActionResult> ApproveGoogle(int id)
+        {
+            var adminId = int.Parse(User.FindFirst("sub")?.Value ?? "0");
+            await _svc.ApproveEmployerGoogleAsync(id, adminId);
+
+            return Ok(new { message = "Duyệt hồ sơ Google thành công." });
+        }
+
+        [HttpPost("google/{id:int}/reject")]
+        public async Task<IActionResult> RejectGoogle(int id, AdminEmployerRegRejectDto dto)
+        {
+            await _svc.RejectGoogleAsync(id, dto);
+            return Ok(new { message = "Đã từ chối hồ sơ Google." });
         }
     }
 }

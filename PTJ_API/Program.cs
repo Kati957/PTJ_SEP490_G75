@@ -72,6 +72,7 @@ using PTJ_Service.CategoryService.Implementations;
 using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Implementations;
 using System.Security.Claims;
+using PTJ_API.Middlewares;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -331,8 +332,10 @@ app.UseHttpsRedirection();
 app.UseCors("AllowLocalhost");   // Phải đặt trước Authentication
 app.UseAuthentication();
 app.UseAuthorization();
-// SignalR Hub Registration
+app.UseMiddleware<PendingEmployerMiddleware>();
 app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<EmailVerificationMiddleware>();
+// SignalR Hub Registration
 app.MapHub<NotificationHub>("/hubs/notification");
 
 app.MapControllers();

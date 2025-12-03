@@ -43,8 +43,6 @@ public partial class User
 
     public virtual EmployerProfile? EmployerProfile { get; set; }
 
-    public virtual ICollection<EmployerRegistrationRequest> EmployerRegistrationRequests { get; set; } = new List<EmployerRegistrationRequest>();
-
     public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidateEmployers { get; set; } = new List<EmployerShortlistedCandidate>();
 
     public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidateJobSeekers { get; set; } = new List<EmployerShortlistedCandidate>();
@@ -52,6 +50,8 @@ public partial class User
     public virtual ICollection<ExternalLogin> ExternalLogins { get; set; } = new List<ExternalLogin>();
 
     public virtual ICollection<FavoritePost> FavoritePosts { get; set; } = new List<FavoritePost>();
+
+    public virtual ICollection<GoogleEmployerRequest> GoogleEmployerRequests { get; set; } = new List<GoogleEmployerRequest>();
 
     public virtual ICollection<JobSeekerCv> JobSeekerCvs { get; set; } = new List<JobSeekerCv>();
 
