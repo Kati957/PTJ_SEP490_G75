@@ -316,28 +316,42 @@ builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-// Swagger
+// 🔥 Force ASP.NET to always use port 5000 on VPS (Production)
+if (!app.Environment.IsDevelopment())
+    {
+    app.Urls.Clear();
+    app.Urls.Add("http://0.0.0.0:5000");
+    }
+
+// Swagger chạy cả dev + production
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Middleware
+// Dev mode (local)
 if (app.Environment.IsDevelopment())
     {
     app.UseSwagger();
     app.UseSwaggerUI();
     }
 
+// ❗ HTTPS chỉ dùng local — KHÔNG dùng trên VPS
+if (app.Environment.IsDevelopment())
+    {
+    app.UseHttpsRedirection();
+    }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowLocalhost");   // Phải đặt trước Authentication
+app.UseCors("AllowLocalhost");
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.UseMiddleware<PendingEmployerMiddleware>();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<EmailVerificationMiddleware>();
-// SignalR Hub Registration
-app.MapHub<NotificationHub>("/hubs/notification");
 
+app.MapHub<NotificationHub>("/hubs/notification");
 app.MapControllers();
 
+app.MapGet("/", () => "PTJ API is running");
+
 app.Run();
+
