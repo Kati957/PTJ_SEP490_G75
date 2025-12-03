@@ -8,7 +8,8 @@ using PTJ_Service.Admin.Interfaces;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Service.Interfaces.Admin;
 using Microsoft.Extensions.Configuration;
-using PTJ_Service.Interfaces; 
+using PTJ_Service.Interfaces;
+using PTJ_Service.Helpers.Implementations;
 
 namespace PTJ_Service.Admin.Implementations
 {
@@ -30,9 +31,6 @@ namespace PTJ_Service.Admin.Implementations
             _cfg = cfg;
             _noti = noti;                            
         }
-
-        
-
 
         public async Task<PagedResult<AdminEmployerRegListItemDto>> GetRequestsAsync(
             string? status, string? keyword, int page, int pageSize)
@@ -95,52 +93,26 @@ namespace PTJ_Service.Admin.Implementations
         public async Task ApproveAsync(int requestId, int adminId)
         {
             var req = await _db.EmployerRegistrationRequests
-                .Include(x => x.User)
-                .FirstOrDefaultAsync(x => x.RequestId == requestId)
-                ?? throw new Exception("Không tìm thấy hồ sơ.");
+        .FirstOrDefaultAsync(x => x.RequestId == requestId)
+        ?? throw new Exception("Không tìm thấy hồ sơ đăng ký Employer.");
 
             if (req.Status != "Pending")
-                throw new Exception("Hồ sơ đã được xử lý trước đó.");
-
-            User user;
-
-            // 1️⃣ PHÂN NHÁNH: GOOGLE hay ĐĂNG KÝ THƯỜNG?
-            if (req.UserId != null)
+                throw new Exception("Hồ sơ đã được xử lý.");
+            var user = new User
             {
-                //  LUỒNG GOOGLE — User đã tồn tại
-                user = req.User!;
-            }
-            else
-            {
-                //  LUỒNG ĐĂNG KÝ THƯỜNG — tạo User mới
-                user = new User
-                {
-                    Email = req.Email,
-                    Username = req.Username,
-                    PasswordHash = req.PasswordHash,
-                    IsActive = true,
-                    IsVerified = false,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-
-                _db.Users.Add(user);
-                await _db.SaveChangesAsync();
-
-                // Gắn UserId vào request để đồng bộ
-                req.UserId = user.UserId;
-            }
-
-            // GÁN ROLE EMPLOYER
-            var employerRole = await _db.Roles
-                .FirstOrDefaultAsync(r => r.RoleName == "Employer")
-                ?? throw new Exception("Không tìm thấy role Employer.");
-
-            user.Roles.Clear();            // Xóa PendingEmployer nếu có
-            user.Roles.Add(employerRole);
+                Email = req.Email,
+                Username = req.Username,
+                PasswordHash = req.PasswordHash,
+                IsActive = true,
+                IsVerified = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            //TẠO EMPLOYER PROFILE
+            await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "Employer");
+
             const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
 
             _db.EmployerProfiles.Add(new EmployerProfile
@@ -157,52 +129,67 @@ namespace PTJ_Service.Admin.Implementations
                 UpdatedAt = DateTime.UtcNow
             });
 
-            // ĐỔI TRẠNG THÁI REQUEST
             req.Status = "Approved";
             req.ReviewedAt = DateTime.UtcNow;
-            req.AdminNote = "Hồ sơ đã được kiểm tra và phê duyệt";
+            req.AdminNote = "Nhà tuyển dụng được quản trị viên chấp thuận";
+
             await _db.SaveChangesAsync();
 
-            //TẠO VERIFY TOKEN (CHỈ LUỒNG EMAIL/PASS)
-            if (req.User!.PasswordHash != "" && req.User!.PasswordHash != null)
+            var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
+
+            _db.EmailVerificationTokens.Add(new EmailVerificationToken
             {
-                // Với đăng ký thường — mới cần verify email
-                var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
+                UserId = user.UserId,
+                Token = token,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+            });
+            await _db.SaveChangesAsync();
 
-                _db.EmailVerificationTokens.Add(new EmailVerificationToken
-                {
-                    UserId = user.UserId,
-                    Token = token,
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-                });
+            await _email.SendEmailAsync(
+                user.Email,
+                "PTJ - Xác minh tài khoản nhà tuyển dụng",
+                $"Vui lòng xác minh email: <a href='{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}'>Xác minh</a>"
+            );
+        }
+        public async Task ApproveEmployerGoogleAsync(int requestId, int adminId)
+        {
+            var req = await _db.GoogleEmployerRequests
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(x => x.Id == requestId)
+                ?? throw new Exception("Không tìm thấy hồ sơ Google Employer.");
 
-                await _db.SaveChangesAsync();
+            if (req.Status != "Pending")
+                throw new Exception("Hồ sơ đã được xử lý.");
 
-                var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+            var user = req.User;
 
-                await _email.SendEmailAsync(
-                    user.Email,
-                    "PTJ - Xác minh tài khoản nhà tuyển dụng",
-                    $"Vui lòng xác minh email: <a href='{verifyUrl}'>Xác minh</a>"
-                );
-            }
-            else
+            await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "Employer");
+            _db.EmployerProfiles.Add(new EmployerProfile
             {
-                //GOOGLE KHÔNG CẦN RESET PASSWORD
-                user.IsVerified = true;
-                await _db.SaveChangesAsync();
-            }
+                UserId = user.UserId,
+                DisplayName = req.DisplayName,
+                AvatarUrl = req.PictureUrl,
+                UpdatedAt = DateTime.UtcNow
+            });
 
-            // GỬI NOTIFICATION
+            req.Status = "Approved";
+            req.ReviewedAt = DateTime.UtcNow;
+            req.AdminNote = "Nhà tuyển dụng được quản trị viên chấp nhận.";
+
+            user.IsVerified = true;
+
+            await _db.SaveChangesAsync();
+
+   
             await _noti.SendAsync(new CreateNotificationDto
             {
                 UserId = user.UserId,
                 NotificationType = "EmployerApproved",
-                RelatedItemId = req.RequestId,
+                RelatedItemId = req.Id,
                 Data = new()
         {
-            { "CompanyName", req.CompanyName },
-            { "Message", "Hồ sơ nhà tuyển dụng của bạn đã được duyệt." }
+            { "CompanyName", req.DisplayName },
+            { "Message", "Tài khoản nhà tuyển dụng Google của bạn đã được duyệt." }
         }
             });
         }
@@ -231,5 +218,35 @@ namespace PTJ_Service.Admin.Implementations
 
             
         }
+        public async Task RejectGoogleAsync(int requestId, AdminEmployerRegRejectDto dto)
+        {
+            var req = await _db.GoogleEmployerRequests
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(x => x.Id == requestId)
+                ?? throw new Exception("Không tìm thấy hồ sơ Google.");
+
+            if (req.Status != "Pending")
+                throw new Exception("Hồ sơ đã được xử lý.");
+
+            req.Status = "Rejected";
+            req.AdminNote = dto.Reason;
+            req.ReviewedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            await _noti.SendAsync(new CreateNotificationDto
+            {
+                UserId = req.UserId,
+                NotificationType = "EmployerRejected",
+                RelatedItemId = req.Id,
+                Data = new()
+        {
+            { "CompanyName", req.DisplayName },
+            { "Reason", dto.Reason },
+            { "Message", "Hồ sơ nhà tuyển dụng Google của bạn đã bị từ chối." }
+        }
+            });
+        }
+
+
     }
 }

@@ -10,6 +10,8 @@ namespace PTJ_Service.Interfaces.Admin
             string? status, string? keyword, int page, int pageSize);
         Task<AdminEmployerRegDetailDto?> GetDetailAsync(int requestId);
         Task ApproveAsync(int requestId, int adminId);
+        Task ApproveEmployerGoogleAsync(int requestId, int adminId);
         Task RejectAsync(int requestId, AdminEmployerRegRejectDto dto);
+        Task RejectGoogleAsync (int requestId, AdminEmployerRegRejectDto dto);
     }
 }

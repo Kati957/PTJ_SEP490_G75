@@ -42,6 +42,8 @@ public partial class JobMatchingDbContext : DbContext
 
     public virtual DbSet<FavoritePost> FavoritePosts { get; set; }
 
+    public virtual DbSet<GoogleEmployerRequest> GoogleEmployerRequests { get; set; }
+
     public virtual DbSet<Image> Images { get; set; }
 
     public virtual DbSet<JobSeekerCv> JobSeekerCvs { get; set; }
@@ -330,8 +332,6 @@ public partial class JobMatchingDbContext : DbContext
                 .HasDefaultValue("Pending");
             entity.Property(e => e.Username).HasMaxLength(100);
             entity.Property(e => e.Website).HasMaxLength(255);
-
-            entity.HasOne(d => d.User).WithMany(p => p.EmployerRegistrationRequests).HasForeignKey(d => d.UserId);
         });
 
         modelBuilder.Entity<EmployerShortlistedCandidate>(entity =>
@@ -398,6 +398,27 @@ public partial class JobMatchingDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__FavoriteP__UserI__634EBE90");
+        });
+
+        modelBuilder.Entity<GoogleEmployerRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__GoogleEm__3214EC075EB0E55F");
+
+            entity.Property(e => e.AdminNote).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.DisplayName).HasMaxLength(255);
+            entity.Property(e => e.PictureUrl).HasMaxLength(500);
+            entity.Property(e => e.ReviewedAt).HasColumnType("datetime");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("Pending");
+
+            entity.HasOne(d => d.User).WithMany(p => p.GoogleEmployerRequests)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__GoogleEmp__UserI__1D7B6025");
         });
 
         modelBuilder.Entity<Image>(entity =>

@@ -17,7 +17,6 @@ namespace PTJ_Service.Admin.Implementations
         private readonly INotificationService _noti;
 
         private const string ACTION_BLOCK = "BlockPost";
-        private const string ACTION_HIDE = "HidePost";
         private const string ACTION_WARN = "Warn";
         private const string ACTION_IGNORE = "Ignore";
 
@@ -58,10 +57,6 @@ namespace PTJ_Service.Admin.Implementations
                     await HandleBlockPostAsync(report, dto);
                     break;
 
-                case ACTION_HIDE:
-                    await HandleHidePostAsync(report, dto);
-                    break;
-
                 case ACTION_WARN:
                     await HandleWarnUserAsync(report, dto);
                     break;
@@ -98,7 +93,6 @@ namespace PTJ_Service.Admin.Implementations
             return a.Trim() switch
             {
                 ACTION_BLOCK => ACTION_BLOCK,
-                ACTION_HIDE => ACTION_HIDE,
                 ACTION_WARN => ACTION_WARN,
                 ACTION_IGNORE => ACTION_IGNORE,
                 _ => throw new Exception("Action không hợp lệ.")
