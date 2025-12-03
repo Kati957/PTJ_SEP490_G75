@@ -43,6 +43,8 @@ public partial class User
 
     public virtual EmployerProfile? EmployerProfile { get; set; }
 
+    public virtual ICollection<EmployerRegistrationRequest> EmployerRegistrationRequests { get; set; } = new List<EmployerRegistrationRequest>();
+
     public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidateEmployers { get; set; } = new List<EmployerShortlistedCandidate>();
 
     public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidateJobSeekers { get; set; } = new List<EmployerShortlistedCandidate>();

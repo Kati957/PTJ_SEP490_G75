@@ -95,38 +95,55 @@ namespace PTJ_Service.Admin.Implementations
         public async Task ApproveAsync(int requestId, int adminId)
         {
             var req = await _db.EmployerRegistrationRequests
+                .Include(x => x.User)
                 .FirstOrDefaultAsync(x => x.RequestId == requestId)
                 ?? throw new Exception("Không tìm thấy hồ sơ.");
 
             if (req.Status != "Pending")
                 throw new Exception("Hồ sơ đã được xử lý trước đó.");
 
-            // 1️⃣ Tạo User nhưng KHÔNG verify
-            var user = new User
+            User user;
+
+            // 1️⃣ PHÂN NHÁNH: GOOGLE hay ĐĂNG KÝ THƯỜNG?
+            if (req.UserId != null)
             {
-                Email = req.Email,
-                Username = req.Username,
-                PasswordHash = req.PasswordHash,
-                IsActive = true,
-                IsVerified = false,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                //  LUỒNG GOOGLE — User đã tồn tại
+                user = req.User!;
+            }
+            else
+            {
+                //  LUỒNG ĐĂNG KÝ THƯỜNG — tạo User mới
+                user = new User
+                {
+                    Email = req.Email,
+                    Username = req.Username,
+                    PasswordHash = req.PasswordHash,
+                    IsActive = true,
+                    IsVerified = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
 
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync();
+                _db.Users.Add(user);
+                await _db.SaveChangesAsync();
 
-            // 2️⃣ Gán role Employer
+                // Gắn UserId vào request để đồng bộ
+                req.UserId = user.UserId;
+            }
+
+            // GÁN ROLE EMPLOYER
             var employerRole = await _db.Roles
                 .FirstOrDefaultAsync(r => r.RoleName == "Employer")
                 ?? throw new Exception("Không tìm thấy role Employer.");
 
+            user.Roles.Clear();            // Xóa PendingEmployer nếu có
             user.Roles.Add(employerRole);
             await _db.SaveChangesAsync();
 
-            // 3️⃣ Tạo EmployerProfile
+            //TẠO EMPLOYER PROFILE
             const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
-            var profile = new EmployerProfile
+
+            _db.EmployerProfiles.Add(new EmployerProfile
             {
                 UserId = user.UserId,
                 DisplayName = req.CompanyName,
@@ -136,58 +153,57 @@ namespace PTJ_Service.Admin.Implementations
                 ContactEmail = req.ContactEmail,
                 FullLocation = req.Address,
                 AvatarUrl = DefaultLogo,
-                AvatarPublicId = null,
                 IsAvatarHidden = false,
                 UpdatedAt = DateTime.UtcNow
-            };
+            });
 
-            _db.EmployerProfiles.Add(profile);
-
-            // 4️⃣ Cập nhật trạng thái request
+            // ĐỔI TRẠNG THÁI REQUEST
             req.Status = "Approved";
             req.ReviewedAt = DateTime.UtcNow;
             req.AdminNote = "Hồ sơ đã được kiểm tra và phê duyệt";
             await _db.SaveChangesAsync();
 
-            // 5️⃣ Tạo verify token
-            var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
-
-            _db.EmailVerificationTokens.Add(new EmailVerificationToken
+            //TẠO VERIFY TOKEN (CHỈ LUỒNG EMAIL/PASS)
+            if (req.User!.PasswordHash != "" && req.User!.PasswordHash != null)
             {
-                UserId = user.UserId,
-                Token = token,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(30)
-            });
+                // Với đăng ký thường — mới cần verify email
+                var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
 
-            await _db.SaveChangesAsync();
+                _db.EmailVerificationTokens.Add(new EmailVerificationToken
+                {
+                    UserId = user.UserId,
+                    Token = token,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+                });
 
-            // 6️⃣ Gửi email verify
-            var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+                await _db.SaveChangesAsync();
 
-            await _email.SendEmailAsync(
-                user.Email,
-                "PTJ - Xác minh tài khoản nhà tuyển dụng",
-                $@"
-                    <h3>Tài khoản của bạn đã được duyệt!</h3>
-                    <p>Vui lòng nhấn nút bên dưới để xác minh email và kích hoạt tài khoản:</p>
-                    <a href='{verifyUrl}' 
-                        style='background:#007bff;color:#fff;padding:10px 14px;border-radius:5px;text-decoration:none;'>
-                        Xác minh tài khoản
-                    </a>
-                    <p>Liên kết có hiệu lực trong 30 phút.</p>
-                ");
+                var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
 
-            // 7️⃣ GỬI NOTIFICATION TRONG HỆ THỐNG
+                await _email.SendEmailAsync(
+                    user.Email,
+                    "PTJ - Xác minh tài khoản nhà tuyển dụng",
+                    $"Vui lòng xác minh email: <a href='{verifyUrl}'>Xác minh</a>"
+                );
+            }
+            else
+            {
+                //GOOGLE KHÔNG CẦN RESET PASSWORD
+                user.IsVerified = true;
+                await _db.SaveChangesAsync();
+            }
+
+            // GỬI NOTIFICATION
             await _noti.SendAsync(new CreateNotificationDto
             {
                 UserId = user.UserId,
                 NotificationType = "EmployerApproved",
                 RelatedItemId = req.RequestId,
                 Data = new()
-                {
-                    { "CompanyName", req.CompanyName },
-                    { "Message", "Hồ sơ nhà tuyển dụng của bạn đã được duyệt. Vui lòng xác minh email để kích hoạt tài khoản." }
-                }
+        {
+            { "CompanyName", req.CompanyName },
+            { "Message", "Hồ sơ nhà tuyển dụng của bạn đã được duyệt." }
+        }
             });
         }
 

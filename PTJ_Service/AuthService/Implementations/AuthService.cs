@@ -211,7 +211,7 @@ public sealed class AuthService : IAuthService
         };
     }
 
- 
+
     // GOOGLE LOGIN — COMPLETE
 
     public async Task<AuthResponseDto> GoogleCompleteAsync(GoogleCompleteDto dto, string? ip)
@@ -227,7 +227,6 @@ public sealed class AuthService : IAuthService
 
         if (await _db.Users.AnyAsync(x => x.Email == email))
             throw new Exception("Tài khoản Google này đã tồn tại.");
-
         var user = new User
         {
             Email = email,
@@ -241,43 +240,55 @@ public sealed class AuthService : IAuthService
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
 
-        var role = dto.Role.Equals("Employer", StringComparison.OrdinalIgnoreCase)
-            ? "Employer" : "JobSeeker";
+        bool isEmployer = dto.Role.Equals("Employer", StringComparison.OrdinalIgnoreCase);
 
-        await RoleHelper.SetSingleRoleAsync(_db, user.UserId, role);
-
-        if (role == "Employer")
+        if (isEmployer)
         {
-            const string DefaultLogo = "https://res.cloudinary.com/do5rtjymt/image/upload/v1762001123/default_company_logo.png";
+           
+            await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "PendingEmployer");
 
-            _db.EmployerProfiles.Add(new EmployerProfile
+            _db.EmployerRegistrationRequests.Add(new EmployerRegistrationRequest
             {
-                UserId = user.UserId,
-                DisplayName = payload.Name ?? user.Username,
-                AvatarUrl = payload.Picture ?? DefaultLogo,
-                ContactEmail = email,
-                UpdatedAt = DateTime.UtcNow
+                UserId = user.UserId,                             
+                Email = email,
+                Username = user.Username,
+                PasswordHash = "",                                  
+                CompanyName = payload.Name ?? user.Username,
+                Status = "Pending",
+                CreatedAt = DateTime.UtcNow
             });
+
+            await _db.SaveChangesAsync();
+
+           
+            return new AuthResponseDto
+            {
+                Success = true,
+                RequiresApproval = true,
+                Message = "Tài khoản Google đã được tạo. Vui lòng chờ admin phê duyệt để sử dụng tính năng Nhà tuyển dụng."
+            };
         }
-        else
+        await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
+
+        const string DefaultAvatar =
+            "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
+
+        _db.JobSeekerProfiles.Add(new JobSeekerProfile
         {
-            const string DefaultAvatar = "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
-
-            _db.JobSeekerProfiles.Add(new JobSeekerProfile
-            {
-                UserId = user.UserId,
-                FullName = payload.Name ?? user.Username,
-                ProfilePicture = payload.Picture ?? DefaultAvatar,
-                UpdatedAt = DateTime.UtcNow
-            });
-        }
+            UserId = user.UserId,
+            FullName = payload.Name ?? user.Username,
+            ProfilePicture = payload.Picture ?? DefaultAvatar,
+            UpdatedAt = DateTime.UtcNow
+        });
 
         await _db.SaveChangesAsync();
 
         return await _tokens.IssueAsync(user, "google", ip);
     }
 
- // LOGIN
+
+
+    // LOGIN
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ip)
     {

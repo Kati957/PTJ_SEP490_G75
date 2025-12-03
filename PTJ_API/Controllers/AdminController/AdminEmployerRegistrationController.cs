@@ -17,7 +17,7 @@ namespace PTJ_API.Controllers.Admin
             _svc = svc;
         }
 
-        // 1️⃣ Lấy danh sách hồ sơ đăng ký employer
+        //  Lấy danh sách hồ sơ đăng ký employer
         [HttpGet]
         public async Task<IActionResult> GetRequests(
             [FromQuery] string? status = null,
@@ -29,7 +29,7 @@ namespace PTJ_API.Controllers.Admin
             return Ok(data);
         }
 
-        // 2️⃣ Lấy chi tiết 1 hồ sơ
+        //  Lấy chi tiết 1 hồ sơ
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetDetail(int id)
         {
@@ -40,7 +40,7 @@ namespace PTJ_API.Controllers.Admin
             return Ok(detail);
         }
 
-        // 3️⃣ Duyệt hồ sơ → tạo User + EmployerProfile
+        //  Duyệt hồ sơ → tạo User + EmployerProfile
         [HttpPost("{id:int}/approve")]
         public async Task<IActionResult> Approve(int id)
         {
@@ -50,7 +50,7 @@ namespace PTJ_API.Controllers.Admin
             return Ok(new { message = "Duyệt hồ sơ thành công." });
         }
 
-        // 4️⃣ Từ chối hồ sơ
+        // Từ chối hồ sơ
         [HttpPost("{id:int}/reject")]
         public async Task<IActionResult> Reject(int id, [FromBody] AdminEmployerRegRejectDto dto)
         {

@@ -2,11 +2,23 @@
 {
     public class AuthResponseDto
     {
-        public string AccessToken { get; set; } = default!;
+        public bool Success { get; set; } = true;
+
+        public string? Message { get; set; }
+
+        
+        public bool RequiresApproval { get; set; } = false;
+
+       
+        public string? AccessToken { get; set; }
         public int ExpiresIn { get; set; }
-        public string RefreshToken { get; set; } = default!;
-        public object User { get; set; } = default!;
-        public string? Warning { get; set; }
+        public string? RefreshToken { get; set; }
+
+     
+        public object? User { get; set; }
         public string? Role { get; set; }
+
+       
+        public string? Warning { get; set; }
     }
 }
