@@ -316,7 +316,7 @@ builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-// 🔥 Force ASP.NET to always use port 5000 on VPS (Production)
+//  Force ASP.NET to always use port 5000 on VPS (Production)
 if (!app.Environment.IsDevelopment())
     {
     app.Urls.Clear();
@@ -346,7 +346,7 @@ app.UseAuthorization();
 
 app.UseMiddleware<PendingEmployerMiddleware>();
 app.UseMiddleware<ErrorHandlingMiddleware>();
-app.UseMiddleware<EmailVerificationMiddleware>();
+// SignalR Hub Registration
 
 app.MapHub<NotificationHub>("/hubs/notification");
 app.MapControllers();

@@ -138,7 +138,7 @@ namespace PTJ_Service.Admin.Implementations
 
             req.Status = "Approved";
             req.ReviewedAt = DateTime.UtcNow;
-            req.AdminNote = "Nhà tuyển dụng được quản trị viên chấp thuận";
+            req.AdminNote = "Đã xác minh và phê duyệt hồ sơ doanh nghiệp.";
 
             await _db.SaveChangesAsync();
 
