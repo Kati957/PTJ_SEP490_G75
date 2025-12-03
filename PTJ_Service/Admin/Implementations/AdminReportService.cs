@@ -71,7 +71,7 @@ namespace PTJ_Service.Admin.Implementations
                     break;
             }
 
-            report.Status = "Resolved";
+            report.Status = "Solved";
 
             var solved = new PostReportSolved
             {

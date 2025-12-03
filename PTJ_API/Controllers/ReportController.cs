@@ -28,26 +28,8 @@ namespace PTJ_API.Controllers
             if (dto.PostId <= 0)
                 return BadRequest(new { message = "PostId không hợp lệ." });
 
-            if (string.IsNullOrWhiteSpace(dto.PostType) ||
-                (dto.PostType != "EmployerPost" && dto.PostType != "JobSeekerPost"))
-                return BadRequest(new { message = "PostType phải là EmployerPost hoặc JobSeekerPost." });
-
             if (string.IsNullOrWhiteSpace(dto.ReportType))
-                return BadRequest(new { message = "Vui lòng chọn loại báo cáo (ReportType)." });
-
-            // Validate ReportType tiếng Việt
-            var allowedTypes = new[]
-            {
-                "Lừa đảo",
-                "Sai thông tin",
-                "Không phù hợp",
-                "Spam",
-                "Không phải tuyển dụng",
-                "Khác"
-            };
-
-            if (!allowedTypes.Contains(dto.ReportType))
-                return BadRequest(new { message = "ReportType không hợp lệ." });
+                return BadRequest(new { message = "ReportType không được để trống." });
 
             int reporterId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 

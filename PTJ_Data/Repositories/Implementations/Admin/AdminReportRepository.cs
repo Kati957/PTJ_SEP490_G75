@@ -16,6 +16,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             _db = db;
         }
 
+        // PENDING LIST
         public async Task<PagedResult<AdminReportDto>> GetPendingReportsPagedAsync(
             string? reportType, string? keyword, int page, int pageSize)
         {
@@ -47,7 +48,17 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     TargetUserEmail = r.TargetUser != null ? r.TargetUser.Email : null,
                     PostId = r.AffectedPostId,
                     PostType = r.AffectedPostType,
-                    PostTitle = null,
+                    PostTitle = r.AffectedPostType == "EmployerPost"
+                        ? _db.EmployerPosts
+                            .Where(p => p.EmployerPostId == r.AffectedPostId)
+                            .Select(p => p.Title)
+                            .FirstOrDefault()
+                        : r.AffectedPostType == "JobSeekerPost"
+                            ? _db.JobSeekerPosts
+                                .Where(p => p.JobSeekerPostId == r.AffectedPostId)
+                                .Select(p => p.Title)
+                                .FirstOrDefault()
+                            : null,
                     Reason = r.Reason,
                     Status = r.Status,
                     CreatedAt = r.CreatedAt
@@ -57,13 +68,14 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return new PagedResult<AdminReportDto>(data, total, page, pageSize);
         }
 
+        // SOLVED LIST
         public async Task<PagedResult<AdminSolvedReportDto>> GetSolvedReportsPagedAsync(
             string? adminEmail, string? reportType, int page, int pageSize)
         {
             var q = _db.PostReportSolveds
                 .Include(s => s.Admin)
                 .Include(s => s.PostReport)
-                .ThenInclude(r => r.TargetUser)
+                    .ThenInclude(r => r.TargetUser)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(adminEmail))
@@ -88,16 +100,28 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     AdminEmail = s.Admin.Email,
                     PostId = s.AffectedPostId,
                     PostType = s.AffectedPostType,
-                    PostTitle = null,
+                    PostTitle = s.AffectedPostType == "EmployerPost"
+                        ? _db.EmployerPosts
+                            .Where(p => p.EmployerPostId == s.AffectedPostId)
+                            .Select(p => p.Title)
+                            .FirstOrDefault()
+                        : s.AffectedPostType == "JobSeekerPost"
+                            ? _db.JobSeekerPosts
+                                .Where(p => p.JobSeekerPostId == s.AffectedPostId)
+                                .Select(p => p.Title)
+                                .FirstOrDefault()
+                            : null,
                     TargetUserId = s.AffectedUserId,
                     TargetUserEmail = s.PostReport.TargetUser != null
-                        ? s.PostReport.TargetUser.Email : null
+                        ? s.PostReport.TargetUser.Email
+                        : null
                 })
                 .ToListAsync();
 
             return new PagedResult<AdminSolvedReportDto>(data, total, page, pageSize);
         }
 
+        // REPORT DETAIL
         public async Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId)
         {
             return await _db.PostReports
@@ -113,7 +137,17 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     TargetUserEmail = r.TargetUser != null ? r.TargetUser.Email : null,
                     PostId = r.AffectedPostId,
                     PostType = r.AffectedPostType,
-                    PostTitle = null,
+                    PostTitle = r.AffectedPostType == "EmployerPost"
+                        ? _db.EmployerPosts
+                            .Where(p => p.EmployerPostId == r.AffectedPostId)
+                            .Select(p => p.Title)
+                            .FirstOrDefault()
+                        : r.AffectedPostType == "JobSeekerPost"
+                            ? _db.JobSeekerPosts
+                                .Where(p => p.JobSeekerPostId == r.AffectedPostId)
+                                .Select(p => p.Title)
+                                .FirstOrDefault()
+                            : null,
                     ReportType = r.ReportType,
                     Reason = r.Reason,
                     Status = r.Status,
@@ -121,7 +155,6 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 })
                 .FirstOrDefaultAsync();
         }
-
         public Task<PostReport?> GetReportByIdAsync(int reportId)
         {
             return _db.PostReports
@@ -156,7 +189,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return await _db.PostReportSolveds
                 .Include(s => s.Admin)
                 .Include(s => s.PostReport)
-                .ThenInclude(r => r.TargetUser)
+                    .ThenInclude(r => r.TargetUser)
                 .Where(s => s.SolvedPostReportId == solvedId)
                 .Select(s => new AdminSolvedReportDto
                 {
@@ -168,17 +201,25 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     AdminEmail = s.Admin.Email,
                     PostId = s.AffectedPostId,
                     PostType = s.AffectedPostType,
-                    PostTitle = null,
+                    PostTitle = s.AffectedPostType == "EmployerPost"
+                        ? _db.EmployerPosts
+                            .Where(p => p.EmployerPostId == s.AffectedPostId)
+                            .Select(p => p.Title)
+                            .FirstOrDefault()
+                        : s.AffectedPostType == "JobSeekerPost"
+                            ? _db.JobSeekerPosts
+                                .Where(p => p.JobSeekerPostId == s.AffectedPostId)
+                                .Select(p => p.Title)
+                                .FirstOrDefault()
+                            : null,
                     TargetUserId = s.AffectedUserId,
                     TargetUserEmail = s.PostReport.TargetUser != null
-                        ? s.PostReport.TargetUser.Email : null
+                        ? s.PostReport.TargetUser.Email
+                        : null
                 })
                 .FirstOrDefaultAsync();
         }
 
-        public Task SaveChangesAsync()
-        {
-            return _db.SaveChangesAsync();
-        }
+        public Task SaveChangesAsync() => _db.SaveChangesAsync();
     }
 }
