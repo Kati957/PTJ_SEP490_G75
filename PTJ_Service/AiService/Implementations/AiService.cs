@@ -97,22 +97,73 @@ namespace PTJ_Service.AiService.Implementations
 
         //  Query Similar from Pinecone
 
-        public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
+        //public async Task<List<(string Id, double Score)>> QuerySimilarAsync(string ns, float[] vector, int topK)
+        //    {
+        //    using var client = new HttpClient();
+        //    client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
+        //    client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+        //    var payload = new
+        //        {
+        //        vector,
+        //        topK,
+        //        includeMetadata = true,
+        //        @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
+        //        };
+
+        //    var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
+        //    res.EnsureSuccessStatusCode();
+
+        //    var json = await res.Content.ReadFromJsonAsync<JsonElement>();
+        //    var list = new List<(string Id, double Score)>();
+
+        //    if (json.TryGetProperty("matches", out var matches))
+        //        {
+        //        foreach (var m in matches.EnumerateArray())
+        //            list.Add((m.GetProperty("id").GetString()!, m.GetProperty("score").GetDouble()));
+        //        }
+
+        //    return list;
+        //    }
+
+        //so sánh với những ứng viên bạn đã lọc theo Category + Location trong SQL
+        public async Task<List<(string Id, double Score)>> QueryWithIDsAsync(
+     string ns,
+     float[] vector,
+     IEnumerable<int> allowedIds,
+     int topK = 50)
             {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+            // Ép về int[] cho chắc
+            var idArray = allowedIds.ToArray();
+
+            // Xây filter đúng cú pháp: { "numericPostId": { "$in": [1,2,3] } }
+            var filter = new Dictionary<string, object>
+                {
+                ["numericPostId"] = new Dictionary<string, object>
+                    {
+                    ["$in"] = idArray    // ✅ đúng: $in
+                    }
+                };
 
             var payload = new
                 {
                 vector,
                 topK,
                 includeMetadata = true,
-                @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
+                @namespace = ns,
+                filter
                 };
 
             var res = await client.PostAsJsonAsync($"{_pineconeUrl}/query", payload);
-            res.EnsureSuccessStatusCode();
+            if (!res.IsSuccessStatusCode)
+                {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new Exception($"Pinecone QUERY failed: {res.StatusCode} - {body}");
+                }
 
             var json = await res.Content.ReadFromJsonAsync<JsonElement>();
             var list = new List<(string Id, double Score)>();
@@ -120,12 +171,21 @@ namespace PTJ_Service.AiService.Implementations
             if (json.TryGetProperty("matches", out var matches))
                 {
                 foreach (var m in matches.EnumerateArray())
-                    list.Add((m.GetProperty("id").GetString()!, m.GetProperty("score").GetDouble()));
+                    {
+                    var id = m.GetProperty("id").GetString();
+                    var score = m.GetProperty("score").GetDouble();
+
+                    // ✅ chỉ lấy những vector có score >= 0.5
+                    if (score >= 0.55)
+                        {
+                        list.Add((id!, score));
+                        }
+                    }
                 }
 
-            return list;
+            // Sắp xếp giảm dần theo score
+            return list.OrderByDescending(x => x.Score).ToList();
             }
-
 
         //  Kiểm tra kết nối LM Studio
 
@@ -144,6 +204,27 @@ namespace PTJ_Service.AiService.Implementations
             catch
                 {
                 throw new Exception("Không thể kết nối LM Studio. Vui lòng mở LM Studio và bật Local Server (Settings → Developer → Enable Local Inference Server).");
+                }
+            }
+
+        public async Task DeleteVectorAsync(string ns, string id)
+            {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Api-Key", _pineconeKey);
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+
+            var payload = new
+                {
+                ids = new[] { id },
+                @namespace = string.IsNullOrWhiteSpace(ns) ? "default" : ns
+                };
+
+            var res = await client.PostAsJsonAsync($"{_pineconeUrl}/vectors/delete", payload);
+
+            if (!res.IsSuccessStatusCode)
+                {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new Exception($"Pinecone DELETE failed: {res.StatusCode} - {body}");
                 }
             }
         }

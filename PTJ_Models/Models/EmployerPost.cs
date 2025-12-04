@@ -13,8 +13,6 @@ public partial class EmployerPost
 
     public string? Description { get; set; }
 
-    public decimal? Salary { get; set; }
-
     public string? Requirements { get; set; }
 
     public string? WorkHours { get; set; }
@@ -37,7 +35,13 @@ public partial class EmployerPost
 
     public int WardId { get; set; }
 
-    public int? SubCategoryId { get; set; }
+    public DateTime? ExpiredAt { get; set; }
+
+    public decimal? SalaryMin { get; set; }
+
+    public decimal? SalaryMax { get; set; }
+
+    public int? SalaryType { get; set; }
 
     public virtual Category? Category { get; set; }
 
@@ -48,8 +52,6 @@ public partial class EmployerPost
     public virtual ICollection<JobSeekerShortlistedJob> JobSeekerShortlistedJobs { get; set; } = new List<JobSeekerShortlistedJob>();
 
     public virtual ICollection<JobSeekerSubmission> JobSeekerSubmissions { get; set; } = new List<JobSeekerSubmission>();
-
-    public virtual SubCategory? SubCategory { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

@@ -4,7 +4,7 @@ using PTJ_Models.DTO.SearchDTO;
 using PTJ_Models.Models;
 using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Interfaces;
-using PTJ_Service.SearchService.Services;
+using PTJ_Service.SearchService.Implementations;
 using System.Security.Claims;
 
 namespace PTJ_API.Controllers

@@ -105,15 +105,6 @@ namespace PTJ_Service.CategoryService.Implementations
 
             category.IsActive = false;
 
-            var subs = await _context.SubCategories
-                .Where(s => s.CategoryId == id)
-                .ToListAsync();
-
-            foreach (var sub in subs)
-                {
-                sub.IsActive = false;
-                }
-
             await _context.SaveChangesAsync();
             return true;
             }

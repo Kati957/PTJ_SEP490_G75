@@ -13,74 +13,56 @@ namespace PTJ_API.Controllers
     public class EmployerProfileController : ControllerBase
         {
         private readonly IEmployerProfileService _employerService;
-        private readonly IJobSeekerProfileService _jobSeekerService;
-
-        public EmployerProfileController(
-            IEmployerProfileService employerService,
-            IJobSeekerProfileService jobSeekerService)
-            {
+       public EmployerProfileController(IEmployerProfileService employerService)
+        {
             _employerService = employerService;
-            _jobSeekerService = jobSeekerService;
-            }
+        }
 
-        //  Lấy profile của chính Employer đang đăng nhập
+
         [HttpGet("me")]
+        [Authorize(Roles = "Employer")]
         public async Task<IActionResult> GetMyProfile()
-            {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdClaim, out var userId))
+                return Unauthorized("Không xác định được tài khoản.");
+
             var dto = await _employerService.GetProfileAsync(userId);
 
             if (dto == null)
-                return NotFound("Không tìm thấy profile.");
+                return NotFound("Không tìm thấy profile nhà tuyển dụng.");
 
             return Ok(dto);
-            }
+        }
 
-        //  Xem public profile (Employer hoặc JobSeeker)
-        [HttpGet("public/{userId:int}")]
-        [AllowAnonymous]
-        public async Task<IActionResult> GetProfileByUserId(int userId)
+
+        // GET: api/employer-profile/{userId}
+        [HttpGet("{userId:int}")]
+        [AllowAnonymous]                    
+        public async Task<IActionResult> GetPublicEmployerProfile(int userId)
+        {
+            var employer = await _employerService.GetProfileByUserIdAsync(userId);
+            if (employer == null)
+                return NotFound("Không tìm thấy hồ sơ nhà tuyển dụng.");
+
+            return Ok(new
             {
-            // 1️⃣ Kiểm tra Employer trước
-            var employerDto = await _employerService.GetProfileByUserIdAsync(userId);
-            if (employerDto != null)
-                {
-                return Ok(new
-                    {
-                    UserId = employerDto.UserId,
-                    Role = "Employer",
-                    employerDto.DisplayName,
-                    employerDto.Description,
-                    employerDto.AvatarUrl,
-                    employerDto.Website,
-                    employerDto.ContactPhone,
-                    employerDto.ContactEmail,
-                    Location = employerDto.Location //  TRẢ TÊN ĐỊA ĐIỂM
-                    });
-                }
+                UserId = employer.UserId,
+                Role = "Employer",
 
-            // 2️⃣ Nếu không phải Employer → kiểm tra JobSeeker
-            var jobSeekerDto = await _jobSeekerService.GetProfileByUserIdAsync(userId);
-            if (jobSeekerDto != null)
-                {
-                return Ok(new
-                    {
-                    Role = "JobSeeker",
-                    DisplayName = jobSeekerDto.FullName,
-                    AvatarUrl = jobSeekerDto.ProfilePicture,
-                    jobSeekerDto.Gender,
-                    jobSeekerDto.BirthYear,
-                    Location = jobSeekerDto.Location, //  TRẢ TÊN ĐỊA ĐIỂM
-                    jobSeekerDto.ContactPhone
-                    });
-                }
-
-            return NotFound("Không tìm thấy profile.");
-            }
+                employer.DisplayName,
+                employer.Description,
+                AvatarUrl = employer.AvatarUrl,
+                employer.Website,
+                employer.ContactPhone,
+                employer.ContactEmail,
+                Location = employer.Location
+            });
+        }
 
         // Cập nhật thông tin (chỉ Employer/Admin)
         [HttpPut("update")]
-        [Authorize(Roles = "Employer,Admin")]
+        [Authorize(Roles = "Employer")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UpdateProfile([FromForm] EmployerProfileUpdateDto model)
             {
@@ -95,7 +77,7 @@ namespace PTJ_API.Controllers
 
         //  Xóa avatar (trả về ảnh mặc định)
         [HttpDelete("avatar")]
-        [Authorize(Roles = "Employer,Admin")]
+        [Authorize(Roles = "Employer")]
         public async Task<IActionResult> DeleteAvatar()
             {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
