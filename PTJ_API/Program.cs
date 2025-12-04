@@ -9,6 +9,9 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
+using PayOS;
+using PayOS.Models;
+
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
@@ -73,6 +76,8 @@ using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Implementations;
 using System.Security.Claims;
 using PTJ_API.Middlewares;
+using PTJ_Service.PaymentsService;
+using PTJ_Service.PaymentsService.Implementations;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -182,7 +187,7 @@ builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddHostedService<PostExpirationService>();
-
+builder.Services.AddScoped<IEmployerPaymentService, EmployerPaymentService>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -298,9 +303,6 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod();
     });
 });
-
-
-
 
 // 5️⃣ CONTROLLERS + JSON OPTIONS
 

@@ -67,6 +67,23 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (!employerUser.IsActive)
                 throw new Exception("Tài khoản đã bị khóa. Không thể đăng bài tuyển dụng.");
 
+            var sub = await _db.EmployerSubscriptions
+                     .FirstOrDefaultAsync(s => s.UserId == dto.UserID && s.Status == "Active");
+
+            if (sub == null)
+                throw new Exception("Bạn chưa có gói đăng bài.");
+
+            if (sub.EndDate != null && sub.EndDate.Value < DateTime.Now)
+                throw new Exception("Gói đã hết hạn.");
+
+            if (sub.RemainingPosts <= 0)
+                throw new Exception("Bạn đã hết lượt đăng bài.");
+
+            sub.RemainingPosts--;
+            sub.UpdatedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+
+
             // 2️⃣ Build location
             string fullLocation = await _locDisplay.BuildAddressAsync(
                 dto.ProvinceId,
