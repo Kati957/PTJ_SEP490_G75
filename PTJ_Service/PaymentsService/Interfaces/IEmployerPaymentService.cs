@@ -21,6 +21,7 @@ namespace PTJ_Service.PaymentsService
         Task<List<EmployerTransactionHistoryDto>> GetTransactionHistoryAsync(int userId);
         Task<List<EmployerSubscriptionHistoryDto>> GetSubscriptionHistoryAsync(int userId);
 
+        Task<string> RefreshPaymentLinkAsync(int transactionId);
 
         }
     }

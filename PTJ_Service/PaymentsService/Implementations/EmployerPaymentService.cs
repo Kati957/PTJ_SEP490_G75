@@ -43,18 +43,26 @@ namespace PTJ_Service.PaymentsService.Implementations
             if (!user.IsActive)
                 throw new Exception("Tài khoản của bạn đang bị khóa. Không thể thanh toán.");
 
-            // 1. Kiểm tra PENDING transaction (chỉ chặn những cái mới < 5 phút)
-            var cutoff = DateTime.Now.AddMinutes(-5);
-            var pending = await _db.EmployerTransactions
-                .AnyAsync(x =>
-                    x.UserId == userId &&
-                    x.Status == "Pending" &&
-                    x.CreatedAt >= cutoff);
+            // === 1. Tìm giao dịch Pending CÙNG GÓI của user ===
+            var oldPending = await _db.EmployerTransactions
+                .Where(x => x.UserId == userId && x.Status == "Pending" && x.PlanId == planId)
+                .OrderByDescending(x => x.TransactionId)
+                .FirstOrDefaultAsync();
 
-            if (pending)
-                throw new Exception("Bạn đang có giao dịch thanh toán chưa hoàn tất. Vui lòng hoàn tất hoặc đợi hệ thống đồng bộ.");
+            if (oldPending != null)
+                {
+                // Nếu QR còn hạn → dùng lại QR
+                if (oldPending.QrExpiredAt > DateTime.Now)
+                    return oldPending.QrCodeUrl ?? throw new Exception("QR code không tồn tại");
 
-            // 2. Kiểm tra gói
+                // Nếu QR hết hạn → refresh QR trong transaction cũ
+                string newQr = await RefreshPaymentLinkAsync(oldPending.TransactionId);
+                return newQr;
+                }
+
+            // === 2. Không có pending transaction → tạo mới ===
+
+            // 2.1 Kiểm tra gói
             var plan = await _db.EmployerPlans.FirstOrDefaultAsync(x => x.PlanId == planId)
                 ?? throw new Exception("Gói không tồn tại");
 
@@ -63,18 +71,17 @@ namespace PTJ_Service.PaymentsService.Implementations
 
             int amount = (int)plan.Price;
 
-            // 3. Kiểm tra Employer đang có gói active
+            // 2.2 Kiểm tra gói đang active
             var activeSub = await _db.EmployerSubscriptions
                 .FirstOrDefaultAsync(x => x.UserId == userId && x.Status == "Active");
 
             if (activeSub != null && activeSub.PlanId == planId)
                 throw new Exception("Bạn đang sử dụng gói này. Không thể mua lại.");
 
-            // (Option) Không cho phép mua gói khác khi gói cũ còn hạn
             if (activeSub != null && activeSub.PlanId != planId && activeSub.EndDate > DateTime.Now)
                 throw new Exception("Bạn đang có gói khác còn hạn. Không thể mua gói mới.");
 
-            // 4. Tạo transaction local
+            // 3. Tạo transaction local
             var trans = new EmployerTransaction
                 {
                 UserId = userId,
@@ -87,29 +94,26 @@ namespace PTJ_Service.PaymentsService.Implementations
             _db.EmployerTransactions.Add(trans);
             await _db.SaveChangesAsync();
 
+            // 4. Tạo orderCode PayOS
             long orderCode = long.Parse(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
 
-
-
-            // 5. Build PayOS body + checksum
+            // 5. Build PayOS body + signature
             var body = new SortedDictionary<string, object?>
-            {
-                { "orderCode", orderCode },
-                { "amount", amount },
-                { "description", $"Thanh toán gói {plan.PlanName}" },
-                { "returnUrl", _config["PayOS:ReturnUrl"] },
-                { "cancelUrl", _config["PayOS:CancelUrl"] }
-            };
+    {
+        { "orderCode", orderCode },
+        { "amount", amount },
+        { "description", $"Thanh toán gói {plan.PlanName}" },
+        { "returnUrl", _config["PayOS:ReturnUrl"] },
+        { "cancelUrl", _config["PayOS:CancelUrl"] }
+    };
 
             string raw = string.Join("&", body.Select(x => $"{x.Key}={x.Value}"));
             string secret = _config["PayOS:ChecksumKey"];
             string signature = ComputeSignature(raw, secret);
             body.Add("signature", signature);
 
-            // 6. Gọi API PayOS
-            string baseUrl = _config["PayOS:BaseUrl"];
-            string endpoint = _config["PayOS:CreatePaymentUrl"]; // VD: "/v2/payment-requests"
-            string fullUrl = baseUrl + endpoint;
+            // 6. Gọi PayOS
+            string fullUrl = _config["PayOS:BaseUrl"] + _config["PayOS:CreatePaymentUrl"];
 
             _http.DefaultRequestHeaders.Clear();
             _http.DefaultRequestHeaders.Add("x-client-id", _config["PayOS:ClientId"]);
@@ -124,26 +128,20 @@ namespace PTJ_Service.PaymentsService.Implementations
             dynamic result = JsonConvert.DeserializeObject(content);
 
             if (result == null || result.data == null)
-                {
                 throw new Exception($"PayOS trả về dữ liệu không hợp lệ: {content}");
-                }
 
-            // 7. Lấy dữ liệu từ PayOS
+            // 7. Lấy link thanh toán
             string checkoutUrl = result.data.checkoutUrl;
             string payOsOrderCode = result.data.orderCode;
+            string qrCodeUrl = result.data.qrCodeUrl;
 
-            string? qrCodeUrl = result.data.qrCodeUrl;
-            long? expiredAtUnix = result.data.expiredAt;
-
-            DateTime? expiredAt = expiredAtUnix != null
-                ? DateTimeOffset.FromUnixTimeSeconds((long)expiredAtUnix).LocalDateTime
-                : null;
-
-            // 8. Cập nhật lại transaction
+            // 8. Lưu lại vào transaction
             trans.PayOsorderCode = payOsOrderCode;
             trans.RawWebhookData = content;
-            trans.QrCodeUrl = qrCodeUrl;
-            trans.QrExpiredAt = expiredAt;
+            trans.QrCodeUrl = qrCodeUrl;   // ✔ LƯU LINK ẢNH QR
+
+            // Tự đặt thời gian hết hạn QR = 2 phút
+            trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
 
             await _db.SaveChangesAsync();
 
@@ -331,6 +329,68 @@ namespace PTJ_Service.PaymentsService.Implementations
             ).ToListAsync();
 
             return items;
+            }
+        public async Task<string> RefreshPaymentLinkAsync(int transactionId)
+            {
+            var trans = await _db.EmployerTransactions
+                .FirstOrDefaultAsync(x => x.TransactionId == transactionId)
+                ?? throw new Exception("Transaction không tồn tại");
+
+            if (trans.Status != "Pending")
+                throw new Exception("Chỉ làm mới QR cho giao dịch Pending");
+
+            // QR còn hạn → không cho refresh
+            if (trans.QrExpiredAt != null && trans.QrExpiredAt > DateTime.Now)
+                throw new Exception("QR code vẫn còn hạn, không cần refresh.");
+
+            int amount = (int)(trans.Amount ?? 0);
+
+            // Tạo order code mới
+            long newOrderCode = long.Parse(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+
+            var body = new SortedDictionary<string, object?>
+    {
+        { "orderCode", newOrderCode },
+        { "amount", amount },
+        { "description", $"Thanh toán gói {trans.PlanId}" },
+        { "returnUrl", _config["PayOS:ReturnUrl"] },
+        { "cancelUrl", _config["PayOS:CancelUrl"] }
+    };
+
+            string raw = string.Join("&", body.Select(x => $"{x.Key}={x.Value}"));
+            string signature = ComputeSignature(raw, _config["PayOS:ChecksumKey"]);
+            body.Add("signature", signature);
+
+            string fullUrl = _config["PayOS:BaseUrl"] + _config["PayOS:CreatePaymentUrl"];
+
+            _http.DefaultRequestHeaders.Clear();
+            _http.DefaultRequestHeaders.Add("x-client-id", _config["PayOS:ClientId"]);
+            _http.DefaultRequestHeaders.Add("x-api-key", _config["PayOS:ApiKey"]);
+
+            var response = await _http.PostAsJsonAsync(fullUrl, body);
+            string content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                throw new Exception($"PayOS Error => {content}");
+
+            dynamic result = JsonConvert.DeserializeObject(content);
+            if (result?.data == null)
+                throw new Exception("PayOS trả về dữ liệu không hợp lệ");
+
+            // Lấy link mới
+            string checkoutUrl = result.data.checkoutUrl;
+            string qrCodeUrl = result.data.qrCodeUrl;
+            string payOsOrderCode = result.data.orderCode;
+
+            // Cập nhật transaction cũ
+            trans.PayOsorderCode = payOsOrderCode;
+            trans.QrCodeUrl = qrCodeUrl;
+            trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
+            trans.RawWebhookData = content;
+
+            await _db.SaveChangesAsync();
+
+            return checkoutUrl;
             }
 
         }

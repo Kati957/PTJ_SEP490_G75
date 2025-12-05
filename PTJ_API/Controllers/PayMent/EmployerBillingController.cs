@@ -5,6 +5,7 @@ using PTJ_Service.PaymentsService;
 using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models.Models;
+using Newtonsoft.Json;
 
 namespace PTJ_API.Controllers.Payment
     {
@@ -14,29 +15,37 @@ namespace PTJ_API.Controllers.Payment
         {
         private readonly IEmployerPaymentService _payment;
         private readonly JobMatchingDbContext _db;
+
         public EmployerBillingController(IEmployerPaymentService payment, JobMatchingDbContext db)
             {
             _payment = payment;
             _db = db;
             }
 
-        // -----------------------
+        // ======================================================
+        //  Helper: Lấy UserId từ token
+        // ======================================================
+        private int GetUserId()
+            {
+            var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userClaim == null)
+                throw new UnauthorizedAccessException("Token không hợp lệ.");
+
+            return int.Parse(userClaim.Value);
+            }
+
+        // ======================================================
         // 1. Tạo link thanh toán
-        // -----------------------
+        // ======================================================
         [Authorize]
         [HttpPost("create-link")]
         public async Task<IActionResult> CreateLink([FromBody] CreatePaymentDto dto)
             {
-            var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (userClaim == null)
-                return Unauthorized(new { success = false, message = "Token không hợp lệ." });
-
-            int userId = int.Parse(userClaim.Value);
+            int userId = GetUserId();
 
             string checkoutUrl = await _payment.CreatePaymentLinkAsync(userId, dto.PlanId);
 
-            // Nếu EmployerTransaction có thêm QrCodeUrl và QrExpiredAt thì lấy lại
-            var lastTrans = await _db.EmployerTransactions
+            var trans = await _db.EmployerTransactions
                 .Where(x => x.UserId == userId)
                 .OrderByDescending(x => x.TransactionId)
                 .FirstOrDefaultAsync();
@@ -46,52 +55,46 @@ namespace PTJ_API.Controllers.Payment
                 success = true,
                 message = "Tạo link thanh toán thành công.",
                 checkoutUrl,
-                qrCodeUrl = lastTrans?.QrCodeUrl,
-                expiredAt = lastTrans?.QrExpiredAt
+                qrCodeUrl = trans?.QrCodeUrl,
+                expiredAt = trans?.QrExpiredAt
                 });
-
             }
 
-        // -----------------------
-        // 2. Webhook từ PayOS
-        // -----------------------
+        // ======================================================
+        // 2. Webhook PayOS
+        // ======================================================
         [HttpPost("/api/payos/webhook")]
         public async Task<IActionResult> Webhook()
             {
-            // Đọc RAW JSON do PayOS gửi
             using var reader = new StreamReader(Request.Body);
             string rawJson = await reader.ReadToEndAsync();
 
-            // PayOS gửi chữ ký qua header: x-payos-signature
             string signature = Request.Headers["x-payos-signature"];
 
             await _payment.HandleWebhookAsync(rawJson, signature);
 
             return Ok(new { received = true });
             }
-        // -----------------------
+
+        // ======================================================
         // 3. Thanh toán thành công
-        // -----------------------
+        // ======================================================
         [HttpGet("success")]
         public IActionResult PaymentSuccess()
             {
-            return Ok(new
-                {
-                message = "Thanh toán thành công!",
-                status = "SUCCESS"
-                });
+            return Ok(new { message = "Thanh toán thành công!", status = "SUCCESS" });
             }
 
-        // -----------------------
+        // ======================================================
         // 4. Hủy thanh toán
-        // -----------------------
+        // ======================================================
         [HttpGet("cancel")]
         public async Task<IActionResult> Cancel(long orderCode)
             {
             var trans = await _db.EmployerTransactions
                 .FirstOrDefaultAsync(x => x.PayOsorderCode == orderCode.ToString());
 
-            if (trans != null && trans.Status == "Pending")
+            if (trans?.Status == "Pending")
                 {
                 trans.Status = "Cancelled";
                 await _db.SaveChangesAsync();
@@ -100,45 +103,40 @@ namespace PTJ_API.Controllers.Payment
             return Redirect("/payment-failed");
             }
 
-
-        [HttpGet("active-subscriptions")]
-        public async Task<IActionResult> GetActiveSubscriptions()
-            {
-            var result = await _payment.GetActiveSubscriptionsAsync();
-            return Ok(result);
-            }
-
+        // ======================================================
+        // 5. Lịch sử giao dịch của user
+        // ======================================================
         [Authorize]
         [HttpGet("transaction-history")]
         public async Task<IActionResult> GetTransactionHistory()
             {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
+            int userId = GetUserId();
             var result = await _payment.GetTransactionHistoryAsync(userId);
 
             return Ok(new { success = true, data = result });
             }
 
+        // ======================================================
+        // 6. Lịch sử subscription của user
+        // ======================================================
         [Authorize]
         [HttpGet("subscription-history")]
         public async Task<IActionResult> GetSubscriptionHistory()
             {
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
+            int userId = GetUserId();
             var result = await _payment.GetSubscriptionHistoryAsync(userId);
 
             return Ok(new { success = true, data = result });
             }
 
-
-        // ===========================
-        //  ADMIN: Xem giao dịch theo UserId
-        // ===========================
+        // ======================================================
+        // 7. Admin lấy giao dịch theo UserId
+        // ======================================================
         [Authorize(Roles = "Admin")]
         [HttpGet("admin/transactions/{userId}")]
         public async Task<IActionResult> AdminGetTransactionsByUser(int userId)
             {
-            var result = await (
+            var data = await (
                 from t in _db.EmployerTransactions
                 join u in _db.Users on t.UserId equals u.UserId
                 join p in _db.EmployerPlans on t.PlanId equals p.PlanId
@@ -150,48 +148,43 @@ namespace PTJ_API.Controllers.Payment
                     t.UserId,
                     UserName = u.Username,
                     UserEmail = u.Email,
-
                     t.PlanId,
                     PlanName = p.PlanName,
-
                     t.Amount,
                     t.Status,
                     t.PayOsorderCode,
                     t.CreatedAt,
                     t.PaidAt,
-
                     t.QrCodeUrl,
                     t.QrExpiredAt
                     }
             ).ToListAsync();
 
-            return Ok(new { success = true, data = result });
+            return Ok(new { success = true, data });
             }
 
-        // ===========================
-        //  ADMIN: Xem toàn bộ subscription của 1 user
-        // ===========================
+        // ======================================================
+        // 8. Admin xem subscriptions theo UserId
+        // ======================================================
         [Authorize(Roles = "Admin")]
         [HttpGet("admin/subscriptions/{userId}")]
         public async Task<IActionResult> AdminGetSubscriptionByUser(int userId)
             {
-            var items = await (
+            var data = await (
                 from sub in _db.EmployerSubscriptions
                 join plan in _db.EmployerPlans on sub.PlanId equals plan.PlanId
-                join user in _db.Users on sub.UserId equals user.UserId
+                join u in _db.Users on sub.UserId equals u.UserId
                 where sub.UserId == userId
                 orderby sub.StartDate descending
                 select new
                     {
                     sub.SubscriptionId,
                     sub.UserId,
-                    UserName = user.Username,
-                    UserEmail = user.Email,
-
+                    UserName = u.Username,
+                    UserEmail = u.Email,
                     sub.PlanId,
                     plan.PlanName,
                     plan.Price,
-
                     sub.RemainingPosts,
                     sub.Status,
                     sub.StartDate,
@@ -199,11 +192,61 @@ namespace PTJ_API.Controllers.Payment
                     }
             ).ToListAsync();
 
-            return Ok(new { success = true, data = items });
+            return Ok(new { success = true, data });
             }
 
+        // ======================================================
+        // 9. API lấy QR hiện tại / tạo QR mới nếu hết hạn
+        // ======================================================
+        [Authorize]
+        [HttpGet("transaction/{id}")]
+        public async Task<IActionResult> GetPayment(int id)
+            {
+            // Lấy userId từ token
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-        // DTO FE gửi vào
+            // Tìm transaction
+            var trans = await _db.EmployerTransactions.FindAsync(id);
+
+            if (trans == null)
+                return NotFound(new { message = "Giao dịch không tồn tại" });
+
+            // Kiểm tra có thuộc user hay không
+            if (trans.UserId != userId)
+                return Forbid("Bạn không có quyền truy cập giao dịch này.");
+
+            // Không cho lấy giao dịch đã hoàn tất
+            if (trans.Status != "Pending")
+                return BadRequest(new { message = "Giao dịch đã hoàn tất hoặc bị hủy" });
+
+            // ❗ Nếu QR HẾT HẠN → tạo QR mới trên cùng transaction
+            if (trans.QrExpiredAt == null || trans.QrExpiredAt <= DateTime.Now)
+                {
+                string newCheckoutUrl = await _payment.RefreshPaymentLinkAsync(id);
+
+                return Ok(new
+                    {
+                    expired = true,
+                    message = "QR đã hết hạn, hệ thống đã tạo QR mới.",
+                    checkoutUrl = newCheckoutUrl,
+                    qrCodeUrl = trans.QrCodeUrl,   // QR mới
+                    expiredAt = trans.QrExpiredAt
+                    });
+                }
+
+            // ✔ QR CÒN HẠN → gửi lại QR cũ
+            return Ok(new
+                {
+                expired = false,
+                checkoutUrl = (trans.RawWebhookData != null ?
+                               JsonConvert.DeserializeObject<dynamic>(trans.RawWebhookData)?.data?.checkoutUrl
+                               : null),
+                qrCodeUrl = trans.QrCodeUrl,
+                expiredAt = trans.QrExpiredAt
+                });
+            }
+
+        // DTO
         public class CreatePaymentDto
             {
             public int PlanId { get; set; }
