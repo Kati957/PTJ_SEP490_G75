@@ -62,11 +62,18 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             return result;
             }
 
-   
+
         // Tạo CV
-   
+
         public async Task<JobSeekerCvResultDto> CreateAsync(int jobSeekerId, JobSeekerCvCreateDto dto)
             {
+            var existingCvs = await _repo.GetByJobSeekerAsync(jobSeekerId);
+
+            if (existingCvs.Count() >= 3)
+                {
+                throw new InvalidOperationException("Bạn chỉ được tạo tối đa 3 CV. Vui lòng xoá bớt để tạo mới.");
+                }
+
             var cv = new JobSeekerCv
                 {
                 JobSeekerId = jobSeekerId,
@@ -85,12 +92,13 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
                 };
 
             await _repo.AddAsync(cv);
+
             return await ToDto(cv);
             }
 
-   
+
         // Cập nhật CV
-   
+
         public async Task<bool> UpdateAsync(int jobSeekerId, int cvId, JobSeekerCvUpdateDto dto)
             {
             var cv = await _repo.GetByIdAsync(cvId);
