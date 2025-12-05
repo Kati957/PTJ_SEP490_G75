@@ -675,19 +675,42 @@ namespace PTJ_Service.JobSeekerPostService.Implementations
      )
             {
             // 1) LỌC CATEGORY
-            var categoryFiltered = await _db.EmployerPosts
+            // Tìm category Other
+            var otherCategoryId = await _db.Categories
+                .Where(c => c.Name == "Other" || c.Name == "Khác")
+                .Select(c => (int?)c.CategoryId)
+                .FirstOrDefaultAsync();
+
+            bool isOtherSeeker =
+                otherCategoryId.HasValue &&
+                mustMatchCategoryId.HasValue &&
+                mustMatchCategoryId.Value == otherCategoryId.Value;
+
+            IQueryable<EmployerPost> query = _db.EmployerPosts
                 .Include(x => x.User)
                 .Include(x => x.Category)
                 .Where(x =>
                     x.Status == "Active" &&
-                    x.User.IsActive &&
-                    x.CategoryId == mustMatchCategoryId)
-                .ToListAsync();
+                    x.User.IsActive);
+
+            if (otherCategoryId.HasValue)
+                {
+                if (isOtherSeeker)
+                    {
+                    // Seeker chọn Other → chỉ match job Other
+                    query = query.Where(x => x.CategoryId == otherCategoryId.Value);
+                    }
+                else
+                    {
+                    // Seeker không phải Other → loại job Other
+                    query = query.Where(x => x.CategoryId != otherCategoryId.Value);
+                    }
+                }
+
+            var categoryFiltered = await query.ToListAsync();
 
             if (!categoryFiltered.Any())
                 return new List<(EmployerPost, double)>();
-
-
             // 2) LẤY THÔNG TIN SEEKER (Province/District/Ward)
             var seekerPost = await _db.JobSeekerPosts
                 .AsNoTracking()
