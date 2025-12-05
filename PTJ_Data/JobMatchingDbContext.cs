@@ -408,6 +408,8 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.PayOsorderCode)
                 .HasMaxLength(50)
                 .HasColumnName("PayOSOrderCode");
+            entity.Property(e => e.QrCodeUrl).HasMaxLength(500);
+            entity.Property(e => e.QrExpiredAt).HasColumnType("datetime");
             entity.Property(e => e.Status).HasMaxLength(20);
         });
 

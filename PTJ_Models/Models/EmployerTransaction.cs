@@ -22,4 +22,8 @@ public partial class EmployerTransaction
     public DateTime? PaidAt { get; set; }
 
     public string? RawWebhookData { get; set; }
+
+    public string? QrCodeUrl { get; set; }
+
+    public DateTime? QrExpiredAt { get; set; }
 }

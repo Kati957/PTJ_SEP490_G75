@@ -67,14 +67,21 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (!employerUser.IsActive)
                 throw new Exception("Tài khoản đã bị khóa. Không thể đăng bài tuyển dụng.");
 
-            var sub = await _db.EmployerSubscriptions
-                     .FirstOrDefaultAsync(s => s.UserId == dto.UserID && s.Status == "Active");
+            // 1️⃣ Auto Free Subscription
+            var sub = await EnsureFreeSubscriptionAsync(dto.UserID);
 
-            if (sub == null)
-                throw new Exception("Bạn chưa có gói đăng bài.");
+            // 2️⃣ Nếu user đã mua gói → ưu tiên gói trả phí
+            var paidSub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == dto.UserID && s.Status == "Active" && s.PlanId != 1) // != Free
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
 
-            if (sub.EndDate != null && sub.EndDate.Value < DateTime.Now)
-                throw new Exception("Gói đã hết hạn.");
+            if (paidSub != null)
+                sub = paidSub;
+
+            // 3️⃣ Kiểm tra hạn & lượt
+            if (sub.EndDate != null && sub.EndDate < DateTime.Now)
+                throw new Exception("Gói đăng bài đã hết hạn.");
 
             if (sub.RemainingPosts <= 0)
                 throw new Exception("Bạn đã hết lượt đăng bài.");
@@ -1547,6 +1554,56 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // Nếu chỉ có 1 phần → trả nguyên
             return parts[0];
+            }
+
+        private async Task<EmployerSubscription> EnsureFreeSubscriptionAsync(int userId)
+            {
+            var now = DateTime.Now;
+
+            // Tìm free plan trong DB
+            var freePlan = await _db.EmployerPlans.FirstOrDefaultAsync(p => p.PlanName == "Free");
+            if (freePlan == null)
+                throw new Exception("Không tìm thấy gói Free trong hệ thống.");
+
+            // Kiểm tra subscription hiện tại
+            var sub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == userId && s.PlanId == freePlan.PlanId)
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            // 1️⃣ Chưa từng có FREE → Tạo mới
+            if (sub == null)
+                {
+                sub = new EmployerSubscription
+                    {
+                    UserId = userId,
+                    PlanId = freePlan.PlanId,
+                    RemainingPosts = freePlan.MaxPosts,
+                    StartDate = now,
+                    EndDate = now.AddDays(freePlan.DurationDays ?? 30),
+                    Status = "Active",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                    };
+
+                _db.EmployerSubscriptions.Add(sub);
+                await _db.SaveChangesAsync();
+                return sub;
+                }
+
+            // 2️⃣ Đã có FREE nhưng hết hạn tháng cũ → reset FREE
+            if (sub.EndDate < now)
+                {
+                sub.RemainingPosts = freePlan.MaxPosts; // reset lại 1 bài
+                sub.StartDate = now;
+                sub.EndDate = now.AddDays(freePlan.DurationDays ?? 30);
+                sub.Status = "Active";
+                sub.UpdatedAt = now;
+
+                await _db.SaveChangesAsync();
+                }
+
+            return sub;
             }
 
         }

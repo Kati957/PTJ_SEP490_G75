@@ -2,6 +2,9 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using PTJ_Service.PaymentsService;
+using Microsoft.EntityFrameworkCore;
+using PTJ_Data;
+using PTJ_Models.Models;
 
 namespace PTJ_API.Controllers.Payment
     {
@@ -10,10 +13,11 @@ namespace PTJ_API.Controllers.Payment
     public class EmployerBillingController : ControllerBase
         {
         private readonly IEmployerPaymentService _payment;
-
-        public EmployerBillingController(IEmployerPaymentService payment)
+        private readonly JobMatchingDbContext _db;
+        public EmployerBillingController(IEmployerPaymentService payment, JobMatchingDbContext db)
             {
             _payment = payment;
+            _db = db;
             }
 
         // -----------------------
@@ -29,9 +33,23 @@ namespace PTJ_API.Controllers.Payment
 
             int userId = int.Parse(userClaim.Value);
 
-            string url = await _payment.CreatePaymentLinkAsync(userId, dto.PlanId);
+            string checkoutUrl = await _payment.CreatePaymentLinkAsync(userId, dto.PlanId);
 
-            return Ok(new { checkoutUrl = url });
+            // Nếu EmployerTransaction có thêm QrCodeUrl và QrExpiredAt thì lấy lại
+            var lastTrans = await _db.EmployerTransactions
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.TransactionId)
+                .FirstOrDefaultAsync();
+
+            return Ok(new
+                {
+                success = true,
+                message = "Tạo link thanh toán thành công.",
+                checkoutUrl,
+                qrCodeUrl = lastTrans?.QrCodeUrl,
+                expiredAt = lastTrans?.QrExpiredAt
+                });
+
             }
 
         // -----------------------
