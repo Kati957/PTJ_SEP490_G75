@@ -74,6 +74,7 @@ using PTJ_Service.SearchService.Implementations;
 using System.Security.Claims;
 using PTJ_API.Middlewares;
 
+using PTJ_Service.UserActivityService;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
@@ -157,6 +158,9 @@ builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>(
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
 builder.Services.AddScoped<IAdminEmployerRegistrationService, AdminEmployerRegistrationService>();
+builder.Services.AddScoped<INewsService, NewsService>();
+builder.Services.AddScoped<IUserActivityService, UserActivityService>();
+
 
 // Repository
 builder.Services.AddScoped<IEmployerRankingRepository, EmployerRankingRepository>();

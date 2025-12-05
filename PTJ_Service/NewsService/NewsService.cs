@@ -5,18 +5,64 @@ using System.Threading.Tasks;
 using PTJ_Models.DTO.News;
 using PTJ_Models.Models;
 using PTJ_Data;
-using Microsoft.EntityFrameworkCore;
+using PTJ_Service.ImageService;
+using PTJ_Data.Repositories.Interfaces;
+using PTJ_Service.UserActivityService;
 
 namespace PTJ_Service.NewsService
     {
-    public class NewsService : INewsService
+        private readonly INewsRepository _repo;
+        private readonly IImageService _imageService;
+        private readonly JobMatchingDbContext _context;
+        private readonly IUserActivityService _activityService;
+
+        public NewsService(INewsRepository repo, IImageService imageService, JobMatchingDbContext context, IUserActivityService activityService)
         {
-        private readonly JobMatchingDbContext _db;
-        public NewsService(JobMatchingDbContext db) => _db = db;
+            _repo = repo;
+            _imageService = imageService;
+            _context = context;
+            _activityService = activityService;
+        }
 
 
 
-        // 1️⃣ LẤY DANH SÁCH NEWS (PHÂN TRANG + TÌM KIẾM)
+            if (dto.CoverImage != null)
+            {
+                var (url, publicId) = await _imageService.UploadImageAsync(dto.CoverImage, "News");
+                news.ImageUrl = url;
+
+                var cover = new Image
+                {
+                    EntityType = "News",
+                    EntityId = news.NewsId,
+                    Url = url,
+                    PublicId = publicId,
+                    Format = "jpg"
+                };
+                _context.Images.Add(cover);
+            }
+
+            if (dto.GalleryImages != null && dto.GalleryImages.Any())
+            {
+                foreach (var img in dto.GalleryImages)
+                {
+                    var (url, publicId) = await _imageService.UploadImageAsync(img, "News");
+                    var image = new Image
+                    {
+                        EntityType = "News",
+                        EntityId = news.NewsId,
+                        Url = url,
+                        PublicId = publicId,
+                        Format = "jpg"
+                    };
+                    _context.Images.Add(image);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            await _activityService.LogAsync(news.AdminId, "CreateNews", $"Tạo bài viết {news.Title}");
+            return news;
+        }
 
         public async Task<(List<NewsReadDto> Data, int Total)> GetPagedAsync(
             string? keyword, string? category, int page, int pageSize, string sortBy, bool desc)
