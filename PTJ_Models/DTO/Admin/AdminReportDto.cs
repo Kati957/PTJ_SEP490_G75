@@ -26,7 +26,7 @@ namespace PTJ_Models.DTO.Admin
     {
         public int SolvedReportId { get; set; }
         public int ReportId { get; set; }
-
+        public string ReportType { get; set; } = string.Empty;
         public string ActionTaken { get; set; } = string.Empty;
         public string AdminEmail { get; set; } = string.Empty;
 
