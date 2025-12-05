@@ -16,4 +16,8 @@ public partial class EmployerPlan
     public int? DurationDays { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+
+    public virtual ICollection<EmployerSubscription> EmployerSubscriptions { get; set; } = new List<EmployerSubscription>();
+
+    public virtual ICollection<EmployerTransaction> EmployerTransactions { get; set; } = new List<EmployerTransaction>();
 }

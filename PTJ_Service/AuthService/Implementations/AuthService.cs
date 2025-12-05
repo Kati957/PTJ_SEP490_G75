@@ -12,8 +12,6 @@ using PTJ_Data;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Service.Helpers.Implementations;
 
-
-
 namespace PTJ_Service.AuthService.Implementations;
 
 public sealed class AuthService : IAuthService
@@ -22,6 +20,7 @@ public sealed class AuthService : IAuthService
     private readonly IPasswordHasher _hasher;
     private readonly ITokenService _tokens;
     private readonly IEmailSender _email;
+    private readonly IEmailTemplateService _templates; 
     private readonly IConfiguration _cfg;
     private readonly ILogger<AuthService> _log;
 
@@ -30,6 +29,7 @@ public sealed class AuthService : IAuthService
         IPasswordHasher hasher,
         ITokenService tokens,
         IEmailSender email,
+        IEmailTemplateService templates,
         IConfiguration cfg,
         ILogger<AuthService> log)
     {
@@ -37,13 +37,12 @@ public sealed class AuthService : IAuthService
         _hasher = hasher;
         _tokens = tokens;
         _email = email;
+        _templates = templates;
         _cfg = cfg;
         _log = log;
     }
 
-    
-    // 1️⃣ ĐĂNG KÝ JOBSEEKER (HOẠT ĐỘNG BÌNH THƯỜNG)
- 
+    // 1. Đăng ký JobSeeker
     public async Task<AuthResponseDto> RegisterJobSeekerAsync(RegisterJobSeekerDto dto)
     {
         var email = dto.Email.Trim().ToLowerInvariant();
@@ -78,12 +77,12 @@ public sealed class AuthService : IAuthService
                 UserId = user.UserId,
                 FullName = dto.FullName,
                 ProfilePicture = DefaultAvatar,
-                IsPictureHidden = false,
                 UpdatedAt = DateTime.UtcNow
             });
 
             await _db.SaveChangesAsync();
 
+            // Tạo token verify
             var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
 
             _db.EmailVerificationTokens.Add(new EmailVerificationToken
@@ -94,75 +93,53 @@ public sealed class AuthService : IAuthService
             });
 
             await _db.SaveChangesAsync();
-
             await tran.CommitAsync();
 
+            // Gửi email xác minh
             var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+            var html = _templates.CreateVerifyEmailTemplate(verifyUrl); 
 
-            await _email.SendEmailAsync(
-                user.Email,
-                "PTJ - Xác minh tài khoản",
-                $"<p>Nhấn vào <a href='{verifyUrl}'>đây</a> để xác minh tài khoản.</p>"
-            );
+            await _email.SendEmailAsync(user.Email, "PTJ - Xác minh tài khoản", html);
 
             var response = await _tokens.IssueAsync(user, null, null);
             response.Warning = "Vui lòng kiểm tra email để xác minh tài khoản.";
 
             return response;
         }
-        catch (Exception ex)
+        catch
         {
             await tran.RollbackAsync();
-            throw new Exception($"Đăng ký thất bại: {ex.Message}");
+            throw;
         }
     }
 
-    // 2️⃣ ĐĂNG KÝ EMPLOYER (LUỒNG MỚI – CHỜ PHÊ DUYỆT)
-
+    // 2. Đăng ký Employer → chờ duyệt
     public async Task<object> SubmitEmployerRegistrationAsync(RegisterEmployerDto dto)
     {
-        var email = dto.Email.Trim().ToLower();
+        var email = dto.Email.Trim().ToLowerInvariant();
 
-        // 1. Check email đã tồn tại ở bảng Users
-        bool emailUsed = await _db.Users.AnyAsync(x => x.Email == email);
-        if (emailUsed)
-            throw new Exception("Email này đã được sử dụng. Vui lòng chọn email khác.");
+        if (await _db.Users.AnyAsync(x => x.Email == email))
+            throw new Exception("Email này đã được sử dụng.");
 
-        // 2. Check email đã tồn tại ở bảng EmployerRegistrationRequests (Đang chờ duyệt)
-        bool emailPending = await _db.EmployerRegistrationRequests
-            .AnyAsync(x => x.Email == email && x.Status == "Pending");
+        if (await _db.EmployerRegistrationRequests.AnyAsync(x => x.Email == email && x.Status == "Pending"))
+            throw new Exception("Email này đã gửi yêu cầu và đang chờ duyệt.");
 
-        if (emailPending)
-            throw new Exception("Email này đã gửi yêu cầu trước đó và đang chờ phê duyệt.");
-
-        // 3. Generate username từ email
         var username = email.Split('@')[0].ToLower();
 
-        // 4. Kiểm tra username đã tồn tại ở User
-        bool usernameUsed = await _db.Users.AnyAsync(x => x.Username == username);
-        if (usernameUsed)
-            throw new Exception("Tên đăng nhập đã tồn tại. Vui lòng sử dụng email khác.");
+        if (await _db.Users.AnyAsync(x => x.Username == username))
+            throw new Exception("Tên đăng nhập đã tồn tại.");
 
-        // 5. Kiểm tra username đã tồn tại ở bảng chờ duyệt
-        bool usernamePending = await _db.EmployerRegistrationRequests
-            .AnyAsync(x => x.Username == username);
-        if (usernamePending)
-            throw new Exception("Tên đăng nhập đã tồn tại (chờ duyệt). Vui lòng sử dụng email khác.");
-
-        // 6. Lưu hồ sơ vào bảng EmployerRegistrationRequests
         var req = new EmployerRegistrationRequest
         {
             Email = email,
             Username = username,
             PasswordHash = _hasher.Hash(dto.Password),
-
             CompanyName = dto.CompanyName,
             CompanyDescription = dto.CompanyDescription,
             ContactPerson = dto.ContactPerson,
             ContactPhone = dto.ContactPhone,
             ContactEmail = dto.ContactEmail,
             Address = dto.Address,
-
             Status = "Pending",
             CreatedAt = DateTime.UtcNow
         };
@@ -177,10 +154,7 @@ public sealed class AuthService : IAuthService
         };
     }
 
-
-
-    // GOOGLE LOGIN — PREPARE
-
+    // 3. Google Login - Prepare
     public async Task<object> GooglePrepareAsync(GoogleLoginDto dto)
     {
         var payload = await GoogleJsonWebSignature.ValidateAsync(
@@ -213,9 +187,7 @@ public sealed class AuthService : IAuthService
         };
     }
 
-
-    // GOOGLE LOGIN — COMPLETE
-
+    // 4. Google Login - Complete
     public async Task<AuthResponseDto> GoogleCompleteAsync(GoogleCompleteDto dto, string? ip)
     {
         var payload = await GoogleJsonWebSignature.ValidateAsync(
@@ -229,6 +201,7 @@ public sealed class AuthService : IAuthService
 
         if (await _db.Users.AnyAsync(x => x.Email == email))
             throw new Exception("Tài khoản Google này đã tồn tại.");
+
         var user = new User
         {
             Email = email,
@@ -246,7 +219,6 @@ public sealed class AuthService : IAuthService
 
         if (isEmployer)
         {
-           
             await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "PendingEmployer");
 
             _db.GoogleEmployerRequests.Add(new GoogleEmployerRequest
@@ -260,14 +232,14 @@ public sealed class AuthService : IAuthService
 
             await _db.SaveChangesAsync();
 
-           
             return new AuthResponseDto
             {
                 Success = true,
                 RequiresApproval = true,
-                Message = "Tài khoản Google đã được tạo. Vui lòng chờ admin phê duyệt để sử dụng tính năng Nhà tuyển dụng."
+                Message = "Tài khoản Google đã được tạo. Vui lòng chờ admin phê duyệt."
             };
         }
+
         await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "JobSeeker");
 
         const string DefaultAvatar =
@@ -286,45 +258,37 @@ public sealed class AuthService : IAuthService
         return await _tokens.IssueAsync(user, "google", ip);
     }
 
-
-
-    // LOGIN
-
+    // 5. Login
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto, string? ip)
     {
-        if (string.IsNullOrWhiteSpace(dto.UsernameOrEmail) ||
-            string.IsNullOrWhiteSpace(dto.Password))
-            throw new Exception("Email và mật khẩu là bắt buộc.");
-
         var key = dto.UsernameOrEmail.Trim().ToLowerInvariant();
 
         var user = await _db.Users
-        .Include(u => u.Roles)
-        .FirstOrDefaultAsync(x => x.Email.ToLower() == key ||
-                                  x.Username.ToLower() == key);
-        if (user == null)
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(x => x.Email.ToLower() == key || x.Username.ToLower() == key);
+
+        if (user == null || user.PasswordHash == null)
             throw new Exception("Email hoặc mật khẩu không đúng.");
+
         if (!user.IsActive)
             throw new Exception("Tài khoản bị vô hiệu hóa.");
 
-        if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
-            throw new Exception("Tài khoản đang bị khóa tạm thời.");
-
-        if (user.PasswordHash == null || !_hasher.Verify(dto.Password, user.PasswordHash))
+        // Sai mật khẩu
+        if (!_hasher.Verify(dto.Password, user.PasswordHash))
         {
             user.FailedLoginCount++;
 
-            if (user.FailedLoginCount >= 5)
+            if (user.FailedLoginCount >= 5) 
             {
                 user.LockoutEnd = DateTime.UtcNow.AddMinutes(10);
                 user.FailedLoginCount = 0;
             }
 
             await _db.SaveChangesAsync();
-
             throw new Exception("Email hoặc mật khẩu không đúng.");
         }
 
+        // Login thành công
         user.FailedLoginCount = 0;
         user.LockoutEnd = null;
         user.LastLogin = DateTime.UtcNow;
@@ -338,15 +302,12 @@ public sealed class AuthService : IAuthService
         return response;
     }
 
-    // VERIFY EMAIL
-
+    // 6. Xác minh email
     public async Task VerifyEmailAsync(string token)
     {
-        var decoded = WebUtility.UrlDecode(token);
-
-        var ev = await _db.EmailVerificationTokens.Include(x => x.User)
-            .FirstOrDefaultAsync(x => x.Token == decoded && x.UsedAt == null);
-
+        var ev = await _db.EmailVerificationTokens
+     .Include(x => x.User)
+     .FirstOrDefaultAsync(x => x.Token == token && x.UsedAt == null);
         if (ev == null || ev.ExpiresAt < DateTime.UtcNow)
             throw new Exception("Token không hợp lệ hoặc đã hết hạn.");
 
@@ -357,8 +318,7 @@ public sealed class AuthService : IAuthService
         await _db.SaveChangesAsync();
     }
 
-    // RESEND VERIFY EMAIL
-
+    // 7. Gửi lại email xác minh
     public async Task ResendVerificationAsync(string email)
     {
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
@@ -377,34 +337,22 @@ public sealed class AuthService : IAuthService
 
         await _db.SaveChangesAsync();
 
+        // Dùng template
         var link = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+        var html = _templates.CreateVerifyEmailTemplate(link);
 
         await _email.SendEmailAsync(
             user.Email,
             "PTJ - Xác minh lại email",
-            $"<p>Nhấn vào <a href='{link}'>đây</a> để xác minh email.</p>"
+            html
         );
     }
 
-
-    // REFRESH TOKEN
-
-    public Task<AuthResponseDto> RefreshAsync(string refreshToken, string? deviceInfo, string? ip)
-        => _tokens.RefreshAsync(refreshToken, deviceInfo, ip);
-
-
-    // LOGOUT
-
-    public Task LogoutAsync(string refreshToken)
-        => _tokens.RevokeAsync(refreshToken);
-    // REQUEST PASSWORD RESET
-
+    // 8. Request reset password
     public async Task RequestPasswordResetAsync(string email)
     {
         var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
-
-        if (user == null)
-            return;
+        if (user == null) return;
 
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
 
@@ -418,20 +366,22 @@ public sealed class AuthService : IAuthService
 
         await _db.SaveChangesAsync();
 
+        // Dùng template
         var link = $"{_cfg["Frontend:BaseUrl"]}/reset-password?token={WebUtility.UrlEncode(token)}";
+        var html = _templates.CreateResetPasswordTemplate(link);
 
         await _email.SendEmailAsync(
             user.Email,
             "PTJ - Đặt lại mật khẩu",
-            $"Nhấn vào <a href='{link}'>đây</a> để đặt lại mật khẩu."
+            html
         );
     }
 
-    // RESET PASSWORD
-    
+    // 9. Reset password
     public async Task ResetPasswordAsync(ResetPasswordDto dto)
     {
-        var token = await _db.PasswordResetTokens.Include(x => x.User)
+        var token = await _db.PasswordResetTokens
+            .Include(x => x.User)
             .FirstOrDefaultAsync(x => x.Token == dto.Token && !x.IsUsed);
 
         if (token == null || token.Expiration < DateTime.UtcNow)
@@ -443,4 +393,10 @@ public sealed class AuthService : IAuthService
 
         await _db.SaveChangesAsync();
     }
+    public Task<AuthResponseDto> RefreshAsync(string refreshToken, string? deviceInfo, string? ip)
+    => _tokens.RefreshAsync(refreshToken, deviceInfo, ip);
+
+    public Task LogoutAsync(string refreshToken)
+        => _tokens.RevokeAsync(refreshToken);
+
 }

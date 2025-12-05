@@ -11,7 +11,7 @@ namespace PTJ_Models.DTO.Admin
         public int CategoryId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string? Type { get; set; }      
+        public string? CategoryGroup { get; set; }
         public bool IsActive { get; set; }
         public DateTime? CreatedAt { get; set; } 
     }
@@ -20,7 +20,7 @@ namespace PTJ_Models.DTO.Admin
     {
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string? Type { get; set; }
+        public string? CategoryGroup { get; set; }
         public bool IsActive { get; set; } = true;
     }
 
@@ -28,7 +28,7 @@ namespace PTJ_Models.DTO.Admin
     {
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string? Type { get; set; }
+        public string? CategoryGroup { get; set; }
         public bool IsActive { get; set; } = true;
     }
 }

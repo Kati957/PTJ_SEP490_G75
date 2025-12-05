@@ -1,14 +1,15 @@
 ﻿using Microsoft.AspNetCore.WebUtilities;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
+using System.Net;
 using PTJ_Data;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
 using PTJ_Service.Admin.Interfaces;
 using PTJ_Service.Helpers.Interfaces;
 using PTJ_Service.Interfaces.Admin;
-using Microsoft.Extensions.Configuration;
 using PTJ_Service.Interfaces;
+using Microsoft.Extensions.Configuration;
 using PTJ_Service.Helpers.Implementations;
 using static PTJ_Models.DTO.Admin.GoogleEmployerRegListDto;
 
@@ -18,23 +19,24 @@ namespace PTJ_Service.Admin.Implementations
     {
         private readonly JobMatchingDbContext _db;
         private readonly IEmailSender _email;
+        private readonly IEmailTemplateService _templates;
         private readonly IConfiguration _cfg;
         private readonly INotificationService _noti;
 
         public AdminEmployerRegistrationService(
             JobMatchingDbContext db,
             IEmailSender email,
+            IEmailTemplateService templates,
             IConfiguration cfg,
             INotificationService noti)
         {
             _db = db;
             _email = email;
+            _templates = templates;
             _cfg = cfg;
             _noti = noti;
         }
-
-        // 1. NORMAL EMPLOYER REQUESTS
-
+        // DANH SÁCH REQUEST EMPLOYER THƯỜNG
         public async Task<PagedResult<AdminEmployerRegListItemDto>> GetRequestsAsync(
             string? status, string? keyword, int page, int pageSize)
         {
@@ -69,6 +71,7 @@ namespace PTJ_Service.Admin.Implementations
             return new PagedResult<AdminEmployerRegListItemDto>(data, total, page, pageSize);
         }
 
+        // CHI TIẾT REQUEST EMPLOYER THƯỜNG
         public async Task<AdminEmployerRegDetailDto?> GetDetailAsync(int requestId)
         {
             return await _db.EmployerRegistrationRequests
@@ -92,7 +95,7 @@ namespace PTJ_Service.Admin.Implementations
                 })
                 .FirstOrDefaultAsync();
         }
-
+        //  ADMIN DUYỆT EMPLOYER 
         public async Task ApproveAsync(int requestId, int adminId)
         {
             var req = await _db.EmployerRegistrationRequests
@@ -116,10 +119,8 @@ namespace PTJ_Service.Admin.Implementations
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            // Gán role Employer
             await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "Employer");
 
-            // Tạo EmployerProfile
             const string DefaultLogo =
                 "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
 
@@ -142,7 +143,7 @@ namespace PTJ_Service.Admin.Implementations
 
             await _db.SaveChangesAsync();
 
-            // Gửi email verify
+            // Tạo token verify — không decode nữa để tránh lỗi
             var token = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(48));
 
             _db.EmailVerificationTokens.Add(new EmailVerificationToken
@@ -154,12 +155,14 @@ namespace PTJ_Service.Admin.Implementations
 
             await _db.SaveChangesAsync();
 
-            await _email.SendEmailAsync(
-                user.Email,
-                "PTJ - Xác minh tài khoản nhà tuyển dụng",
-                $"Vui lòng xác minh email: <a href='{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}'>Xác minh</a>"
-            );
+            var verifyUrl = $"{_cfg["App:BaseUrl"]}/api/Auth/verify-email?token={token}";
+            var html = _templates.CreateVerifyEmailTemplate(verifyUrl);
+
+            await _email.SendEmailAsync(user.Email, "PTJ - Xác minh tài khoản nhà tuyển dụng", html);
         }
+
+
+        // ADMIN TỪ CHỐI EMPLOYER 
 
         public async Task RejectAsync(int requestId, AdminEmployerRegRejectDto dto)
         {
@@ -176,14 +179,16 @@ namespace PTJ_Service.Admin.Implementations
 
             await _db.SaveChangesAsync();
 
+            var html = _templates.CreateEmployerRejectedTemplate(req.CompanyName, dto.Reason);
+
             await _email.SendEmailAsync(
                 req.Email,
-                "PTJ - Hồ sơ của bạn bị từ chối",
-                $"<p>Hồ sơ đăng ký của bạn đã bị từ chối.</p><p>Lý do: {dto.Reason}</p>"
+                "PTJ - Hồ sơ nhà tuyển dụng bị từ chối",
+                html
             );
         }
 
-        // 2. GOOGLE EMPLOYER REQUESTS
+        // DANH SÁCH GOOGLE EMPLOYER REQUESTS
 
         public async Task<IEnumerable<GoogleEmployerRegListDto>> GetGoogleRequestsAsync()
         {
@@ -200,6 +205,8 @@ namespace PTJ_Service.Admin.Implementations
                 })
                 .ToListAsync();
         }
+
+        // CHI TIẾT GOOGLE EMPLOYER REQUEST
 
         public async Task<GoogleEmployerRegDetailDto?> GetGoogleDetailAsync(int id)
         {
@@ -220,6 +227,7 @@ namespace PTJ_Service.Admin.Implementations
                 .FirstOrDefaultAsync();
         }
 
+        // ADMIN DUYỆT GOOGLE EMPLOYER
         public async Task ApproveEmployerGoogleAsync(int requestId, int adminId)
         {
             var req = await _db.GoogleEmployerRequests
@@ -234,11 +242,16 @@ namespace PTJ_Service.Admin.Implementations
 
             await RoleHelper.SetSingleRoleAsync(_db, user.UserId, "Employer");
 
+            const string DefaultLogo =
+                "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
+
+            var avatar = string.IsNullOrEmpty(req.PictureUrl) ? DefaultLogo : req.PictureUrl;
+
             _db.EmployerProfiles.Add(new EmployerProfile
             {
                 UserId = user.UserId,
                 DisplayName = req.DisplayName,
-                AvatarUrl = req.PictureUrl,
+                AvatarUrl = avatar,
                 UpdatedAt = DateTime.UtcNow
             });
 
@@ -263,6 +276,8 @@ namespace PTJ_Service.Admin.Implementations
             });
         }
 
+        // ADMIN TỪ CHỐI GOOGLE EMPLOYER
+
         public async Task RejectGoogleAsync(int requestId, AdminEmployerRegRejectDto dto)
         {
             var req = await _db.GoogleEmployerRequests
@@ -278,6 +293,14 @@ namespace PTJ_Service.Admin.Implementations
             req.ReviewedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
+
+            var html = _templates.CreateEmployerRejectedTemplate(req.DisplayName, dto.Reason);
+
+            await _email.SendEmailAsync(req.User.Email,
+                "PTJ - Hồ sơ Google Employer bị từ chối",
+                html
+            );
+
             await _noti.SendAsync(new CreateNotificationDto
             {
                 UserId = req.UserId,
@@ -286,8 +309,7 @@ namespace PTJ_Service.Admin.Implementations
                 Data = new()
                 {
                     { "CompanyName", req.DisplayName },
-                    { "Reason", dto.Reason },
-                    { "Message", "Hồ sơ nhà tuyển dụng Google của bạn đã bị từ chối." }
+                    { "Reason", dto.Reason }
                 }
             });
         }

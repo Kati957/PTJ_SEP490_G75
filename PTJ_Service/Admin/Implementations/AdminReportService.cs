@@ -141,48 +141,6 @@ namespace PTJ_Service.Admin.Implementations
             }
         }
 
-        // HIDE POST
-        private async Task HandleHidePostAsync(PostReport report, AdminResolveReportDto dto)
-        {
-            if (report.AffectedPostId == null || report.AffectedPostType == null)
-                throw new Exception("Report không chứa thông tin bài đăng.");
-
-            if (report.AffectedPostType == "EmployerPost")
-            {
-                var post = await _repo.GetEmployerPostByIdAsync(report.AffectedPostId.Value);
-                if (post != null)
-                {
-                    post.Status = "Hidden";
-                    post.UpdatedAt = DateTime.UtcNow;
-
-                    await _noti.SendAsync(new CreateNotificationDto
-                    {
-                        UserId = post.UserId,
-                        NotificationType = "PostHidden",
-                        RelatedItemId = post.EmployerPostId,
-                        Data = { { "Reason", dto.Reason ?? "" } }
-                    });
-                }
-            }
-            else if (report.AffectedPostType == "JobSeekerPost")
-            {
-                var post = await _repo.GetJobSeekerPostByIdAsync(report.AffectedPostId.Value);
-                if (post != null)
-                {
-                    post.Status = "Hidden";
-                    post.UpdatedAt = DateTime.UtcNow;
-
-                    await _noti.SendAsync(new CreateNotificationDto
-                    {
-                        UserId = post.UserId,
-                        NotificationType = "PostHidden",
-                        RelatedItemId = post.JobSeekerPostId,
-                        Data = { { "Reason", dto.Reason ?? "" } }
-                    });
-                }
-            }
-        }
-
         private async Task HandleWarnUserAsync(PostReport report, AdminResolveReportDto dto)
         {
             if (report.TargetUserId == null)

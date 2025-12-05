@@ -26,4 +26,8 @@ public partial class EmployerTransaction
     public string? QrCodeUrl { get; set; }
 
     public DateTime? QrExpiredAt { get; set; }
+
+    public virtual EmployerPlan Plan { get; set; } = null!;
+
+    public virtual User User { get; set; } = null!;
 }
