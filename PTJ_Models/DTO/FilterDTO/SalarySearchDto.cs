@@ -8,9 +8,9 @@ namespace PTJ_Models.DTO.FilterDTO
     {
     public class SalarySearchDto
         {
-        public bool Negotiable { get; set; } = false;  // Người dùng chọn "Thỏa thuận"
+        public bool Negotiable { get; set; } = false;  
         public int? MinSalary { get; set; }
         public int? MaxSalary { get; set; }
-        public bool IncludeNegotiable { get; set; } = true; // dùng cho trường hợp lọc theo khoảng
+        public bool IncludeNegotiable { get; set; } = true; 
         }
     }

@@ -47,11 +47,15 @@ public partial class User
 
     public virtual ICollection<EmployerShortlistedCandidate> EmployerShortlistedCandidateJobSeekers { get; set; } = new List<EmployerShortlistedCandidate>();
 
+    public virtual ICollection<EmployerSubscription> EmployerSubscriptions { get; set; } = new List<EmployerSubscription>();
+
+    public virtual ICollection<EmployerTransaction> EmployerTransactions { get; set; } = new List<EmployerTransaction>();
+
     public virtual ICollection<ExternalLogin> ExternalLogins { get; set; } = new List<ExternalLogin>();
 
     public virtual ICollection<FavoritePost> FavoritePosts { get; set; } = new List<FavoritePost>();
 
-    public virtual ICollection<GoogleEmployerRequest> GoogleEmployerRequests { get; set; } = new List<GoogleEmployerRequest>();
+    public virtual GoogleEmployerRequest? GoogleEmployerRequest { get; set; }
 
     public virtual ICollection<JobSeekerCv> JobSeekerCvs { get; set; } = new List<JobSeekerCv>();
 
