@@ -16,7 +16,9 @@ namespace PTJ_Data.Repositories.Interfaces.Admin
             int page = 1,
             int pageSize = 10);
         Task<AdminReportDetailDto?> GetReportDetailAsync(int reportId);
-        Task<PostReport?> GetReportByIdAsync(int id);
+        Task<PostReport?> GetReportByIdAsync(int reportId);
+        Task<PostReportSolved?> GetSolvedReportByReportIdAsync(int reportId);
+        Task<AdminSolvedReportDto?> GetSolvedReportDetailAsync(int solvedId);
         Task<EmployerPost?> GetEmployerPostByIdAsync(int id);
         Task<JobSeekerPost?> GetJobSeekerPostByIdAsync(int id);
         Task AddSolvedReportAsync(PostReportSolved solved);

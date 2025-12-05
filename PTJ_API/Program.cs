@@ -9,6 +9,9 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
+using PayOS;
+using PayOS.Models;
+
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
@@ -72,6 +75,9 @@ using PTJ_Service.CategoryService.Implementations;
 using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Implementations;
 using System.Security.Claims;
+using PTJ_API.Middlewares;
+using PTJ_Service.PaymentsService;
+using PTJ_Service.PaymentsService.Implementations;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -181,7 +187,7 @@ builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddHostedService<PostExpirationService>();
-
+builder.Services.AddScoped<IEmployerPaymentService, EmployerPaymentService>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -298,9 +304,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-
-
-
 // 5️⃣ CONTROLLERS + JSON OPTIONS
 
 builder.Services.AddControllers()
@@ -315,26 +318,42 @@ builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
-// Swagger
+//  Force ASP.NET to always use port 5000 on VPS (Production)
+if (!app.Environment.IsDevelopment())
+    {
+    app.Urls.Clear();
+    app.Urls.Add("http://0.0.0.0:5000");
+    }
+
+// Swagger chạy cả dev + production
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Middleware
+// Dev mode (local)
 if (app.Environment.IsDevelopment())
     {
     app.UseSwagger();
     app.UseSwaggerUI();
     }
 
+// ❗ HTTPS chỉ dùng local — KHÔNG dùng trên VPS
+if (app.Environment.IsDevelopment())
+    {
+    app.UseHttpsRedirection();
+    }
 
-app.UseHttpsRedirection();
-app.UseCors("AllowLocalhost");   // Phải đặt trước Authentication
+app.UseCors("AllowLocalhost");
 app.UseAuthentication();
 app.UseAuthorization();
-// SignalR Hub Registration
-app.UseMiddleware<ErrorHandlingMiddleware>();
-app.MapHub<NotificationHub>("/hubs/notification");
 
+app.UseMiddleware<PendingEmployerMiddleware>();
+app.UseMiddleware<ErrorHandlingMiddleware>();
+// SignalR Hub Registration
+
+app.MapHub<NotificationHub>("/hubs/notification");
 app.MapControllers();
 
+app.MapGet("/", () => "PTJ API is running");
+
 app.Run();
+

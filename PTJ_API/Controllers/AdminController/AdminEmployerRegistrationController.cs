@@ -17,7 +17,8 @@ namespace PTJ_API.Controllers.Admin
             _svc = svc;
         }
 
-        // 1️⃣ Lấy danh sách hồ sơ đăng ký employer
+        // NORMAL REGISTRATION REQUESTS
+
         [HttpGet]
         public async Task<IActionResult> GetRequests(
             [FromQuery] string? status = null,
@@ -29,7 +30,6 @@ namespace PTJ_API.Controllers.Admin
             return Ok(data);
         }
 
-        // 2️⃣ Lấy chi tiết 1 hồ sơ
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetDetail(int id)
         {
@@ -40,7 +40,6 @@ namespace PTJ_API.Controllers.Admin
             return Ok(detail);
         }
 
-        // 3️⃣ Duyệt hồ sơ → tạo User + EmployerProfile
         [HttpPost("{id:int}/approve")]
         public async Task<IActionResult> Approve(int id)
         {
@@ -50,12 +49,49 @@ namespace PTJ_API.Controllers.Admin
             return Ok(new { message = "Duyệt hồ sơ thành công." });
         }
 
-        // 4️⃣ Từ chối hồ sơ
         [HttpPost("{id:int}/reject")]
         public async Task<IActionResult> Reject(int id, [FromBody] AdminEmployerRegRejectDto dto)
         {
             await _svc.RejectAsync(id, dto);
             return Ok(new { message = "Đã từ chối hồ sơ." });
+        }
+        // GOOGLE EMPLOYER REGISTRATION REQUESTS
+
+        // DANH SÁCH GOOGLE REQUESTS
+        [HttpGet("google")]
+        public async Task<IActionResult> GetGoogleRequests()
+        {
+            var data = await _svc.GetGoogleRequestsAsync();
+            return Ok(data);
+        }
+
+        // CHI TIẾT GOOGLE REQUEST
+        [HttpGet("google/{id:int}")]
+        public async Task<IActionResult> GetGoogleDetail(int id)
+        {
+            var detail = await _svc.GetGoogleDetailAsync(id);
+            if (detail == null)
+                return NotFound(new { message = "Không tìm thấy hồ sơ Google." });
+
+            return Ok(detail);
+        }
+
+        // APPROVE GOOGLE REQUEST
+        [HttpPost("google/{id:int}/approve")]
+        public async Task<IActionResult> ApproveGoogle(int id)
+        {
+            var adminId = int.Parse(User.FindFirst("sub")?.Value ?? "0");
+
+            await _svc.ApproveEmployerGoogleAsync(id, adminId);
+            return Ok(new { message = "Duyệt hồ sơ Google thành công." });
+        }
+
+        // REJECT GOOGLE REQUEST
+        [HttpPost("google/{id:int}/reject")]
+        public async Task<IActionResult> RejectGoogle(int id, [FromBody] AdminEmployerRegRejectDto dto)
+        {
+            await _svc.RejectGoogleAsync(id, dto);
+            return Ok(new { message = "Đã từ chối hồ sơ Google." });
         }
     }
 }

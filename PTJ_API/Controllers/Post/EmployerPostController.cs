@@ -1,7 +1,9 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PTJ_Models.DTO.PostDTO;
+using PTJ_Models.Models;
 using PTJ_Service.EmployerPostService;
 
 namespace PTJ_API.Controllers.Post
@@ -12,11 +14,13 @@ namespace PTJ_API.Controllers.Post
     public class EmployerPostController : ControllerBase
     {
         private readonly IEmployerPostService _service;
+        private readonly JobMatchingDbContext _db;
 
-        public EmployerPostController(IEmployerPostService service)
+        public EmployerPostController(IEmployerPostService service, JobMatchingDbContext db)
         {
             _service = service;
-        }
+            _db = db;
+            }
 
         private IActionResult Forbidden(string message)
         {
@@ -243,5 +247,37 @@ namespace PTJ_API.Controllers.Post
                 }
             }
 
+        [HttpGet("remaining-posts/{userId}")]
+        public async Task<IActionResult> GetRemainingPosts(int userId)
+            {
+            var currentUserId = GetCurrentUserId();
+            bool isAdmin = User.IsInRole("Admin");
+
+            // Chỉ cho phép admin hoặc chính chủ xem
+            if (!isAdmin && currentUserId != userId)
+                return StatusCode(403, new { success = false, message = "Bạn không có quyền xem dữ liệu này." });
+
+            // Lấy subscription đang active
+            var sub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == userId && s.Status == "Active")
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (sub == null)
+                return Ok(new { plan = "None", remaining = 0, endDate = (DateTime?)null });
+
+            // 🔥 Truy vấn PlanName thông qua PlanId (không dùng navigation)
+            var planName = await _db.EmployerPlans
+                .Where(p => p.PlanId == sub.PlanId)
+                .Select(p => p.PlanName)
+                .FirstOrDefaultAsync();
+
+            return Ok(new
+                {
+                plan = planName ?? "Unknown",
+                remaining = sub.RemainingPosts,
+                endDate = sub.EndDate
+                });
+            }
         }
     }

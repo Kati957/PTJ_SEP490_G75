@@ -7,12 +7,20 @@ namespace PTJ_Data.Repositories.Interfaces
     {
         Task<bool> EmployerPostExistsAsync(int employerPostId);
         Task<bool> JobSeekerPostExistsAsync(int jobSeekerPostId);
+
+        Task<int?> GetEmployerPostOwnerIdAsync(int postId);
+        Task<int?> GetJobSeekerPostOwnerIdAsync(int postId);
+
         Task AddAsync(PostReport report);
         Task SaveChangesAsync();
+
+        Task<bool> HasRecentDuplicateAsync(int reporterId, string reportType, int postId, int withinMinutes);
+
         Task<IEnumerable<MyReportDto>> GetMyReportsAsync(int reporterId);
-        Task<bool> HasRecentDuplicateAsync(int reporterId, string reportType, int affectedPostId, int withinMinutes);
+
         Task<string?> GetEmployerPostTitleAsync(int employerPostId);
         Task<string?> GetJobSeekerPostTitleAsync(int jobSeekerPostId);
+
         Task<int> GetAdminUserIdAsync();
     }
 }
