@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Data;
 using PTJ_Models.DTO.PostDTO;
 using PTJ_Models.Models;
 using PTJ_Service.EmployerPostService;
