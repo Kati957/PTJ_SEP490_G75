@@ -120,6 +120,11 @@ namespace PTJ_Service.PaymentsService.Implementations
 
             dynamic result = JsonConvert.DeserializeObject(content);
 
+            if (result == null || result.data == null)
+                {
+                throw new Exception($"PayOS trả về dữ liệu không hợp lệ: {content}");
+                }
+
             // 7. Lấy dữ liệu từ PayOS
             string checkoutUrl = result.data.checkoutUrl;
             string payOsOrderCode = result.data.orderCode;
@@ -366,6 +371,11 @@ namespace PTJ_Service.PaymentsService.Implementations
                 }
 
             dynamic result = JsonConvert.DeserializeObject(json);
+            if (result == null || result.data == null)
+                {
+                Console.WriteLine("❌ PayOS status invalid: " + json);
+                return string.Empty;
+                }
             string status = result.data.status;
             Console.WriteLine($"🔄 PayOS status for {orderCode} => {status}");
             return status;
