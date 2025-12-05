@@ -78,7 +78,6 @@ using System.Security.Claims;
 using PTJ_API.Middlewares;
 using PTJ_Service.PaymentsService;
 using PTJ_Service.PaymentsService.Implementations;
-using PTJ_API.BackgroundServices;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -189,7 +188,6 @@ builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddHostedService<PostExpirationService>();
 builder.Services.AddScoped<IEmployerPaymentService, EmployerPaymentService>();
-builder.Services.AddHostedService<PayOsSyncService>();
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();

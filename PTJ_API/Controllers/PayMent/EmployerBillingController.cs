@@ -86,19 +86,56 @@ namespace PTJ_API.Controllers.Payment
         // 4. Hủy thanh toán
         // -----------------------
         [HttpGet("cancel")]
-        public IActionResult PaymentCancel()
+        public async Task<IActionResult> Cancel(long orderCode)
             {
-            return Ok(new
-                {
-                message = "Thanh toán đã bị hủy.",
-                status = "CANCELLED"
-                });
-            }
-        }
+            var trans = await _db.EmployerTransactions
+                .FirstOrDefaultAsync(x => x.PayOsorderCode == orderCode.ToString());
 
-    // DTO FE gửi vào
-    public class CreatePaymentDto
-        {
-        public int PlanId { get; set; }
+            if (trans != null && trans.Status == "Pending")
+                {
+                trans.Status = "Cancelled";
+                await _db.SaveChangesAsync();
+                }
+
+            return Redirect("/payment-failed");
+            }
+
+
+        [HttpGet("active-subscriptions")]
+        public async Task<IActionResult> GetActiveSubscriptions()
+            {
+            var result = await _payment.GetActiveSubscriptionsAsync();
+            return Ok(result);
+            }
+
+        [Authorize]
+        [HttpGet("transaction-history")]
+        public async Task<IActionResult> GetTransactionHistory()
+            {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var result = await _payment.GetTransactionHistoryAsync(userId);
+
+            return Ok(new { success = true, data = result });
+            }
+
+        [Authorize]
+        [HttpGet("subscription-history")]
+        public async Task<IActionResult> GetSubscriptionHistory()
+            {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+            var result = await _payment.GetSubscriptionHistoryAsync(userId);
+
+            return Ok(new { success = true, data = result });
+            }
+
+
+
+        // DTO FE gửi vào
+        public class CreatePaymentDto
+            {
+            public int PlanId { get; set; }
+            }
         }
     }

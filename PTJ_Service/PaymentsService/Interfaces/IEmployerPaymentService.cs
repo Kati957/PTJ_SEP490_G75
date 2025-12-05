@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using PTJ_Models.DTO.PaymentEmploy;
 
 namespace PTJ_Service.PaymentsService
     {
@@ -15,7 +16,10 @@ namespace PTJ_Service.PaymentsService
         /// Đồng bộ lại trạng thái các giao dịch Pending với PayOS.
         /// Trả về số lượng transaction được cập nhật.
         /// </summary>
-        Task<int> SyncPendingTransactionsAsync(int maxAgeMinutes = 5);
+        Task<List<EmployerPurchaseDto>> GetActiveSubscriptionsAsync();
+
+        Task<List<EmployerTransactionHistoryDto>> GetTransactionHistoryAsync(int userId);
+        Task<List<EmployerSubscriptionHistoryDto>> GetSubscriptionHistoryAsync(int userId);
 
 
         }

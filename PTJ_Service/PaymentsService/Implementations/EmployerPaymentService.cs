@@ -9,6 +9,7 @@ using PTJ_Models.Models;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
+using PTJ_Models.DTO.PaymentEmploy;
 
 namespace PTJ_Service.PaymentsService.Implementations
     {
@@ -86,7 +87,9 @@ namespace PTJ_Service.PaymentsService.Implementations
             _db.EmployerTransactions.Add(trans);
             await _db.SaveChangesAsync();
 
-            long orderCode = 100000 + trans.TransactionId;
+            long orderCode = long.Parse(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+
+
 
             // 5. Build PayOS body + checksum
             var body = new SortedDictionary<string, object?>
@@ -152,7 +155,7 @@ namespace PTJ_Service.PaymentsService.Implementations
         // ============================
         public async Task HandleWebhookAsync(string rawJson, string signature)
             {
-            Console.WriteLine("📩 RAW WEBHOOK => " + rawJson);
+            Console.WriteLine("📩 RAW WEBHOOK BODY => " + rawJson);
 
             var payload = JsonConvert.DeserializeObject<JObject>(rawJson);
             if (payload == null)
@@ -161,152 +164,58 @@ namespace PTJ_Service.PaymentsService.Implementations
                 return;
                 }
 
+            // --- Lấy object data ---
             JObject data = payload["data"]?.ToObject<JObject>() ?? payload;
 
-            long orderCode = data["orderCode"]?.Value<long>() ?? 0L;
+            long orderCode = data["orderCode"]?.Value<long>() ?? 0;
+
             string code = data["code"]?.Value<string>() ?? "";
             string status = data["status"]?.Value<string>() ?? "";
 
             Console.WriteLine($"📌 orderCode={orderCode}, code={code}, status={status}");
 
-            // 3. Verify signature
+            // --- Verify signature ---
             string checksumKey = _config["PayOS:ChecksumKey"];
 
             var sorted = new SortedDictionary<string, string>();
             foreach (var prop in data.Properties())
                 sorted[prop.Name] = prop.Value?.ToString() ?? "";
 
-            string raw = string.Join("&", sorted.Select(x => $"{x.Key}={x.Value}"));
+            string raw = string.Join("&", sorted.Select(k => $"{k.Key}={k.Value}"));
             string computed = ComputeSignature(raw, checksumKey);
 
             if (!_env.EnvironmentName.ToLower().Contains("development"))
                 {
                 if (!string.Equals(signature, computed, StringComparison.OrdinalIgnoreCase))
                     {
-                    Console.WriteLine("❌ Signature mismatch!");
+                    Console.WriteLine("❌ Sai chữ ký!");
                     return;
                     }
                 }
 
-            Console.WriteLine("✅ Signature valid!");
+            Console.WriteLine("✅ Webhook hợp lệ!");
 
-            // 4. Lấy transaction local
+            bool success = code == "00" || status.ToUpper() == "PAID";
+
             var trans = await _db.EmployerTransactions
                 .FirstOrDefaultAsync(x => x.PayOsorderCode == orderCode.ToString());
 
             if (trans == null)
                 {
-                Console.WriteLine("❌ Transaction not found");
-                return;
-                }
-
-            // Tránh xử lý lại
-            if (trans.Status == "Paid")
-                {
-                Console.WriteLine("⚠ Webhook đã xử lý trước đó, bỏ qua.");
+                Console.WriteLine($"❌ Transaction not found: {orderCode}");
                 return;
                 }
 
             trans.RawWebhookData = rawJson;
 
-            // 5. Xác định kết quả thanh toán
-            string st = status.ToUpper();
-            bool success = (code == "00" || st == "PAID");
-
             if (success)
                 {
                 trans.Status = "Paid";
                 trans.PaidAt = DateTime.Now;
-
                 await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
                 }
-            else if (st == "EXPIRED")
-                trans.Status = "Expired";
-            else if (st == "CANCELLED")
-                trans.Status = "Cancelled";
-            else
-                trans.Status = "Failed";
 
             await _db.SaveChangesAsync();
-            }
-
-        // ============================
-        // 3. SYNC PENDING WITH PAYOS
-        // ============================
-        /// <summary>
-        /// Đồng bộ lại trạng thái các transaction Pending với PayOS.
-        /// Gợi ý: gọi từ BackgroundService (VD: mỗi 1–5 phút).
-        /// </summary>
-        public async Task<int> SyncPendingTransactionsAsync(int maxAgeMinutes = 5)
-            {
-            var now = DateTime.Now;
-            var cutoff = now.AddMinutes(-maxAgeMinutes);
-
-            var pendingList = await _db.EmployerTransactions
-                .Where(x =>
-                    x.Status == "Pending" &&
-                    x.PayOsorderCode != null &&
-                    x.CreatedAt <= cutoff)
-                .ToListAsync();
-
-            if (!pendingList.Any())
-                return 0;
-
-            int updated = 0;
-
-            foreach (var trans in pendingList)
-                {
-                if (!long.TryParse(trans.PayOsorderCode, out var orderCode))
-                    continue;
-
-                string status = await QueryPayOsStatusAsync(orderCode);
-                string statusUpper = status.ToUpper();
-
-                // Không có gì thay đổi
-                if (statusUpper == "PENDING" || string.IsNullOrWhiteSpace(statusUpper))
-                    continue;
-
-                // Mapping
-                if (statusUpper == "PAID")
-                    {
-                    if (trans.Status != "Paid")
-                        {
-                        trans.Status = "Paid";
-                        trans.PaidAt = now;
-                        await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
-                        updated++;
-                        }
-                    }
-                else if (statusUpper == "CANCELLED")
-                    {
-                    if (trans.Status != "Cancelled")
-                        {
-                        trans.Status = "Cancelled";
-                        updated++;
-                        }
-                    }
-                else if (statusUpper == "EXPIRED")
-                    {
-                    if (trans.Status != "Expired")
-                        {
-                        trans.Status = "Expired";
-                        updated++;
-                        }
-                    }
-                else if (statusUpper == "FAILED")
-                    {
-                    if (trans.Status != "Failed")
-                        {
-                        trans.Status = "Failed";
-                        updated++;
-                        }
-                    }
-                }
-
-            if (updated > 0)
-                await _db.SaveChangesAsync();
-
-            return updated;
             }
 
         // ============================
@@ -343,45 +252,6 @@ namespace PTJ_Service.PaymentsService.Implementations
             }
 
         // ============================
-        // 5. QUERY PAYOS STATUS
-        // ============================
-        /// <summary>
-        /// Gọi API PayOS để lấy trạng thái orderCode hiện tại.
-        /// </summary>
-        private async Task<string> QueryPayOsStatusAsync(long orderCode)
-            {
-            string baseUrl = _config["PayOS:BaseUrl"];
-
-            // TODO: chỉnh lại endpoint cho đúng với docs PayOS của bạn.
-            // Ví dụ: "/v2/payment-requests/{orderCode}"
-            string endpoint = $"/v2/payment-requests/{orderCode}";
-            string url = baseUrl + endpoint;
-
-            _http.DefaultRequestHeaders.Clear();
-            _http.DefaultRequestHeaders.Add("x-client-id", _config["PayOS:ClientId"]);
-            _http.DefaultRequestHeaders.Add("x-api-key", _config["PayOS:ApiKey"]);
-
-            var resp = await _http.GetAsync(url);
-            var json = await resp.Content.ReadAsStringAsync();
-
-            if (!resp.IsSuccessStatusCode)
-                {
-                Console.WriteLine($"❌ QueryPayOsStatusAsync error: {json}");
-                return string.Empty;
-                }
-
-            dynamic result = JsonConvert.DeserializeObject(json);
-            if (result == null || result.data == null)
-                {
-                Console.WriteLine("❌ PayOS status invalid: " + json);
-                return string.Empty;
-                }
-            string status = result.data.status;
-            Console.WriteLine($"🔄 PayOS status for {orderCode} => {status}");
-            return status;
-            }
-
-        // ============================
         // 6. HMAC SIGNATURE
         // ============================
         private string ComputeSignature(string raw, string secret)
@@ -390,5 +260,78 @@ namespace PTJ_Service.PaymentsService.Implementations
             var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(raw));
             return BitConverter.ToString(hash).Replace("-", "").ToLower();
             }
+
+        public async Task<List<EmployerPurchaseDto>> GetActiveSubscriptionsAsync()
+            {
+            var result = await (
+                from sub in _db.EmployerSubscriptions
+                join user in _db.Users on sub.UserId equals user.UserId
+                join plan in _db.EmployerPlans on sub.PlanId equals plan.PlanId
+                where sub.Status == "Active"
+                select new EmployerPurchaseDto
+                    {
+                    UserId = sub.UserId,
+                    FullName = user.Username,
+                    Email = user.Email,
+                    PlanId = sub.PlanId,
+                    PlanName = plan.PlanName,
+                    Price = plan.Price,
+
+                    StartDate = sub.StartDate,
+                    EndDate = sub.EndDate,
+                    RemainingPosts = sub.RemainingPosts,
+                    Status = sub.Status
+                    }
+            ).ToListAsync();
+
+            return result;
+            }
+
+        public async Task<List<EmployerTransactionHistoryDto>> GetTransactionHistoryAsync(int userId)
+            {
+            var items = await _db.EmployerTransactions
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .Select(x => new EmployerTransactionHistoryDto
+                    {
+                    TransactionId = x.TransactionId,
+                    Status = x.Status,
+                    Amount = x.Amount,
+                    PayOSOrderCode = x.PayOsorderCode,
+                    CreatedAt = x.CreatedAt,
+                    PaidAt = x.PaidAt,
+
+                    PlanId = x.PlanId,                
+                    QrExpiredAt = x.QrExpiredAt,    
+                    QrCodeUrl = x.QrCodeUrl        
+                    })
+                .ToListAsync();
+
+            return items;
+            }
+
+
+        public async Task<List<EmployerSubscriptionHistoryDto>> GetSubscriptionHistoryAsync(int userId)
+            {
+            var items = await (
+                from sub in _db.EmployerSubscriptions
+                join plan in _db.EmployerPlans on sub.PlanId equals plan.PlanId
+                where sub.UserId == userId
+                orderby sub.StartDate descending
+                select new EmployerSubscriptionHistoryDto
+                    {
+                    SubscriptionId = sub.SubscriptionId,
+                    PlanName = plan.PlanName,
+                    Price = plan.Price,
+                    RemainingPosts = sub.RemainingPosts,
+                    Status = sub.Status,
+                    StartDate = sub.StartDate,
+                    EndDate = sub.EndDate
+                    }
+            ).ToListAsync();
+
+            return items;
+            }
+
         }
     }
