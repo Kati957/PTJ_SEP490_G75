@@ -1,8 +1,13 @@
-﻿namespace PTJ_Models.DTO
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace PTJ_Models.DTO
 {
     public class SystemReportCreateDto
     {
+        [Required]
         public string Title { get; set; }
+
+        [Required]
         public string Description { get; set; }
     }
 
@@ -19,7 +24,7 @@
 
     public class SystemReportUpdateDto
     {
+        [Required]
         public string Status { get; set; }
     }
 }
-

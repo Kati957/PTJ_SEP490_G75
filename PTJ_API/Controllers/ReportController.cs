@@ -8,7 +8,7 @@ namespace PTJ_API.Controllers
 {
     [ApiController]
     [Route("api/reports")]
-    [Authorize]   
+    [Authorize]
     public class ReportController : ControllerBase
     {
         private readonly IReportService _svc;
@@ -18,19 +18,18 @@ namespace PTJ_API.Controllers
             _svc = svc;
         }
 
-        // 1️⃣ TẠO REPORT BÀI ĐĂNG (EmployerPost / JobSeekerPost)
-
+        // TẠO REPORT BÀI ĐĂNG
         [HttpPost("post")]
         public async Task<IActionResult> ReportPost([FromBody] CreatePostReportDto dto)
         {
             if (dto == null)
-                return BadRequest(new { message = "Thiếu dữ liệu report." });
+                return BadRequest(new { message = "Thiếu dữ liệu báo cáo." });
 
             if (dto.PostId <= 0)
                 return BadRequest(new { message = "PostId không hợp lệ." });
 
-            if (string.IsNullOrWhiteSpace(dto.PostType))
-                return BadRequest(new { message = "PostType không hợp lệ." });
+            if (string.IsNullOrWhiteSpace(dto.ReportType))
+                return BadRequest(new { message = "ReportType không được để trống." });
 
             int reporterId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -38,15 +37,14 @@ namespace PTJ_API.Controllers
 
             return Ok(new
             {
-                message = "Đã gửi báo cáo thành công.",
+                success = true,
+                message = "Gửi báo cáo thành công.",
                 reportId = reportId
             });
         }
 
 
-
-        // 2️⃣ LẤY DANH SÁCH REPORT CỦA USER
-
+        // XEM DANH SÁCH REPORT CỦA USER
         [HttpGet("my")]
         public async Task<IActionResult> GetMyReports()
         {
@@ -54,7 +52,11 @@ namespace PTJ_API.Controllers
 
             var reports = await _svc.GetMyReportsAsync(reporterId);
 
-            return Ok(reports);
+            return Ok(new
+            {
+                success = true,
+                data = reports
+            });
         }
     }
 }

@@ -41,6 +41,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             var total = await q.CountAsync();
             var items = await q
                 .OrderByDescending(p => p.CreatedAt)
+                .ThenByDescending(p => p.EmployerPostId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(p => new AdminEmployerPostDto
@@ -167,6 +168,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             var total = await q.CountAsync();
             var items = await q
                 .OrderByDescending(p => p.CreatedAt)
+                .ThenByDescending(p => p.JobSeekerPostId)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(p => new AdminJobSeekerPostDto

@@ -10,6 +10,7 @@ using PTJ_Service.LocationService;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using PTJ_Data;
 
 namespace PTJ_Services.Implementations
     {

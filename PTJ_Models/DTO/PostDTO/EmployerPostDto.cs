@@ -51,8 +51,6 @@ namespace PTJ_Models.DTO.PostDTO
         [Range(1, int.MaxValue)]
         public int CategoryID { get; set; }
 
-        public int? SubCategoryId { get; set; }
-
         [Required]
         [RegularExpression(@"^(0[3|5|7|8|9])[0-9]{8}$")]
         public string PhoneContact { get; set; } = string.Empty;

@@ -51,6 +51,8 @@ public partial class User
 
     public virtual ICollection<FavoritePost> FavoritePosts { get; set; } = new List<FavoritePost>();
 
+    public virtual ICollection<GoogleEmployerRequest> GoogleEmployerRequests { get; set; } = new List<GoogleEmployerRequest>();
+
     public virtual ICollection<JobSeekerCv> JobSeekerCvs { get; set; } = new List<JobSeekerCv>();
 
     public virtual ICollection<JobSeekerPost> JobSeekerPosts { get; set; } = new List<JobSeekerPost>();

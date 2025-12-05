@@ -2,7 +2,7 @@
 
 namespace PTJ_Models.DTO.Admin
 {
-    // 1️⃣ Report chưa xử lý (Pending)
+    //Report chưa xử lý (Pending)
     public class AdminReportDto
     {
         public int ReportId { get; set; }
@@ -14,14 +14,14 @@ namespace PTJ_Models.DTO.Admin
         public int? PostId { get; set; }
         public string? PostType { get; set; }
         public string? PostTitle { get; set; }
-
+        public string? ActionTaken { get; set; }
         public string? Reason { get; set; }
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
     }
 
 
-    // 2️⃣ Report đã xử lý (Solved)
+    // Report đã xử lý (Solved)
     public class AdminSolvedReportDto
     {
         public int SolvedReportId { get; set; }

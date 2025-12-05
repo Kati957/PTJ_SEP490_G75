@@ -27,7 +27,8 @@ namespace PTJ_Service.AiService.Implementations
 
             //  LM Studio config 
             //  Ví dụ: http://127.0.0.1:1234/v1
-            _lmStudioUrl = cfg["LMStudio:Url"] ?? "http://127.0.0.1:1234/v1";
+            _lmStudioUrl = cfg["LMStudio:Url"] ?? "http://127.0.0.1:1234";
+
             _embeddingModel = cfg["LMStudio:EmbeddingModel"] ?? "text-embedding-nomic-embed-text-v2-moe";
             }
 
@@ -189,21 +190,44 @@ namespace PTJ_Service.AiService.Implementations
 
         //  Kiểm tra kết nối LM Studio
 
+        //private async Task CheckLMStudioHealthAsync()
+        //    {
+        //    try
+        //        {
+        //        using var healthCheck = new HttpClient();
+        //        //  LM Studio dùng endpoint OpenAI-style
+        //        var res = await healthCheck.GetAsync($"{_lmStudioUrl}/models");
+        //        if (!res.IsSuccessStatusCode)
+        //            {
+        //            throw new Exception("LM Studio local API không phản hồi. Hãy đảm bảo LM Studio đang mở và bật 'Local Inference Server'.");
+        //            }
+        //        }
+        //    catch
+        //        {
+        //        throw new Exception("Không thể kết nối LM Studio. Vui lòng mở LM Studio và bật Local Server (Settings → Developer → Enable Local Inference Server).");
+        //        }
+        //    }
+
         private async Task CheckLMStudioHealthAsync()
             {
             try
                 {
                 using var healthCheck = new HttpClient();
-                //  LM Studio dùng endpoint OpenAI-style
-                var res = await healthCheck.GetAsync($"{_lmStudioUrl}/models");
-                if (!res.IsSuccessStatusCode)
+
+                var payload = new
                     {
-                    throw new Exception("LM Studio local API không phản hồi. Hãy đảm bảo LM Studio đang mở và bật 'Local Inference Server'.");
-                    }
+                    model = _embeddingModel,
+                    input = "ping"
+                    };
+
+                var res = await healthCheck.PostAsJsonAsync($"{_lmStudioUrl}/embeddings", payload);
+
+                if (!res.IsSuccessStatusCode)
+                    throw new Exception("Embedding server không phản hồi.");
                 }
-            catch
+            catch (Exception ex)
                 {
-                throw new Exception("Không thể kết nối LM Studio. Vui lòng mở LM Studio và bật Local Server (Settings → Developer → Enable Local Inference Server).");
+                throw new Exception("Không thể kết nối Embedding Server (VPS).");
                 }
             }
 
