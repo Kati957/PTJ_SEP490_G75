@@ -34,7 +34,7 @@ namespace PTJ_Service.PaymentsService.Implementations
         // ============================
         // 1. CREATE PAYMENT LINK
         // ============================
-        public async Task<string> CreatePaymentLinkAsync(int userId, int planId)
+        public async Task<PaymentLinkResultDto> CreatePaymentLinkAsync(int userId, int planId)
             {
             // 0. Validate user
             var user = await _db.Users.FirstOrDefaultAsync(x => x.UserId == userId)
@@ -43,24 +43,36 @@ namespace PTJ_Service.PaymentsService.Implementations
             if (!user.IsActive)
                 throw new Exception("Tài khoản của bạn đang bị khóa. Không thể thanh toán.");
 
-            // === 1. Tìm giao dịch Pending CÙNG GÓI của user ===
+            // 1. Tìm giao dịch Pending CÙNG GÓI của user
             var oldPending = await _db.EmployerTransactions
                 .Where(x => x.UserId == userId && x.Status == "Pending" && x.PlanId == planId)
                 .OrderByDescending(x => x.TransactionId)
                 .FirstOrDefaultAsync();
 
+            // ⚠ Có pending cùng gói
             if (oldPending != null)
                 {
-                // Nếu QR còn hạn → dùng lại QR
-                if (oldPending.QrExpiredAt > DateTime.Now)
-                    return oldPending.QrCodeUrl ?? throw new Exception("QR code không tồn tại");
+                // QR còn hạn → dùng lại luôn
+                if (oldPending.QrExpiredAt.HasValue && oldPending.QrExpiredAt > DateTime.Now)
+                    {
+                    var existingCheckoutUrl = ExtractCheckoutUrl(oldPending.RawWebhookData);
 
-                // Nếu QR hết hạn → refresh QR trong transaction cũ
-                string newQr = await RefreshPaymentLinkAsync(oldPending.TransactionId);
-                return newQr;
+
+                    return new PaymentLinkResultDto
+                        {
+                        TransactionId = oldPending.TransactionId,
+                        CheckoutUrl = existingCheckoutUrl,
+
+                        QrCodeRaw = oldPending.QrCodeUrl ?? string.Empty,
+                        ExpiredAt = oldPending.QrExpiredAt
+                        };
+                    }
+
+                // QR hết hạn → refresh trên transaction cũ
+                return await RefreshPaymentLinkAsync(oldPending.TransactionId);
                 }
 
-            // === 2. Không có pending transaction → tạo mới ===
+            // 2. Không có pending transaction → tạo mới
 
             // 2.1 Kiểm tra gói
             var plan = await _db.EmployerPlans.FirstOrDefaultAsync(x => x.PlanId == planId)
@@ -133,21 +145,24 @@ namespace PTJ_Service.PaymentsService.Implementations
             // 7. Lấy link thanh toán
             string checkoutUrl = result.data.checkoutUrl;
             string payOsOrderCode = result.data.orderCode;
-            string qrRaw = result.data.qrCode;   // PayOS trả qrCode, không phải qrCodeUrl
-            string qrBase64 = GenerateQrBase64(qrRaw);
+            string qrRaw = result.data.qrCode;   // PayOS trả QR RAW
 
-            // 8. Lưu lại vào transaction
+            // 8. Lưu lại vào transaction (GIỮ RAW)
             trans.PayOsorderCode = payOsOrderCode;
             trans.RawWebhookData = content;
-            trans.QrCodeUrl = qrRaw;            // Lưu chuỗi QR raw
-            trans.QrCodeUrl = qrBase64; // Đổi từ raw sang base64
-
-            // Tự đặt thời gian hết hạn QR = 2 phút
+            trans.QrCodeUrl = qrRaw;            // chứa QR RAW
             trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
 
             await _db.SaveChangesAsync();
 
-            return checkoutUrl;
+            // 9. Trả DTO cho controller
+            return new PaymentLinkResultDto
+                {
+                TransactionId = trans.TransactionId,
+                CheckoutUrl = checkoutUrl,
+                QrCodeRaw = qrRaw,
+                ExpiredAt = trans.QrExpiredAt
+                };
             }
 
         // ============================
@@ -332,7 +347,7 @@ namespace PTJ_Service.PaymentsService.Implementations
 
             return items;
             }
-        public async Task<string> RefreshPaymentLinkAsync(int transactionId)
+        public async Task<PaymentLinkResultDto> RefreshPaymentLinkAsync(int transactionId)
             {
             var trans = await _db.EmployerTransactions
                 .FirstOrDefaultAsync(x => x.TransactionId == transactionId)
@@ -341,7 +356,7 @@ namespace PTJ_Service.PaymentsService.Implementations
             if (trans.Status != "Pending")
                 throw new Exception("Chỉ làm mới QR cho giao dịch Pending");
 
-            // QR còn hạn → không cho refresh
+            // QR còn hạn → không cho refresh (tùy business, có thể bỏ check này nếu muốn luôn tạo mới)
             if (trans.QrExpiredAt != null && trans.QrExpiredAt > DateTime.Now)
                 throw new Exception("QR code vẫn còn hạn, không cần refresh.");
 
@@ -369,6 +384,7 @@ namespace PTJ_Service.PaymentsService.Implementations
             _http.DefaultRequestHeaders.Add("x-client-id", _config["PayOS:ClientId"]);
             _http.DefaultRequestHeaders.Add("x-api-key", _config["PayOS:ApiKey"]);
 
+
             var response = await _http.PostAsJsonAsync(fullUrl, body);
             string content = await response.Content.ReadAsStringAsync();
 
@@ -383,18 +399,22 @@ namespace PTJ_Service.PaymentsService.Implementations
             string checkoutUrl = result.data.checkoutUrl;
             string qrRaw = result.data.qrCode;
             string payOsOrderCode = result.data.orderCode;
-            string qrBase64 = GenerateQrBase64(qrRaw);
 
-            // Cập nhật transaction cũ
+            // Cập nhật transaction cũ (GIỮ RAW)
             trans.PayOsorderCode = payOsOrderCode;
-            trans.QrCodeUrl = qrRaw;
+            trans.QrCodeUrl = qrRaw;                      // RAW
             trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
             trans.RawWebhookData = content;
-            trans.QrCodeUrl = qrBase64;
 
             await _db.SaveChangesAsync();
 
-            return checkoutUrl;
+            return new PaymentLinkResultDto
+                {
+                TransactionId = trans.TransactionId,
+                CheckoutUrl = checkoutUrl,
+                QrCodeRaw = qrRaw,
+                ExpiredAt = trans.QrExpiredAt
+                };
             }
 
         private string GenerateQrBase64(string qrRaw)
@@ -409,6 +429,22 @@ namespace PTJ_Service.PaymentsService.Implementations
 
             return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
             }
+
+        private string? ExtractCheckoutUrl(string? rawWebhookData)
+            {
+            if (string.IsNullOrWhiteSpace(rawWebhookData)) return null;
+
+            try
+                {
+                dynamic obj = JsonConvert.DeserializeObject(rawWebhookData);
+                return obj?.data?.checkoutUrl;
+                }
+            catch
+                {
+                return null;
+                }
+            }
+
 
         }
     }

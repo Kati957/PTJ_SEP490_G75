@@ -43,20 +43,16 @@ namespace PTJ_API.Controllers.Payment
             {
             int userId = GetUserId();
 
-            string checkoutUrl = await _payment.CreatePaymentLinkAsync(userId, dto.PlanId);
-
-            var trans = await _db.EmployerTransactions
-                .Where(x => x.UserId == userId)
-                .OrderByDescending(x => x.TransactionId)
-                .FirstOrDefaultAsync();
+            var payment = await _payment.CreatePaymentLinkAsync(userId, dto.PlanId);
 
             return Ok(new
                 {
                 success = true,
                 message = "Tạo link thanh toán thành công.",
-                checkoutUrl,
-                qrCodeImage = trans?.QrCodeUrl,   // base64
-                expiredAt = trans?.QrExpiredAt
+                checkoutUrl = payment.CheckoutUrl,
+                qrCodeUrl = payment.QrCodeRaw,        // RAW cho FE
+                expiredAt = payment.ExpiredAt,
+                transactionId = payment.TransactionId // FE dùng để refresh
                 });
             }
 
@@ -202,47 +198,45 @@ namespace PTJ_API.Controllers.Payment
         [HttpGet("transaction/{id}")]
         public async Task<IActionResult> GetPayment(int id)
             {
-            // Lấy userId từ token
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-            // Tìm transaction
             var trans = await _db.EmployerTransactions.FindAsync(id);
 
             if (trans == null)
                 return NotFound(new { message = "Giao dịch không tồn tại" });
 
-            // Kiểm tra có thuộc user hay không
             if (trans.UserId != userId)
                 return Forbid("Bạn không có quyền truy cập giao dịch này.");
 
-            // Không cho lấy giao dịch đã hoàn tất
             if (trans.Status != "Pending")
                 return BadRequest(new { message = "Giao dịch đã hoàn tất hoặc bị hủy" });
 
             // ❗ Nếu QR HẾT HẠN → tạo QR mới trên cùng transaction
             if (trans.QrExpiredAt == null || trans.QrExpiredAt <= DateTime.Now)
                 {
-                string newCheckoutUrl = await _payment.RefreshPaymentLinkAsync(id);
+                var payment = await _payment.RefreshPaymentLinkAsync(id);
 
                 return Ok(new
                     {
                     expired = true,
                     message = "QR đã hết hạn, hệ thống đã tạo QR mới.",
-                    checkoutUrl = newCheckoutUrl,
-                    qrCodeUrl = trans.QrCodeUrl,   // QR mới
-                    expiredAt = trans.QrExpiredAt
+                    checkoutUrl = payment.CheckoutUrl,
+                    qrCodeUrl = payment.QrCodeRaw,
+                    expiredAt = payment.ExpiredAt,
+                    transactionId = payment.TransactionId
                     });
                 }
 
             // ✔ QR CÒN HẠN → gửi lại QR cũ
+            var checkoutUrl = ExtractCheckoutUrl(trans.RawWebhookData); // dùng helper tách ra
+
             return Ok(new
                 {
                 expired = false,
-                checkoutUrl = (trans.RawWebhookData != null ?
-                               JsonConvert.DeserializeObject<dynamic>(trans.RawWebhookData)?.data?.checkoutUrl
-                               : null),
-                qrCodeUrl = trans.QrCodeUrl,
-                expiredAt = trans.QrExpiredAt
+                checkoutUrl,
+                qrCodeUrl = trans.QrCodeUrl,   // RAW
+                expiredAt = trans.QrExpiredAt,
+                transactionId = trans.TransactionId
                 });
             }
 
@@ -276,6 +270,22 @@ namespace PTJ_API.Controllers.Payment
 
             return Ok(new { success = true, data });
             }
+
+        private string? ExtractCheckoutUrl(string? rawWebhookData)
+            {
+            if (string.IsNullOrWhiteSpace(rawWebhookData)) return null;
+
+            try
+                {
+                dynamic obj = JsonConvert.DeserializeObject(rawWebhookData);
+                return obj?.data?.checkoutUrl;
+                }
+            catch
+                {
+                return null;
+                }
+            }
+
         // DTO
         public class CreatePaymentDto
             {
