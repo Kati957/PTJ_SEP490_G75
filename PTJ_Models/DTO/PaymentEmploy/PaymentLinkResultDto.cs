@@ -6,5 +6,6 @@
         public string CheckoutUrl { get; set; } = string.Empty;
         public string QrCodeRaw { get; set; } = string.Empty;
         public DateTime? ExpiredAt { get; set; }
+        public string OrderCode { get; set; } = string.Empty;
         }
     }

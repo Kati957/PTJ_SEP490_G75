@@ -50,6 +50,7 @@ namespace PTJ_API.Controllers.Payment
                 {
                 success = true,
                 message = "Tạo link thanh toán thành công.",
+                orderCode = payment.OrderCode,
                 checkoutUrl = payment.CheckoutUrl,
                 qrCodeUrl = payment.QrCodeRaw,        // RAW cho FE
                 expiredAt = payment.ExpiredAt,
