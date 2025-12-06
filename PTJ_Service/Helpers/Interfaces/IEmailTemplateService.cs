@@ -15,6 +15,7 @@ namespace PTJ_Service.Helpers.Interfaces
         string CreateEmployerApprovedTemplate(string companyName, string verifyLink);
         string CreateGoogleEmployerApprovedTemplate(string companyName);
         string CreateGoogleEmployerRejectedTemplate(string companyName, string reason);
+        string CreateEmployerPaymentSuccessTemplate(string employerName, string planName, decimal amount, int remainingPosts, DateTime startDate, DateTime? endDate);
     }
 
 }

@@ -10,6 +10,9 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using PTJ_Models.DTO.PaymentEmploy;
+using PTJ_Service.Helpers.Interfaces;
+using PTJ_Service.Helpers.Implementations;
+
 
 namespace PTJ_Service.PaymentsService.Implementations
     {
@@ -19,15 +22,21 @@ namespace PTJ_Service.PaymentsService.Implementations
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         private readonly HttpClient _http;
+        private readonly IEmailTemplateService _emailTemplate;
+        private readonly SmtpEmailSender _smtpEmailSender;
 
         public EmployerPaymentService(
             JobMatchingDbContext db,
             IConfiguration config,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IEmailTemplateService emailTemplate,
+             SmtpEmailSender emailSender)
             {
             _db = db;
             _config = config;
             _env = env;
+            _emailTemplate = emailTemplate;
+            _smtpEmailSender = emailSender;
             _http = new HttpClient();
             }
 
@@ -228,6 +237,7 @@ namespace PTJ_Service.PaymentsService.Implementations
                 {
                 trans.Status = "Paid";
                 trans.PaidAt = DateTime.Now;
+                await SendPaymentSuccessEmailToEmployerAsync(trans);
                 await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
                 }
 
@@ -418,6 +428,10 @@ namespace PTJ_Service.PaymentsService.Implementations
                 OrderCode = payOsOrderCode
                 };
             }
+        private async Task SendPaymentSuccessEmailToEmployerAsync(EmployerTransaction trans)
+        {
+            var user = await _db.Users.FindAsync(trans.UserId);
+            var plan = await _db.EmployerPlans.FindAsync(trans.PlanId);
 
         private string? ExtractCheckoutUrl(string? rawWebhookData)
             {
@@ -435,5 +449,27 @@ namespace PTJ_Service.PaymentsService.Implementations
             }
 
 
+            // lấy subscription mới nhất
+            var sub = await _db.EmployerSubscriptions
+                .Where(x => x.UserId == trans.UserId && x.PlanId == trans.PlanId && x.Status == "Active")
+                .OrderByDescending(x => x.SubscriptionId)
+                .FirstOrDefaultAsync();
+
+            if (sub == null)
+                return;
+
+            string html = _emailTemplate.CreateEmployerPaymentSuccessTemplate(
+                employerName: user.Username,
+                planName: plan.PlanName,
+                amount: trans.Amount ?? 0,
+                remainingPosts: sub.RemainingPosts,
+                startDate: sub.StartDate,
+                endDate: sub.EndDate
+            );
+
+            await _smtpEmailSender.SendEmailAsync(user.Email, "Thanh toán thành công", html);
         }
+
+
     }
+}
