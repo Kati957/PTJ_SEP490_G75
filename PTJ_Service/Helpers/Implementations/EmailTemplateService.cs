@@ -165,5 +165,36 @@ namespace PTJ_Service.Helpers.Implementations
 
             return BaseEmailLayout("Google Employer bị từ chối", content);
         }
+    public string CreateEmployerPaymentSuccessTemplate(
+    string employerName,
+    string planName,
+    decimal amount,
+    int remainingPosts,
+    DateTime startDate,
+    DateTime? endDate)
+        {
+            var content = $@"
+<p>Xin chào <b>{employerName}</b>,</p>
+
+<p>Bạn đã thanh toán thành công gói dịch vụ:</p>
+
+<p style='font-size:18px; font-weight:bold; color:#27ae60;'>{planName}</p>
+
+<p><b>Số tiền:</b> {amount:N0} VND</p>
+
+<p><b>Thông tin gói:</b></p>
+<ul>
+    <li><b>Số bài đăng còn lại:</b> {remainingPosts}</li>
+    <li><b>Ngày bắt đầu:</b> {startDate:dd/MM/yyyy}</li>
+    <li><b>Ngày hết hạn:</b> {(endDate?.ToString("dd/MM/yyyy") ?? "Không giới hạn")}</li>
+</ul>
+
+<p>Gói đã được kích hoạt. Bạn có thể bắt đầu đăng bài ngay bây giờ.</p>
+
+<p>Chúc bạn tuyển dụng thành công!</p>";
+
+            return BaseEmailLayout("Thanh toán thành công", content);
+        }
+
     }
 }
