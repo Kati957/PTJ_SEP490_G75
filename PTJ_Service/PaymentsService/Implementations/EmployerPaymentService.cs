@@ -35,6 +35,8 @@ namespace PTJ_Service.PaymentsService.Implementations
             IEmailTemplateService emailTemplate,
             SmtpEmailSender emailSender)
         {
+            _emailTemplate = emailTemplate;
+            _smtpEmailSender = emailSender;
             _db = db;
             _config = config;
             _env = env;
