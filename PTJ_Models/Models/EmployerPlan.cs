@@ -17,6 +17,8 @@ public partial class EmployerPlan
 
     public DateTime? CreatedAt { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
     public virtual ICollection<EmployerSubscription> EmployerSubscriptions { get; set; } = new List<EmployerSubscription>();
 
     public virtual ICollection<EmployerTransaction> EmployerTransactions { get; set; } = new List<EmployerTransaction>();

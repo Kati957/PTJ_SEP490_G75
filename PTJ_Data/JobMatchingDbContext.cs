@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using PTJ_Models.Models;
 
-namespace PTJ_Data;
+namespace PTJ_Models.Models;
 
 public partial class JobMatchingDbContext : DbContext
 {
@@ -93,7 +92,9 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database = JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AiContentForEmbedding>(entity =>
@@ -262,6 +263,7 @@ public partial class JobMatchingDbContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.PlanName).HasMaxLength(50);
             entity.Property(e => e.Price).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 
         modelBuilder.Entity<EmployerPost>(entity =>
@@ -584,9 +586,7 @@ public partial class JobMatchingDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.Gender)
-                .HasMaxLength(10)
-                .IsUnicode(false);
+            entity.Property(e => e.Gender).HasMaxLength(10);
             entity.Property(e => e.PhoneContact)
                 .HasMaxLength(20)
                 .IsUnicode(false);
@@ -624,9 +624,7 @@ public partial class JobMatchingDbContext : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.FullLocation).HasMaxLength(255);
             entity.Property(e => e.FullName).HasMaxLength(100);
-            entity.Property(e => e.Gender)
-                .HasMaxLength(10)
-                .IsUnicode(false);
+            entity.Property(e => e.Gender).HasMaxLength(10);
             entity.Property(e => e.ProfilePicture)
                 .HasMaxLength(255)
                 .IsUnicode(false);
