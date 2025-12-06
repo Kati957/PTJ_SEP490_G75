@@ -133,12 +133,12 @@ namespace PTJ_Service.PaymentsService.Implementations
             // 7. Lấy link thanh toán
             string checkoutUrl = result.data.checkoutUrl;
             string payOsOrderCode = result.data.orderCode;
-            string qrCodeUrl = result.data.qrCodeUrl;
+            string qrRaw = result.data.qrCode;   // PayOS trả qrCode, không phải qrCodeUrl
 
             // 8. Lưu lại vào transaction
             trans.PayOsorderCode = payOsOrderCode;
             trans.RawWebhookData = content;
-            trans.QrCodeUrl = qrCodeUrl;   // ✔ LƯU LINK ẢNH QR
+            trans.QrCodeUrl = qrRaw;            // Lưu chuỗi QR raw
 
             // Tự đặt thời gian hết hạn QR = 2 phút
             trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
@@ -379,12 +379,12 @@ namespace PTJ_Service.PaymentsService.Implementations
 
             // Lấy link mới
             string checkoutUrl = result.data.checkoutUrl;
-            string qrCodeUrl = result.data.qrCodeUrl;
+            string qrRaw = result.data.qrCode;
             string payOsOrderCode = result.data.orderCode;
 
             // Cập nhật transaction cũ
             trans.PayOsorderCode = payOsOrderCode;
-            trans.QrCodeUrl = qrCodeUrl;
+            trans.QrCodeUrl = qrRaw;
             trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
             trans.RawWebhookData = content;
 
