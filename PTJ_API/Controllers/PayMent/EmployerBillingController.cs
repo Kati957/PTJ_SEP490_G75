@@ -246,6 +246,36 @@ namespace PTJ_API.Controllers.Payment
                 });
             }
 
+        // ======================================================
+        // 10. Public API: Lấy tất cả subscriptions đang hoạt động
+        //     Ai cũng xem được — KHÔNG cần đăng nhập
+        // ======================================================
+        [HttpGet("public/active-subscriptions")]
+        public async Task<IActionResult> GetAllActiveSubscriptionsPublic()
+            {
+            var data = await (
+                from sub in _db.EmployerSubscriptions
+                join user in _db.Users on sub.UserId equals user.UserId
+                join plan in _db.EmployerPlans on sub.PlanId equals plan.PlanId
+                where sub.Status == "Active"
+                orderby sub.StartDate descending
+                select new
+                    {
+                    sub.SubscriptionId,
+                    sub.UserId,
+                    UserName = user.Username,
+                    UserEmail = user.Email,
+                    sub.PlanId,
+                    plan.PlanName,
+                    plan.Price,
+                    sub.RemainingPosts,
+                    sub.StartDate,
+                    sub.EndDate
+                    }
+            ).ToListAsync();
+
+            return Ok(new { success = true, data });
+            }
         // DTO
         public class CreatePaymentDto
             {
