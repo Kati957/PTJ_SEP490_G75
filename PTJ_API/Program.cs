@@ -132,6 +132,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IEmployerPaymentService, EmployerPaymentService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IEmployerRankingService, EmployerRankingService>();
