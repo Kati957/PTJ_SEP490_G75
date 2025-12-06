@@ -62,7 +62,7 @@ namespace PTJ_Service.PaymentsService.Implementations
                         {
                         TransactionId = oldPending.TransactionId,
                         CheckoutUrl = existingCheckoutUrl,
-
+                        OrderCode = oldPending.PayOsorderCode,
                         QrCodeRaw = oldPending.QrCodeUrl ?? string.Empty,
                         ExpiredAt = oldPending.QrExpiredAt
                         };
@@ -161,7 +161,8 @@ namespace PTJ_Service.PaymentsService.Implementations
                 TransactionId = trans.TransactionId,
                 CheckoutUrl = checkoutUrl,
                 QrCodeRaw = qrRaw,
-                ExpiredAt = trans.QrExpiredAt
+                ExpiredAt = trans.QrExpiredAt,
+                OrderCode = payOsOrderCode
                 };
             }
 
@@ -413,7 +414,8 @@ namespace PTJ_Service.PaymentsService.Implementations
                 TransactionId = trans.TransactionId,
                 CheckoutUrl = checkoutUrl,
                 QrCodeRaw = qrRaw,
-                ExpiredAt = trans.QrExpiredAt
+                ExpiredAt = trans.QrExpiredAt,
+                OrderCode = payOsOrderCode
                 };
             }
 
