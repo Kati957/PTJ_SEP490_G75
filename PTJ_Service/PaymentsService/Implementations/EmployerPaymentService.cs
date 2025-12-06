@@ -134,11 +134,13 @@ namespace PTJ_Service.PaymentsService.Implementations
             string checkoutUrl = result.data.checkoutUrl;
             string payOsOrderCode = result.data.orderCode;
             string qrRaw = result.data.qrCode;   // PayOS trả qrCode, không phải qrCodeUrl
+            string qrBase64 = GenerateQrBase64(qrRaw);
 
             // 8. Lưu lại vào transaction
             trans.PayOsorderCode = payOsOrderCode;
             trans.RawWebhookData = content;
             trans.QrCodeUrl = qrRaw;            // Lưu chuỗi QR raw
+            trans.QrCodeUrl = qrBase64; // Đổi từ raw sang base64
 
             // Tự đặt thời gian hết hạn QR = 2 phút
             trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
@@ -381,16 +383,31 @@ namespace PTJ_Service.PaymentsService.Implementations
             string checkoutUrl = result.data.checkoutUrl;
             string qrRaw = result.data.qrCode;
             string payOsOrderCode = result.data.orderCode;
+            string qrBase64 = GenerateQrBase64(qrRaw);
 
             // Cập nhật transaction cũ
             trans.PayOsorderCode = payOsOrderCode;
             trans.QrCodeUrl = qrRaw;
             trans.QrExpiredAt = DateTime.Now.AddMinutes(2);
             trans.RawWebhookData = content;
+            trans.QrCodeUrl = qrBase64;
 
             await _db.SaveChangesAsync();
 
             return checkoutUrl;
+            }
+
+        private string GenerateQrBase64(string qrRaw)
+            {
+            using var generator = new QRCoder.QRCodeGenerator();
+            var data = generator.CreateQrCode(qrRaw, QRCoder.QRCodeGenerator.ECCLevel.Q);
+            var qrCode = new QRCoder.QRCode(data);
+            using var bitmap = qrCode.GetGraphic(20);
+
+            using var ms = new MemoryStream();
+            bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+
+            return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
             }
 
         }

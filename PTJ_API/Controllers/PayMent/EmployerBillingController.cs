@@ -55,7 +55,7 @@ namespace PTJ_API.Controllers.Payment
                 success = true,
                 message = "Tạo link thanh toán thành công.",
                 checkoutUrl,
-                qrCodeUrl = trans?.QrCodeUrl,
+                qrCodeImage = trans?.QrCodeUrl,   // base64
                 expiredAt = trans?.QrExpiredAt
                 });
             }
