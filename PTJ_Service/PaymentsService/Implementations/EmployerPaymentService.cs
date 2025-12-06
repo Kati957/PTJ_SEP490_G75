@@ -22,7 +22,8 @@ namespace PTJ_Service.PaymentsService.Implementations
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         private readonly HttpClient _http;
-
+        private readonly IEmailTemplateService _emailTemplate;
+        private readonly SmtpEmailSender _smtpEmailSender;
         public EmployerPaymentService(
             JobMatchingDbContext db,
             IConfiguration config,
@@ -469,3 +470,4 @@ namespace PTJ_Service.PaymentsService.Implementations
             await _smtpEmailSender.SendEmailAsync(user.Email, "Thanh toán thành công", html);
         }
     }
+}
