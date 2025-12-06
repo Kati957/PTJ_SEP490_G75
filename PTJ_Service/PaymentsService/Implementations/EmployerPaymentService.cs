@@ -12,6 +12,7 @@ using PTJ_Service.Helpers.Interfaces;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
+using PTJ_Models.DTO.PaymentEmploy;
 
 namespace PTJ_Service.PaymentsService.Implementations
 {
@@ -21,8 +22,6 @@ namespace PTJ_Service.PaymentsService.Implementations
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         private readonly HttpClient _http;
-        private readonly IEmailTemplateService _emailTemplate;
-        private readonly SmtpEmailSender _smtpEmailSender;
 
         public EmployerPaymentService(
             JobMatchingDbContext db,
@@ -34,8 +33,6 @@ namespace PTJ_Service.PaymentsService.Implementations
             _db = db;
             _config = config;
             _env = env;
-            _emailTemplate = emailTemplate;
-            _smtpEmailSender = emailSender;
             _http = new HttpClient();
         }
 
@@ -251,8 +248,6 @@ namespace PTJ_Service.PaymentsService.Implementations
             {
                 trans.Status = "Paid";
                 trans.PaidAt = DateTime.Now;
-
-                // Kích hoạt gói trước để subscription tồn tại
                 await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
 
                 // Sau đó gửi email (dùng subscription vừa kích hoạt)
@@ -474,4 +469,3 @@ namespace PTJ_Service.PaymentsService.Implementations
             await _smtpEmailSender.SendEmailAsync(user.Email, "Thanh toán thành công", html);
         }
     }
-}
