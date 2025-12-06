@@ -131,6 +131,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IEmployerPaymentService, EmployerPaymentService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IEmployerRankingService, EmployerRankingService>();
 builder.Services.AddScoped<IChangePasswordService, ChangePasswordService>();
@@ -188,7 +189,7 @@ builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<IJobSeekerCvRepository, JobSeekerCvRepository>();
 builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 builder.Services.AddHostedService<PostExpirationService>();
-builder.Services.AddScoped<IEmployerPaymentService, EmployerPaymentService>();
+
 
 // Other Services
 builder.Services.AddScoped<OpenMapService>();
@@ -196,7 +197,7 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-
+builder.Services.AddScoped<SmtpEmailSender>();
 
 
 // 3️⃣ CẤU HÌNH JWT AUTHENTICATION
