@@ -14,11 +14,14 @@ namespace PTJ_Models.DTO.AdminDashbroad
         public decimal GrowthPercent { get; set; }
     }
 
-    public class MonthlyRevenueDto
+    public class RevenueStatsDto
     {
-        public string Month { get; set; }
+        public DateTime? Date { get; set; }
+        public int Year { get; set; }
+        public int? Month { get; set; }
         public decimal Revenue { get; set; }
     }
+
 
     public class RevenueByPlanDto
     {

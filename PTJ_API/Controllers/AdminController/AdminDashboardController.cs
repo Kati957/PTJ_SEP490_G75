@@ -26,10 +26,22 @@ namespace PTJ_API.Controllers.Admin
             return Ok(new { data = await _svc.GetSummaryAsync() });
         }
 
-        [HttpGet("user-stats")]
-        public async Task<IActionResult> GetUserStats()
+        [HttpGet("users/by-day")]
+        public async Task<IActionResult> GetUsersByDay()
         {
-            return Ok(new { data = await _svc.GetMonthlyUserStatsAsync() });
+            return Ok(await _svc.GetUserStatsByDayAsync());
+        }
+
+        [HttpGet("users/by-month")]
+        public async Task<IActionResult> GetUsersByMonth()
+        {
+            return Ok(await _svc.GetUserStatsByMonthAsync());
+        }
+
+        [HttpGet("users/by-year")]
+        public async Task<IActionResult> GetUsersByYear()
+        {
+            return Ok(await _svc.GetUserStatsByYearAsync());
         }
 
         [HttpGet("categories")]
@@ -56,16 +68,64 @@ namespace PTJ_API.Controllers.Admin
             return Ok(await _svc.GetRevenueSummaryAsync());
         }
 
-        [HttpGet("revenue/monthly")]
-        public async Task<IActionResult> GetMonthlyRevenue()
-        {
-            return Ok(await _svc.GetMonthlyRevenueAsync());
-        }
-
         [HttpGet("revenue/by-plan")]
         public async Task<IActionResult> GetRevenueByPlan()
         {
             return Ok(await _svc.GetRevenueByPlanAsync());
+        }
+        [HttpGet("posts/by-day")]
+        public async Task<IActionResult> GetPostStatsByDay()
+        {
+            var data = await _svc.GetPostStatsByDayAsync();
+            return Ok(data);
+        }
+
+        [HttpGet("posts/by-month")]
+        public async Task<IActionResult> GetPostStatsByMonth()
+        {
+            var data = await _svc.GetPostStatsByMonthAsync();
+            return Ok(data);
+        }
+
+        [HttpGet("posts/by-year")]
+        public async Task<IActionResult> GetPostStatsByYear()
+        {
+            var data = await _svc.GetPostStatsByYearAsync();
+            return Ok(data);
+        }
+        [HttpGet("news/by-day")]
+        public async Task<IActionResult> GetNewsByDay()
+        {
+            return Ok(await _svc.GetNewsStatsByDayAsync());
+        }
+
+        [HttpGet("news/by-month")]
+        public async Task<IActionResult> GetNewsByMonth()
+        {
+            return Ok(await _svc.GetNewsStatsByMonthAsync());
+        }
+
+        [HttpGet("news/by-year")]
+        public async Task<IActionResult> GetNewsByYear()
+        {
+            return Ok(await _svc.GetNewsStatsByYearAsync());
+        }
+        [HttpGet("revenue/by-day")]
+        public async Task<IActionResult> GetRevenueByDay()
+        {
+            return Ok(await _svc.GetRevenueByDayAsync());
+        }
+
+        [HttpGet("revenue/by-month")]
+        public async Task<IActionResult> GetRevenueByMonth()
+        {
+            return Ok(await _svc.GetRevenueByMonthAsync());
+        }
+
+        [HttpGet("revenue/by-year")]
+        public async Task<IActionResult> GetRevenueByYear()
+        {
+            return Ok(await _svc.GetRevenueByYearAsync());
         }
 
     }

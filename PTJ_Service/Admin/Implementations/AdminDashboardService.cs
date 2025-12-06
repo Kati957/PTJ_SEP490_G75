@@ -39,19 +39,103 @@ public class AdminDashboardService : IAdminDashboardService
                 .CountAsync(a => a.AppliedAt >= DateTime.UtcNow.AddDays(-30))
         };
     }
-
-    public async Task<List<MonthlyUserStatsDto>> GetMonthlyUserStatsAsync()
+    public async Task<List<UserStatsByDayDto>> GetUserStatsByDayAsync()
     {
-        return await _db.Users
-            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
-            .Select(g => new MonthlyUserStatsDto
+        var employers = await _db.Users
+            .Where(u => u.Roles.Any(r => r.RoleName == "Employer"))
+            .GroupBy(u => u.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var seekers = await _db.Users
+            .Where(u => u.Roles.Any(r => r.RoleName == "JobSeeker"))
+            .GroupBy(u => u.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var allDates = employers.Select(e => e.Date)
+            .Union(seekers.Select(s => s.Date))
+            .Distinct();
+
+        return allDates
+            .Select(d => new UserStatsByDayDto
             {
-                Year = g.Key.Year,
-                Month = g.Key.Month,
+                Date = d,
+                Employers = employers.FirstOrDefault(e => e.Date == d)?.Count ?? 0,
+                JobSeekers = seekers.FirstOrDefault(s => s.Date == d)?.Count ?? 0
+            })
+            .OrderBy(x => x.Date)
+            .ToList();
+    }
+
+    public async Task<List<UserStatsByMonthDto>> GetUserStatsByMonthAsync()
+    {
+        var emp = await _db.Users
+            .Where(u => u.Roles.Any(r => r.RoleName == "Employer"))
+            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
                 Count = g.Count()
             })
-            .OrderBy(x => x.Year).ThenBy(x => x.Month)
             .ToListAsync();
+
+        var js = await _db.Users
+            .Where(u => u.Roles.Any(r => r.RoleName == "JobSeeker"))
+            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var all = emp
+            .Select(e => new { e.Year, e.Month })
+            .Union(js.Select(s => new { s.Year, s.Month }))
+            .Distinct();
+
+        return all
+            .Select(x => new UserStatsByMonthDto
+            {
+                Year = x.Year,
+                Month = x.Month,
+                Employers = emp.FirstOrDefault(e => e.Year == x.Year && e.Month == x.Month)?.Count ?? 0,
+                JobSeekers = js.FirstOrDefault(s => s.Year == x.Year && s.Month == x.Month)?.Count ?? 0
+            })
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .ToList();
+    }
+
+    public async Task<List<UserStatsByYearDto>> GetUserStatsByYearAsync()
+    {
+        var emp = await _db.Users
+            .Where(u => u.Roles.Any(r => r.RoleName == "Employer"))
+            .GroupBy(u => u.CreatedAt.Year)
+            .Select(g => new { Year = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var js = await _db.Users
+            .Where(u => u.Roles.Any(r => r.RoleName == "JobSeeker"))
+            .GroupBy(u => u.CreatedAt.Year)
+            .Select(g => new { Year = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var years = emp.Select(e => e.Year)
+            .Union(js.Select(s => s.Year))
+            .Distinct();
+
+        return years
+            .Select(y => new UserStatsByYearDto
+            {
+                Year = y,
+                Employers = emp.FirstOrDefault(e => e.Year == y)?.Count ?? 0,
+                JobSeekers = js.FirstOrDefault(s => s.Year == y)?.Count ?? 0
+            })
+            .OrderBy(x => x.Year).ToList();
     }
 
     public async Task<List<JobCategoryStatsDto>> GetJobCategoryStatsAsync()
@@ -148,21 +232,51 @@ public class AdminDashboardService : IAdminDashboardService
             GrowthPercent = Math.Round(growthPercent, 2)
         };
     }
-    public async Task<List<MonthlyRevenueDto>> GetMonthlyRevenueAsync()
+    public async Task<List<RevenueStatsDto>> GetRevenueByDayAsync()
     {
-        var result = await _db.EmployerTransactions
-            .Where(t => t.Status == "Success")
-            .GroupBy(t => new { t.PaidAt.Value.Year, t.PaidAt.Value.Month })
-            .Select(g => new MonthlyRevenueDto
+        return await _db.EmployerTransactions
+            .Where(t => t.Status == "Success" && t.PaidAt != null)
+            .GroupBy(t => t.PaidAt.Value.Date)
+            .Select(g => new RevenueStatsDto
             {
-                Month = $"{g.Key.Month:00}/{g.Key.Year}",
-                Revenue = g.Sum(t => (decimal?)t.Amount) ?? 0
+                Date = g.Key,
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                Revenue = g.Sum(e => (decimal?)e.Amount) ?? 0
             })
-            .OrderBy(x => x.Month)
+            .OrderBy(x => x.Date)
             .ToListAsync();
-
-        return result;
     }
+
+    public async Task<List<RevenueStatsDto>> GetRevenueByMonthAsync()
+    {
+        return await _db.EmployerTransactions
+            .Where(t => t.Status == "Success" && t.PaidAt != null)
+            .GroupBy(t => new { t.PaidAt.Value.Year, t.PaidAt.Value.Month })
+            .Select(g => new RevenueStatsDto
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                Revenue = g.Sum(e => (decimal?)e.Amount) ?? 0
+            })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .ToListAsync();
+    }
+    public async Task<List<RevenueStatsDto>> GetRevenueByYearAsync()
+    {
+        return await _db.EmployerTransactions
+            .Where(t => t.Status == "Success" && t.PaidAt != null)
+            .GroupBy(t => t.PaidAt.Value.Year)
+            .Select(g => new RevenueStatsDto
+            {
+                Year = g.Key,
+                Revenue = g.Sum(e => (decimal?)e.Amount) ?? 0
+            })
+            .OrderBy(x => x.Year)
+            .ToListAsync();
+    }
+
+
     public async Task<List<RevenueByPlanDto>> GetRevenueByPlanAsync()
     {
         var query = await (
@@ -179,6 +293,136 @@ public class AdminDashboardService : IAdminDashboardService
         ).ToListAsync();
 
         return query;
+    }
+    public async Task<List<PostStatsByDayDto>> GetPostStatsByDayAsync()
+    {
+        var employer = await _db.EmployerPosts
+            .GroupBy(p => p.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var seeker = await _db.JobSeekerPosts
+            .GroupBy(p => p.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var result = employer
+            .Union(seeker)
+            .GroupBy(x => x.Date)
+            .Select(g => new PostStatsByDayDto
+            {
+                Date = g.Key,
+                EmployerPosts = employer.FirstOrDefault(e => e.Date == g.Key)?.Count ?? 0,
+                JobSeekerPosts = seeker.FirstOrDefault(s => s.Date == g.Key)?.Count ?? 0,
+            })
+            .OrderBy(r => r.Date)
+            .ToList();
+
+        return result;
+    }
+    public async Task<List<PostStatsByMonthDto>> GetPostStatsByMonthAsync()
+    {
+        var employer = await _db.EmployerPosts
+            .GroupBy(p => new { p.CreatedAt.Year, p.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var seeker = await _db.JobSeekerPosts
+            .GroupBy(p => new { p.CreatedAt.Year, p.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var result = employer
+            .Union(seeker)
+            .GroupBy(x => new { x.Year, x.Month })
+            .Select(g => new PostStatsByMonthDto
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                EmployerPosts = employer.FirstOrDefault(e => e.Year == g.Key.Year && e.Month == g.Key.Month)?.Count ?? 0,
+                JobSeekerPosts = seeker.FirstOrDefault(s => s.Year == g.Key.Year && s.Month == g.Key.Month)?.Count ?? 0
+            })
+            .OrderBy(r => r.Year).ThenBy(r => r.Month)
+            .ToList();
+
+        return result;
+    }
+    public async Task<List<PostStatsByYearDto>> GetPostStatsByYearAsync()
+    {
+        var employer = await _db.EmployerPosts
+            .GroupBy(p => p.CreatedAt.Year)
+            .Select(g => new { Year = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var seeker = await _db.JobSeekerPosts
+            .GroupBy(p => p.CreatedAt.Year)
+            .Select(g => new { Year = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var years = employer.Select(e => e.Year)
+                     .Union(seeker.Select(s => s.Year))
+                     .Distinct();
+
+        var result = years
+            .Select(y => new PostStatsByYearDto
+            {
+                Year = y,
+                EmployerPosts = employer.FirstOrDefault(e => e.Year == y)?.Count ?? 0,
+                JobSeekerPosts = seeker.FirstOrDefault(s => s.Year == y)?.Count ?? 0
+            })
+            .OrderBy(x => x.Year)
+            .ToList();
+
+        return result;
+    }
+    public async Task<List<NewsStatsDto>> GetNewsStatsByDayAsync()
+    {
+        return await _db.News
+            .GroupBy(n => n.CreatedAt.Date)
+            .Select(g => new NewsStatsDto
+            {
+                Date = g.Key,
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                Count = g.Count()
+            })
+            .OrderBy(x => x.Date)
+            .ToListAsync();
+    }
+    public async Task<List<NewsStatsDto>> GetNewsStatsByMonthAsync()
+    {
+        return await _db.News
+            .GroupBy(n => new { n.CreatedAt.Year, n.CreatedAt.Month })
+            .Select(g => new NewsStatsDto
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                Count = g.Count()
+            })
+            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .ToListAsync();
+    }
+    public async Task<List<NewsStatsDto>> GetNewsStatsByYearAsync()
+    {
+        return await _db.News
+            .GroupBy(n => n.CreatedAt.Year)
+            .Select(g => new NewsStatsDto
+            {
+                Year = g.Key,
+                Count = g.Count()
+            })
+            .OrderBy(x => x.Year)
+            .ToListAsync();
     }
 
 
