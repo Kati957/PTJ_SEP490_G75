@@ -78,6 +78,7 @@ using System.Security.Claims;
 using PTJ_API.Middlewares;
 using PTJ_Service.PaymentsService;
 using PTJ_Service.PaymentsService.Implementations;
+using PTJ_API.Hubs;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -259,6 +260,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     return;
                 }
             },
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // Nếu là request tới SignalR hub thì lấy token từ query
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs/payment"))
+                    {
+                    context.Token = accessToken;
+                    }
+                return Task.CompletedTask;
+            },
             OnChallenge = context =>
             {
                 context.HandleResponse(); 
@@ -353,6 +367,8 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 // SignalR Hub Registration
 
 app.MapHub<NotificationHub>("/hubs/notification");
+app.MapHub<PaymentHub>("/hubs/payment");
+
 app.MapControllers();
 
 app.MapGet("/", () => "PTJ API is running");
