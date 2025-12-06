@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PTJ_Data;
 using PTJ_Models.Models;
 using Newtonsoft.Json;
+using PTJ_Models.DTO.PaymentEmploy;
 
 namespace PTJ_API.Controllers.Payment
     {
@@ -123,72 +124,6 @@ namespace PTJ_API.Controllers.Payment
             var result = await _payment.GetSubscriptionHistoryAsync(userId);
 
             return Ok(new { success = true, data = result });
-            }
-
-        // ======================================================
-        // 7. Admin lấy giao dịch theo UserId
-        // ======================================================
-        [Authorize(Roles = "Admin")]
-        [HttpGet("admin/transactions/{userId}")]
-        public async Task<IActionResult> AdminGetTransactionsByUser(int userId)
-            {
-            var data = await (
-                from t in _db.EmployerTransactions
-                join u in _db.Users on t.UserId equals u.UserId
-                join p in _db.EmployerPlans on t.PlanId equals p.PlanId
-                where t.UserId == userId
-                orderby t.CreatedAt descending
-                select new
-                    {
-                    t.TransactionId,
-                    t.UserId,
-                    UserName = u.Username,
-                    UserEmail = u.Email,
-                    t.PlanId,
-                    PlanName = p.PlanName,
-                    t.Amount,
-                    t.Status,
-                    t.PayOsorderCode,
-                    t.CreatedAt,
-                    t.PaidAt,
-                    t.QrCodeUrl,
-                    t.QrExpiredAt
-                    }
-            ).ToListAsync();
-
-            return Ok(new { success = true, data });
-            }
-
-        // ======================================================
-        // 8. Admin xem subscriptions theo UserId
-        // ======================================================
-        [Authorize(Roles = "Admin")]
-        [HttpGet("admin/subscriptions/{userId}")]
-        public async Task<IActionResult> AdminGetSubscriptionByUser(int userId)
-            {
-            var data = await (
-                from sub in _db.EmployerSubscriptions
-                join plan in _db.EmployerPlans on sub.PlanId equals plan.PlanId
-                join u in _db.Users on sub.UserId equals u.UserId
-                where sub.UserId == userId
-                orderby sub.StartDate descending
-                select new
-                    {
-                    sub.SubscriptionId,
-                    sub.UserId,
-                    UserName = u.Username,
-                    UserEmail = u.Email,
-                    sub.PlanId,
-                    plan.PlanName,
-                    plan.Price,
-                    sub.RemainingPosts,
-                    sub.Status,
-                    sub.StartDate,
-                    sub.EndDate
-                    }
-            ).ToListAsync();
-
-            return Ok(new { success = true, data });
             }
 
         // ======================================================
