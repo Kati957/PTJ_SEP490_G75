@@ -417,19 +417,6 @@ namespace PTJ_Service.PaymentsService.Implementations
                 };
             }
 
-        private string GenerateQrBase64(string qrRaw)
-            {
-            using var generator = new QRCoder.QRCodeGenerator();
-            var data = generator.CreateQrCode(qrRaw, QRCoder.QRCodeGenerator.ECCLevel.Q);
-            var qrCode = new QRCoder.QRCode(data);
-            using var bitmap = qrCode.GetGraphic(20);
-
-            using var ms = new MemoryStream();
-            bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-
-            return "data:image/png;base64," + Convert.ToBase64String(ms.ToArray());
-            }
-
         private string? ExtractCheckoutUrl(string? rawWebhookData)
             {
             if (string.IsNullOrWhiteSpace(rawWebhookData)) return null;
