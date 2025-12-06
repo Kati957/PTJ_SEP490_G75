@@ -1,6 +1,4 @@
-﻿using PTJ_Service.Helpers.Implementations;
-
-namespace PTJ_Service.Helpers.Interfaces
+﻿namespace PTJ_Service.Helpers.Interfaces
 {
     public interface IEmailTemplateService
     {
@@ -13,8 +11,16 @@ namespace PTJ_Service.Helpers.Interfaces
 
         string CreateEmployerRejectedTemplate(string companyName, string reason);
         string CreateEmployerApprovedTemplate(string companyName, string verifyLink);
+
         string CreateGoogleEmployerApprovedTemplate(string companyName);
         string CreateGoogleEmployerRejectedTemplate(string companyName, string reason);
+        string CreateEmployerPaymentSuccessTemplate(
+            string employerName,
+            string planName,
+            decimal amount,
+            int remainingPosts,
+            DateTime startDate,
+            DateTime? endDate
+        );
     }
-
 }

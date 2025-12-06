@@ -12,10 +12,6 @@ using PTJ_Service.Helpers.Interfaces;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
-<<<<<<< HEAD
-=======
-using PTJ_Models.DTO.PaymentEmploy;
->>>>>>> parent of 469ce8b (Update(PaymentSendMaillSuccsess))
 
 namespace PTJ_Service.PaymentsService.Implementations
 {
@@ -25,22 +21,21 @@ namespace PTJ_Service.PaymentsService.Implementations
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         private readonly HttpClient _http;
+        private readonly IEmailTemplateService _emailTemplate;
+        private readonly SmtpEmailSender _smtpEmailSender;
 
         public EmployerPaymentService(
             JobMatchingDbContext db,
             IConfiguration config,
-<<<<<<< HEAD
             IWebHostEnvironment env,
             IEmailTemplateService emailTemplate,
             SmtpEmailSender emailSender)
         {
-=======
-            IWebHostEnvironment env)
-            {
->>>>>>> parent of 469ce8b (Update(PaymentSendMaillSuccsess))
             _db = db;
             _config = config;
             _env = env;
+            _emailTemplate = emailTemplate;
+            _smtpEmailSender = emailSender;
             _http = new HttpClient();
         }
 
@@ -256,11 +251,8 @@ namespace PTJ_Service.PaymentsService.Implementations
             {
                 trans.Status = "Paid";
                 trans.PaidAt = DateTime.Now;
-<<<<<<< HEAD
 
                 // Kích hoạt gói trước để subscription tồn tại
-=======
->>>>>>> parent of 469ce8b (Update(PaymentSendMaillSuccsess))
                 await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
 
                 // Sau đó gửi email (dùng subscription vừa kích hoạt)
@@ -449,7 +441,6 @@ namespace PTJ_Service.PaymentsService.Implementations
                 QrCodeRaw = qrRaw,
                 ExpiredAt = trans.QrExpiredAt,
                 OrderCode = payOsOrderCode
-<<<<<<< HEAD
             };
         }
 
@@ -458,15 +449,10 @@ namespace PTJ_Service.PaymentsService.Implementations
         {
             var user = await _db.Users.FindAsync(trans.UserId);
             var plan = await _db.EmployerPlans.FindAsync(trans.PlanId);
-=======
-                };
-            }
->>>>>>> parent of 469ce8b (Update(PaymentSendMaillSuccsess))
 
             if (user == null || plan == null)
                 return;
 
-<<<<<<< HEAD
             // lấy subscription mới nhất đã được Activate
             var sub = await _db.EmployerSubscriptions
                 .Where(x => x.UserId == trans.UserId && x.PlanId == trans.PlanId && x.Status == "Active")
@@ -486,19 +472,6 @@ namespace PTJ_Service.PaymentsService.Implementations
             );
 
             await _smtpEmailSender.SendEmailAsync(user.Email, "Thanh toán thành công", html);
-=======
-            try
-                {
-                dynamic obj = JsonConvert.DeserializeObject(rawWebhookData);
-                return obj?.data?.checkoutUrl;
-                }
-            catch
-                {
-                return null;
-                }
-            }
-
-
->>>>>>> parent of 469ce8b (Update(PaymentSendMaillSuccsess))
         }
     }
+}
