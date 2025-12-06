@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Numerics;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -254,20 +255,28 @@ namespace PTJ_API.Controllers.Post
             var currentUserId = GetCurrentUserId();
             bool isAdmin = User.IsInRole("Admin");
 
-            // Chỉ cho phép admin hoặc chính chủ xem
             if (!isAdmin && currentUserId != userId)
                 return StatusCode(403, new { success = false, message = "Bạn không có quyền xem dữ liệu này." });
 
-            // Lấy subscription đang active
+            // Lấy subscription active
             var sub = await _db.EmployerSubscriptions
                 .Where(s => s.UserId == userId && s.Status == "Active")
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefaultAsync();
 
+            // 🔥 Nếu user chưa mua gì, trả về Free
             if (sub == null)
-                return Ok(new { plan = "None", remaining = 0, endDate = (DateTime?)null });
+                {
+                return Ok(new
+                    {
+                    planId = 1,              // FREE
+                    planName = "Free",
+                    remaining = 0,
+                    endDate = (DateTime?)null
+                    });
+                }
 
-            // 🔥 Truy vấn PlanName thông qua PlanId (không dùng navigation)
+            // Lấy plan name
             var planName = await _db.EmployerPlans
                 .Where(p => p.PlanId == sub.PlanId)
                 .Select(p => p.PlanName)
@@ -275,10 +284,12 @@ namespace PTJ_API.Controllers.Post
 
             return Ok(new
                 {
-                plan = planName ?? "Unknown",
+                planId = sub.PlanId,
+                planName = planName ?? "Unknown",
                 remaining = sub.RemainingPosts,
                 endDate = sub.EndDate
                 });
             }
+
         }
     }
