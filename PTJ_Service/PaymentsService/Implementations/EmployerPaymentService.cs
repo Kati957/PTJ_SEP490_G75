@@ -10,6 +10,8 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using PTJ_Models.DTO.PaymentEmploy;
+using Microsoft.AspNetCore.SignalR;
+using PTJ_API.Hubs;
 
 namespace PTJ_Service.PaymentsService.Implementations
     {
@@ -19,15 +21,17 @@ namespace PTJ_Service.PaymentsService.Implementations
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         private readonly HttpClient _http;
-
+        private readonly IHubContext<PaymentHub> _hub;
         public EmployerPaymentService(
             JobMatchingDbContext db,
             IConfiguration config,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IHubContext<PaymentHub> hub)
             {
             _db = db;
             _config = config;
             _env = env;
+            _hub = hub;
             _http = new HttpClient();
             }
 
@@ -228,8 +232,21 @@ namespace PTJ_Service.PaymentsService.Implementations
                 {
                 trans.Status = "Paid";
                 trans.PaidAt = DateTime.Now;
+
+                // Kích hoạt subscription
                 await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
+
+                // Bắn realtime cho FE
+                await _hub.Clients.User(trans.UserId.ToString())
+                    .SendAsync("PaymentStatusChanged", new
+                        {
+                        orderCode = trans.PayOsorderCode,
+                        status = "Paid",
+                        planId = trans.PlanId,
+                        paidAt = trans.PaidAt
+                        });
                 }
+
 
             await _db.SaveChangesAsync();
             }
