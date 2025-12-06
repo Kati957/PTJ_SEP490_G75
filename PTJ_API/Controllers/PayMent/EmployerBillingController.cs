@@ -77,9 +77,34 @@ namespace PTJ_API.Controllers.Payment
         // 3. Thanh toán thành công
         // ======================================================
         [HttpGet("success")]
-        public IActionResult PaymentSuccess()
+        public async Task<IActionResult> PaymentSuccess(long orderCode)
             {
-            return Ok(new { message = "Thanh toán thành công!", status = "SUCCESS" });
+            var trans = await _db.EmployerTransactions
+                .FirstOrDefaultAsync(x => x.PayOsorderCode == orderCode.ToString());
+
+            if (trans == null)
+                return BadRequest(new { message = "Không tìm thấy giao dịch" });
+
+            // Trạng thái đã được Webhook cập nhật
+            if (trans.Status != "Paid")
+                {
+                return Ok(new
+                    {
+                    success = false,
+                    message = "Thanh toán chưa được PayOS xác nhận",
+                    status = trans.Status
+                    });
+                }
+
+            return Ok(new
+                {
+                success = true,
+                message = "Thanh toán thành công!",
+                transactionId = trans.TransactionId,
+                planId = trans.PlanId,
+                status = trans.Status,
+                paidAt = trans.PaidAt
+                });
             }
 
         // ======================================================
@@ -97,6 +122,16 @@ namespace PTJ_API.Controllers.Payment
                 await _db.SaveChangesAsync();
                 }
 
+            // NHẬN BIẾT SWAGGER / API CLIENT
+            var accept = Request.Headers["Accept"].ToString();
+
+            // Swagger và API clients đều gửi "*/*"
+            if (accept.Contains("*/*"))
+                {
+                return Ok(new { message = "Cancelled (API request)" });
+                }
+
+            // Còn lại là Browser thật → redirect
             return Redirect("/payment-failed");
             }
 
