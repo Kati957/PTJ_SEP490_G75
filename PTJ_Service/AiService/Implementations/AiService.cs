@@ -177,7 +177,7 @@ namespace PTJ_Service.AiService.Implementations
                     var score = m.GetProperty("score").GetDouble();
 
                     // ✅ chỉ lấy những vector có score >= 0.5
-                    if (score >= 0.1)
+                    if (score >= 0.55)
                         {
                         list.Add((id!, score));
                         }
