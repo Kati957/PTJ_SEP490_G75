@@ -12,6 +12,7 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+		
 		<PackageReference Include="System.Net.Http.Json" Version="8.0.1" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 		<PackageReference Include="AutoMapper" Version="15.0.1" />
@@ -29,5 +30,4 @@
 		<ProjectReference Include="..\PTJ_Models\PTJ_Models.csproj" />
 		<ProjectReference Include="..\PTJ_Service\PTJ_Service.csproj" />
 	</ItemGroup>
-
 </Project>

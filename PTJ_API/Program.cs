@@ -9,6 +9,9 @@ using System.Text;
 using System.Text.Json.Serialization;
 
 // PTJ Namespaces
+using PayOS;
+using PayOS.Models;
+
 using PTJ_Data.Repositories.Interfaces;
 using PTJ_Data.Repositories.Implementations;
 using PTJ_Service.Helpers;
@@ -73,6 +76,9 @@ using PTJ_Service.CategoryService.Interfaces;
 using PTJ_Service.SearchService.Implementations;
 using System.Security.Claims;
 using PTJ_API.Middlewares;
+using PTJ_Service.PaymentsService;
+using PTJ_Service.PaymentsService.Implementations;
+using PTJ_API.Hubs;
 
 using PTJ_Service.UserActivityService;
 
@@ -127,6 +133,9 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IAIService, AIService>();
 
 // Application Services
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+builder.Services.AddScoped<IEmployerPaymentService, EmployerPaymentService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IEmployerRankingService, EmployerRankingService>();
 builder.Services.AddScoped<IChangePasswordService, ChangePasswordService>();
 builder.Services.AddScoped<INewsService, NewsService>();
@@ -194,7 +203,7 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-
+builder.Services.AddScoped<SmtpEmailSender>();
 
 
 // 3️⃣ CẤU HÌNH JWT AUTHENTICATION
@@ -256,6 +265,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     return;
                 }
             },
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // Nếu là request tới SignalR hub thì lấy token từ query
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs/payment"))
+                    {
+                    context.Token = accessToken;
+                    }
+                return Task.CompletedTask;
+            },
             OnChallenge = context =>
             {
                 context.HandleResponse(); 
@@ -302,9 +324,6 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod();
     });
 });
-
-
-
 
 // 5️⃣ CONTROLLERS + JSON OPTIONS
 
@@ -353,6 +372,8 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 // SignalR Hub Registration
 
 app.MapHub<NotificationHub>("/hubs/notification");
+app.MapHub<PaymentHub>("/hubs/payment");
+
 app.MapControllers();
 
 app.MapGet("/", () => "PTJ API is running");

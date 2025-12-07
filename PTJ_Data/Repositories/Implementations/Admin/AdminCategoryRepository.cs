@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PTJ_Data.Repositories.Interfaces.Admin;
 using PTJ_Models.DTO.Admin;
 using PTJ_Models.Models;
@@ -15,12 +10,16 @@ namespace PTJ_Data.Repositories.Implementations.Admin
         private readonly JobMatchingDbContext _db;
         public AdminCategoryRepository(JobMatchingDbContext db) => _db = db;
 
-        public async Task<IEnumerable<AdminCategoryDto>> GetCategoriesAsync(string? type = null, bool? isActive = null, string? keyword = null)
+        // GET LIST + FILTER
+        public async Task<IEnumerable<AdminCategoryDto>> GetCategoriesAsync(
+            string? categoryGroup = null,
+            bool? isActive = null,
+            string? keyword = null)
         {
             var q = _db.Categories.AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(type))
-                q = q.Where(c => c.Type == type);
+            if (!string.IsNullOrWhiteSpace(categoryGroup))
+                q = q.Where(c => c.CategoryGroup == categoryGroup);
 
             if (isActive.HasValue)
                 q = q.Where(c => c.IsActive == isActive.Value);
@@ -40,15 +39,16 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     CategoryId = c.CategoryId,
                     Name = c.Name,
                     Description = c.Description,
-                    Type = c.Type,
+                    CategoryGroup = c.CategoryGroup,
                     IsActive = c.IsActive,
-                    CreatedAt = null // Db không có CreatedAt cho Category -> để null (hoặc thêm cột nếu cần)
+                    CreatedAt = null 
                 })
                 .ToListAsync();
 
             return data;
         }
 
+        // GET BY ID
         public async Task<AdminCategoryDto?> GetCategoryAsync(int id)
         {
             return await _db.Categories
@@ -58,13 +58,14 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                     CategoryId = c.CategoryId,
                     Name = c.Name,
                     Description = c.Description,
-                    Type = c.Type,
+                    CategoryGroup = c.CategoryGroup,
                     IsActive = c.IsActive,
                     CreatedAt = null
                 })
                 .FirstOrDefaultAsync();
         }
 
+        // CREATE
         public async Task<int> CreateAsync(Category entity)
         {
             _db.Categories.Add(entity);
@@ -72,6 +73,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
             return entity.CategoryId;
         }
 
+        // UPDATE
         public async Task<bool> UpdateAsync(int id, AdminUpdateCategoryDto dto)
         {
             var cat = await _db.Categories.FirstOrDefaultAsync(x => x.CategoryId == id);
@@ -79,13 +81,14 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 
             cat.Name = dto.Name.Trim();
             cat.Description = dto.Description;
-            cat.Type = dto.Type;
+            cat.CategoryGroup = dto.CategoryGroup;
             cat.IsActive = dto.IsActive;
 
             await _db.SaveChangesAsync();
             return true;
         }
 
+        // TOGGLE ACTIVE
         public async Task<bool> ToggleActiveAsync(int id)
         {
             var cat = await _db.Categories.FirstOrDefaultAsync(x => x.CategoryId == id);

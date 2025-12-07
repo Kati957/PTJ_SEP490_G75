@@ -94,6 +94,7 @@ namespace PTJ_Data.Repositories.Implementations.Admin
                 {
                     SolvedReportId = s.SolvedPostReportId,
                     ReportId = s.PostReportId,
+                    ReportType = s.PostReport.ReportType,
                     ActionTaken = s.ActionTaken,
                     Reason = s.Reason,
                     SolvedAt = s.SolvedAt,

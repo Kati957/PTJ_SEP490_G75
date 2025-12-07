@@ -30,7 +30,7 @@ namespace PTJ_Service.Admin.Implementations
             {
                 Name = dto.Name.Trim(),
                 Description = dto.Description,
-                Type = dto.Type,
+                CategoryGroup = dto.CategoryGroup,
                 IsActive = dto.IsActive
             };
 

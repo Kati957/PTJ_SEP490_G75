@@ -2,9 +2,9 @@
 
 public class RegisterEmployerDto
 {
-    [Required(ErrorMessage = "Tên công ty là bắt buộc.")]
-    [StringLength(200)]
-    public string CompanyName { get; set; } = string.Empty;
+    //[Required(ErrorMessage = "Tên công ty là bắt buộc.")]
+    //[StringLength(200)]
+    public string? CompanyName { get; set; } = string.Empty;
 
     [StringLength(2000)]
     public string? CompanyDescription { get; set; }

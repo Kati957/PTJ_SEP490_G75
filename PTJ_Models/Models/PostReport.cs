@@ -23,7 +23,7 @@ public partial class PostReport
 
     public string? AffectedPostType { get; set; }
 
-    public virtual PostReportSolved? PostReportSolved { get; set; }
+    public virtual ICollection<PostReportSolved> PostReportSolveds { get; set; } = new List<PostReportSolved>();
 
     public virtual User Reporter { get; set; } = null!;
 

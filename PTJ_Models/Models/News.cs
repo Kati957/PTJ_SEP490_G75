@@ -31,6 +31,8 @@ public partial class News
     public bool IsDeleted { get; set; }
 
     public virtual User Admin { get; set; } = null!;
+
     [NotMapped]
     public List<Image> Images { get; set; } = new();
-}
+
+    }

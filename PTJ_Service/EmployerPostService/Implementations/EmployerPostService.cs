@@ -67,6 +67,30 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (!employerUser.IsActive)
                 throw new Exception("Tài khoản đã bị khóa. Không thể đăng bài tuyển dụng.");
 
+            // 1️⃣ Auto Free Subscription
+            var sub = await EnsureFreeSubscriptionAsync(dto.UserID);
+
+            // 2️⃣ Nếu user đã mua gói → ưu tiên gói trả phí
+            var paidSub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == dto.UserID && s.Status == "Active" && s.PlanId != 1) // != Free
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (paidSub != null)
+                sub = paidSub;
+
+            // 3️⃣ Kiểm tra hạn & lượt
+            if (sub.EndDate != null && sub.EndDate < DateTime.Now)
+                throw new Exception("Gói đăng bài đã hết hạn.");
+
+            if (sub.RemainingPosts <= 0)
+                throw new Exception("Bạn đã hết lượt đăng bài.");
+
+            sub.RemainingPosts--;
+            sub.UpdatedAt = DateTime.Now;
+            await _db.SaveChangesAsync();
+
+
             // 2️⃣ Build location
             string fullLocation = await _locDisplay.BuildAddressAsync(
                 dto.ProvinceId,
@@ -203,6 +227,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 $@"Tiêu đề: {freshPost.Title}
                 Mô tả công việc: {freshPost.Description}
                 Yêu cầu ứng viên: {freshPost.Requirements}
+                Ngành nghề: {category?.Name}
                 Giờ làm việc: {freshPost.WorkHours}";
 
 
@@ -230,12 +255,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
         });
 
             // 9️⃣ Tính điểm
-            var scored = await ScoreAndFilterCandidatesAsync(
-                vector,
-                freshPost.CategoryId,
-                freshPost.Location
-            );
-
+            var scored = await ScoreAndFilterCandidatesAsync(vector, freshPost);
 
             // 1️⃣0️⃣ Lưu gợi ý
             var scoredWithCv = scored.Select(x => (x.Seeker, x.Score, x.CvId)).ToList();
@@ -697,10 +717,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
             var category = await _db.Categories.FindAsync(post.CategoryId);
 
             string embedText =
-                $@"Tiêu đề: {post.Title}
-                Mô tả công việc: {post.Description}
-                Yêu cầu ứng viên: {post.Requirements}
-                Giờ làm việc: { post.WorkHours}";
+                    $@"Tiêu đề: {post.Title}
+                    Mô tả công việc: {post.Description}
+                    Yêu cầu ứng viên: {post.Requirements}
+                    Ngành nghề: {category?.Name}
+                    Giờ làm việc: {post.WorkHours}";
+
 
 
 
@@ -795,7 +817,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 $@"Tiêu đề: {post.Title}
                 Mô tả công việc: {post.Description}
                 Yêu cầu ứng viên: {post.Requirements}
+                Ngành nghề: {category?.Name}
                 Giờ làm việc: {post.WorkHours}";
+
 
 
             //  Tạo embedding
@@ -822,12 +846,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 });
 
             //  Chấm điểm & lọc ứng viên
-            var scored = await ScoreAndFilterCandidatesAsync(
-                 vector,
-                 post.CategoryId,
-                 post.Location
-             );
-
+            var scored = await ScoreAndFilterCandidatesAsync(vector, post);
 
             //  Upsert top 5 vào DB
             await UpsertSuggestionsAsync(
@@ -882,27 +901,51 @@ namespace PTJ_Service.EmployerPostService.Implementations
         private async Task<List<(JobSeekerPost Seeker, double Score, int? CvId)>>
         ScoreAndFilterCandidatesAsync(
             float[] employerVector,
-            int? mustMatchCategoryId,
-            string employerLocation)
+            EmployerPost post)
             {
             // ---------------------------------------
             // 1) LẤY THÔNG TIN ĐỊA CHỈ EMPLOYER (NGUỒN)
             // ---------------------------------------
-            var employerPost = await _db.EmployerPosts
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Location == employerLocation);
+            int employerProvinceId = post.ProvinceId;
+            int employerDistrictId = post.DistrictId;
+            int employerWardId = post.WardId;
+            string jobLocation = post.Location;
+            int? mustMatchCategoryId = post.CategoryId;
 
-            int employerProvinceId = employerPost?.ProvinceId ?? 0;
-            int employerDistrictId = employerPost?.DistrictId ?? 0;
-            int employerWardId = employerPost?.WardId ?? 0;
 
             // ---------------------------------------
-            // 2) LỌC THEO CATEGORY
+            // 2) LỌC THEO CATEGORY VỚI RULE "OTHER"
             // ---------------------------------------
-            var categoryFiltered = await _db.JobSeekerPosts
-                .Where(js =>
-                    js.Status == "Active" &&
-                    js.CategoryId == mustMatchCategoryId)
+
+            // Tìm category "Other" / "Khác" (tùy bạn đặt name)
+            var otherCategoryId = await _db.Categories
+                .Where(c => c.Name == "Other" || c.Name == "Khác")
+                .Select(c => (int?)c.CategoryId)
+                .FirstOrDefaultAsync();
+
+            bool isOtherPost =
+                otherCategoryId.HasValue &&
+                mustMatchCategoryId.HasValue &&
+                mustMatchCategoryId.Value == otherCategoryId.Value;
+
+            IQueryable<JobSeekerPost> query = _db.JobSeekerPosts
+                .Where(js => js.Status == "Active");
+
+            if (otherCategoryId.HasValue)
+                {
+                if (isOtherPost)
+                    {
+                    // Bài tuyển chọn "Other" → chỉ match JS "Other"
+                    query = query.Where(js => js.CategoryId == otherCategoryId.Value);
+                    }
+                else
+                    {
+                    // Bài tuyển KHÔNG phải "Other" → loại bỏ JS "Other"
+                    query = query.Where(js => js.CategoryId != otherCategoryId.Value);
+                    }
+                }
+
+            var categoryFiltered = await query
                 .Include(js => js.User)
                 .Include(js => js.Category)
                 .ToListAsync();
@@ -925,7 +968,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     jobDistrict: employerDistrictId,
                     jobWard: employerWardId,
                     seekerLocation: js.PreferredLocation,
-                    jobLocation: employerLocation
+                    jobLocation: jobLocation
                 );
 
                 if (ok)
@@ -1530,6 +1573,56 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // Nếu chỉ có 1 phần → trả nguyên
             return parts[0];
+            }
+
+        private async Task<EmployerSubscription> EnsureFreeSubscriptionAsync(int userId)
+            {
+            var now = DateTime.Now;
+
+            // Tìm free plan trong DB
+            var freePlan = await _db.EmployerPlans.FirstOrDefaultAsync(p => p.PlanName == "Free");
+            if (freePlan == null)
+                throw new Exception("Không tìm thấy gói Free trong hệ thống.");
+
+            // Kiểm tra subscription hiện tại
+            var sub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == userId && s.PlanId == freePlan.PlanId)
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            // 1️⃣ Chưa từng có FREE → Tạo mới
+            if (sub == null)
+                {
+                sub = new EmployerSubscription
+                    {
+                    UserId = userId,
+                    PlanId = freePlan.PlanId,
+                    RemainingPosts = freePlan.MaxPosts,
+                    StartDate = now,
+                    EndDate = now.AddDays(freePlan.DurationDays ?? 30),
+                    Status = "Active",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                    };
+
+                _db.EmployerSubscriptions.Add(sub);
+                await _db.SaveChangesAsync();
+                return sub;
+                }
+
+            // 2️⃣ Đã có FREE nhưng hết hạn tháng cũ → reset FREE
+            if (sub.EndDate < now)
+                {
+                sub.RemainingPosts = freePlan.MaxPosts; // reset lại 1 bài
+                sub.StartDate = now;
+                sub.EndDate = now.AddDays(freePlan.DurationDays ?? 30);
+                sub.Status = "Active";
+                sub.UpdatedAt = now;
+
+                await _db.SaveChangesAsync();
+                }
+
+            return sub;
             }
 
         }

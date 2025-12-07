@@ -6,6 +6,7 @@ using PTJ_Models.DTO.Notification;
 using PTJ_Models.Models;
 using PTJ_Service.Interfaces;
 using PTJ_Service.JobApplicationService.Interfaces;
+using PTJ_Service.Helpers.Interfaces;
 
 namespace PTJ_Service.JobApplicationService.Implementations
 {
@@ -14,31 +15,32 @@ namespace PTJ_Service.JobApplicationService.Implementations
         private readonly IJobApplicationRepository _repo;
         private readonly JobMatchingDbContext _db;
         private readonly INotificationService _noti;
+        private readonly IEmailSender _email;                 
+        private readonly IEmailTemplateService _templates;    
 
         public JobApplicationService(
             IJobApplicationRepository repo,
             JobMatchingDbContext db,
-            INotificationService noti)
+            INotificationService noti,
+            IEmailSender email,
+            IEmailTemplateService templates)
         {
             _repo = repo;
             _db = db;
             _noti = noti;
+            _email = email;
+            _templates = templates;
         }
 
-        // 1️⃣ ỨNG VIÊN NỘP ĐƠN (APPLY)
+        // 1. ỨNG TUYỂN BÀI ĐĂNG
 
         public async Task<(bool success, string? error)> ApplyAsync(
-            int jobSeekerId,
-            int employerPostId,
-            string? note,
-            int? cvid = null)
+            int jobSeekerId, int employerPostId, string? note, int? cvid = null)
         {
-            // 1. Check seeker
             var seeker = await _db.Users.FirstOrDefaultAsync(u => u.UserId == jobSeekerId);
             if (seeker == null || !seeker.IsActive)
                 return (false, "Tài khoản ứng viên không tồn tại hoặc đã bị khóa.");
 
-            // 2. Check post
             var post = await _db.EmployerPosts.FirstOrDefaultAsync(p => p.EmployerPostId == employerPostId);
             if (post == null)
                 return (false, "Bài đăng không tồn tại.");
@@ -49,19 +51,14 @@ namespace PTJ_Service.JobApplicationService.Implementations
             if (!employer.IsActive)
                 return (false, "Nhà tuyển dụng đã bị khóa.");
 
-            var employerId = post.UserId;
-
-            // 3. Check CV
             if (cvid.HasValue)
             {
                 var cv = await _db.JobSeekerCvs
                     .FirstOrDefaultAsync(c => c.Cvid == cvid && c.JobSeekerId == jobSeekerId);
-
                 if (cv == null)
                     return (false, "CV không hợp lệ hoặc không thuộc về bạn.");
             }
 
-            // 4. Check if applied
             var existing = await _repo.GetAsync(jobSeekerId, employerPostId);
             if (existing != null)
             {
@@ -77,7 +74,6 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 return (false, "Bạn đã ứng tuyển bài này trước đó.");
             }
 
-            // 5. Create submission
             var submission = new JobSeekerSubmission
             {
                 JobSeekerId = jobSeekerId,
@@ -91,46 +87,37 @@ namespace PTJ_Service.JobApplicationService.Implementations
 
             await _repo.AddAsync(submission);
 
-            // Lấy tên thật ứng viên
             var seekerName = await _db.JobSeekerProfiles
                 .Where(x => x.UserId == jobSeekerId)
                 .Select(x => x.FullName)
                 .FirstOrDefaultAsync() ?? "Ứng viên";
 
-            // 1️⃣ Gửi noti cho EMPLOYER
+            // Gửi thông báo cho employer
             await _noti.SendAsync(new CreateNotificationDto
             {
-                UserId = employerId,
+                UserId = employer.UserId,
                 NotificationType = "JobApplication",
                 RelatedItemId = submission.SubmissionId,
-                Data = new Dictionary<string, string>
-                {
-                    { "JobSeekerName", seekerName },   
-                    { "PostTitle", post.Title }
-                }
+                Data = new() { { "JobSeekerName", seekerName }, { "PostTitle", post.Title } }
             });
 
-            // 2️⃣ Gửi noti cho JOBSEEKER
+            // Gửi thông báo cho job seeker
             await _noti.SendAsync(new CreateNotificationDto
             {
                 UserId = jobSeekerId,
                 NotificationType = "JobAppliedSuccess",
                 RelatedItemId = submission.SubmissionId,
-                Data = new Dictionary<string, string>
-                {
-                    { "PostTitle", post.Title }
-                }
+                Data = new() { { "PostTitle", post.Title } }
             });
 
             return (true, null);
         }
 
-        // 2️⃣ RÚT ĐƠN
+        // 2. RÚT ĐƠN
         public async Task<bool> WithdrawAsync(int jobSeekerId, int employerPostId)
         {
             var app = await _repo.GetAsync(jobSeekerId, employerPostId);
-            if (app == null)
-                return false;
+            if (app == null) return false;
 
             app.Status = "Withdrawn";
             app.Notes = "Ứng viên đã rút đơn";
@@ -140,19 +127,18 @@ namespace PTJ_Service.JobApplicationService.Implementations
             return true;
         }
 
-        // 3️⃣ EMPLOYER XEM DANH SÁCH ỨNG VIÊN
+        // 3. EMPLOYER XEM DANH SÁCH ỨNG VIÊN
         public async Task<IEnumerable<JobApplicationResultDto>> GetCandidatesByPostAsync(int employerPostId)
         {
+           
             var list = await _repo.GetByEmployerPostWithDetailAsync(employerPostId);
 
             return list.Select(x =>
             {
                 var cv = x.Cv;
-                var seeker = x.JobSeeker;
 
-                // Lấy FullName
                 var seekerFullName = _db.JobSeekerProfiles
-                    .Where(p => p.UserId == seeker.UserId)
+                    .Where(p => p.UserId == x.JobSeeker.UserId)
                     .Select(p => p.FullName)
                     .FirstOrDefault() ?? "Ứng viên";
 
@@ -160,7 +146,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 {
                     CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
-                    Username = seekerFullName, 
+                    Username = seekerFullName,
                     Status = x.Status,
                     ApplicationDate = x.AppliedAt,
                     Notes = x.Notes,
@@ -175,13 +161,12 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 };
             }).ToList();
         }
-
-        // 4️⃣ JOBSEEKER XEM ĐƠN ỨNG TUYỂN CỦA MÌNH
+        // 4. JOBSEEKER XEM LỊCH SỬ ỨNG TUYỂN
         public async Task<IEnumerable<JobApplicationResultDto>> GetApplicationsBySeekerAsync(int jobSeekerId)
         {
+          
             var list = await _repo.GetByJobSeekerWithPostDetailAsync(jobSeekerId);
 
-            // lọc bài đăng hợp lệ
             list = list.Where(x =>
                 x.EmployerPost != null &&
                 x.EmployerPost.Status == "Active" &&
@@ -191,17 +176,14 @@ namespace PTJ_Service.JobApplicationService.Implementations
             return list.Select(x =>
             {
                 var post = x.EmployerPost;
-                var category = post?.Category;
                 var employer = post?.User;
                 var cv = x.Cv;
 
-                // ⭐ SỬA: Lấy tên ứng viên
                 var jsFullName = _db.JobSeekerProfiles
                     .Where(js => js.UserId == x.JobSeekerId)
                     .Select(js => js.FullName)
                     .FirstOrDefault() ?? "Ứng viên";
 
-                // ⭐ SỬA: Lấy DisplayName employer
                 var employerName = _db.EmployerProfiles
                     .Where(e => e.UserId == employer.UserId)
                     .Select(e => e.DisplayName)
@@ -211,27 +193,26 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 {
                     CandidateListId = x.SubmissionId,
                     JobSeekerId = x.JobSeekerId,
-                    Username = jsFullName, 
+                    Username = jsFullName,
                     Status = x.Status,
                     ApplicationDate = x.AppliedAt,
                     Notes = x.Notes,
                     EmployerPostId = post?.EmployerPostId ?? 0,
                     PostTitle = post?.Title,
-                    CategoryName = category?.Name,
-                    EmployerName = employerName, 
+                    CategoryName = post?.Category?.Name,
+                    EmployerName = employerName,
                     Location = post?.Location,
                     SalaryMin = post?.SalaryMin,
                     SalaryMax = post?.SalaryMax,
                     SalaryType = post?.SalaryType,
                     SalaryDisplay =
-                    (post?.SalaryMin == null && post?.SalaryMax == null)
-                        ? "Thỏa thuận"
-                        : (post?.SalaryMin != null && post?.SalaryMax != null)
-                            ? $"{post?.SalaryMin:#,###} - {post?.SalaryMax:#,###}"
-                            : (post?.SalaryMin != null)
-                                ? $"Từ {post?.SalaryMin:#,###}"
-                                : $"Đến {post?.SalaryMax:#,###}",
-
+                        (post?.SalaryMin == null && post?.SalaryMax == null)
+                            ? "Thỏa thuận"
+                            : (post?.SalaryMin != null && post?.SalaryMax != null)
+                                ? $"{post.SalaryMin:#,###} - {post.SalaryMax:#,###}"
+                                : post?.SalaryMin != null
+                                    ? $"Từ {post?.SalaryMin:#,###}"
+                                    : $"Đến {post?.SalaryMax:#,###}",
                     WorkHours = post?.WorkHours,
                     PhoneContact = post?.PhoneContact,
                     CvId = cv?.Cvid,
@@ -245,8 +226,7 @@ namespace PTJ_Service.JobApplicationService.Implementations
                 };
             }).ToList();
         }
-
-        // 5️⃣ EMPLOYER ACCEPT / REJECT APPLICATION
+        // 5. EMPLOYER CẬP NHẬT TRẠNG THÁI ĐƠN
         public async Task<bool> UpdateStatusAsync(int submissionId, string status, string? note = null)
         {
             var validStatuses = new[] { "Interviewing", "Accepted", "Rejected" };
@@ -267,53 +247,72 @@ namespace PTJ_Service.JobApplicationService.Implementations
             await _repo.UpdateAsync(entity);
 
             var seeker = await _db.Users.FirstAsync(u => u.UserId == entity.JobSeekerId);
-            var post = await _db.EmployerPosts.FirstAsync(p => p.EmployerPostId == entity.EmployerPostId);
+            var seekerName = await _db.JobSeekerProfiles
+                .Where(x => x.UserId == seeker.UserId)
+                .Select(x => x.FullName)
+                .FirstOrDefaultAsync() ?? seeker.Email;
 
-            if (status.Equals("Interviewing", StringComparison.OrdinalIgnoreCase))
+            var post = await _db.EmployerPosts.FirstAsync(p => p.EmployerPostId == entity.EmployerPostId);
+            var employerName = await _db.EmployerProfiles
+                .Where(x => x.UserId == post.UserId)
+                .Select(x => x.DisplayName)
+                .FirstOrDefaultAsync() ?? "Nhà tuyển dụng";
+
+            // GỬI THÔNG BÁO + EMAIL TEMPLATE
+
+            if (status == "Interviewing")
             {
                 await _noti.SendAsync(new CreateNotificationDto
                 {
                     UserId = seeker.UserId,
                     NotificationType = "InterviewRequest",
                     RelatedItemId = submissionId,
-                    Data = new()
-                    {
-                        { "PostTitle", post.Title }
-                    }
+                    Data = new() { { "PostTitle", post.Title } }
                 });
+
+                // Gửi email mời phỏng vấn
+                var html = _templates.CreateInterviewInviteTemplate(seekerName, post.Title, employerName, note ?? "");
+                await _email.SendEmailAsync(seeker.Email, $"Mời phỏng vấn – {post.Title}", html);
+
                 return true;
             }
 
-            if (status.Equals("Accepted", StringComparison.OrdinalIgnoreCase))
+            if (status == "Accepted")
             {
                 await _noti.SendAsync(new CreateNotificationDto
                 {
                     UserId = seeker.UserId,
                     NotificationType = "ApplicationAccepted",
                     RelatedItemId = submissionId,
-                    Data = new()
-                    {
-                        { "PostTitle", post.Title }
-                    }
+                    Data = new() { { "PostTitle", post.Title } }
                 });
+
+                // Email ACCEPTED
+                var html = _templates.CreateApplicationAcceptedTemplate(seekerName, post.Title, employerName);
+                await _email.SendEmailAsync(seeker.Email, $"Bạn đã được nhận – {post.Title}", html);
+
+                return true;
             }
-            else if (status.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+
+            if (status == "Rejected")
             {
                 await _noti.SendAsync(new CreateNotificationDto
                 {
                     UserId = seeker.UserId,
                     NotificationType = "ApplicationRejected",
                     RelatedItemId = submissionId,
-                    Data = new()
-                    {
-                        { "PostTitle", post.Title }
-                    }
+                    Data = new() { { "PostTitle", post.Title } }
                 });
+
+                // Email REJECTED
+                var html = _templates.CreateApplicationRejectedTemplate(seekerName, post.Title);
+                await _email.SendEmailAsync(seeker.Email, $"Kết quả ứng tuyển – {post.Title}", html);
+
+                return true;
             }
 
             return true;
         }
-
         public async Task<ApplicationSummaryDto> GetApplicationSummaryAsync(int userId, bool isAdmin)
         {
             int? employerId = isAdmin ? null : userId;
