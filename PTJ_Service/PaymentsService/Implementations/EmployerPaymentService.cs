@@ -99,11 +99,35 @@ namespace PTJ_Service.PaymentsService.Implementations
             var activeSub = await _db.EmployerSubscriptions
                 .FirstOrDefaultAsync(x => x.UserId == userId && x.Status == "Active");
 
-            if (activeSub != null && activeSub.PlanId == planId)
-                throw new Exception("Bạn đang sử dụng gói này. Không thể mua lại.");
+            if (activeSub != null)
+                {
+                var oldPlan = await _db.EmployerPlans.FindAsync(activeSub.PlanId);
+                var newPlan = plan;
 
-            if (activeSub != null && activeSub.PlanId != planId && activeSub.EndDate > DateTime.Now)
-                throw new Exception("Bạn đang có gói khác còn hạn. Không thể mua gói mới.");
+                if (activeSub.PlanId == planId)
+                    throw new Exception("Bạn đang sử dụng gói này. Không thể mua lại.");
+
+                if (newPlan.Price < oldPlan.Price)
+                    throw new Exception("Không thể hạ cấp gói.");
+
+                // --- NÂNG CẤP: CHỈ GIẢM GIÁ KHI CÒN BÀI ---
+                if (activeSub.RemainingPosts > 0)
+                    {
+                    decimal valuePerPost = oldPlan.Price / oldPlan.MaxPosts;
+                    decimal remainingValue = activeSub.RemainingPosts * valuePerPost;
+
+                    int upgradeAmount = (int)(newPlan.Price - remainingValue);
+                    if (upgradeAmount < 0)
+                        upgradeAmount = 0;
+
+                    amount = upgradeAmount;
+                    }
+                else
+                    {
+                    // Hết bài => Mua gói mới với giá gốc
+                    amount = (int)newPlan.Price;
+                    }
+                }
 
             // 3. Tạo transaction local
             var trans = new EmployerTransaction
