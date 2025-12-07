@@ -15,7 +15,7 @@ namespace PTJ_Models.DTO.PostDTO
         [StringLength(5000, MinimumLength = 20, ErrorMessage = "Mô tả phải từ 20 ký tự trở lên.")]
         public string Description { get; set; } = string.Empty;
 
-        [Range(16, 60, ErrorMessage = "Tuổi phải từ 16 đến 60.")]
+        [Range(16, 100, ErrorMessage = "Tuổi phải từ 16 đến 100.")]
         public int? Age { get; set; }
 
         public string? Gender { get; set; }
@@ -56,7 +56,7 @@ namespace PTJ_Models.DTO.PostDTO
         [StringLength(5000, MinimumLength = 20, ErrorMessage = "Mô tả phải từ 20 ký tự trở lên.")]
         public string? Description { get; set; }
 
-        [Range(16, 60, ErrorMessage = "Tuổi phải từ 16 đến 60.")]
+        [Range(16, 100, ErrorMessage = "Tuổi phải từ 16 đến 100.")]
         public int? Age { get; set; }
 
         public string? Gender { get; set; }
