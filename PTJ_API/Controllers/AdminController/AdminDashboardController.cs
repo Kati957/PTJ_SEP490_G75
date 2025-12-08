@@ -6,6 +6,7 @@ namespace PTJ_API.Controllers.Admin
 {
     using Microsoft.AspNetCore.Authorization;
     using Microsoft.AspNetCore.Mvc;
+    using PTJ_Service.AiService.Implementations;
     using PTJ_Service.Interfaces;
 
     [ApiController]
@@ -71,8 +72,10 @@ namespace PTJ_API.Controllers.Admin
         [HttpGet("revenue/by-plan")]
         public async Task<IActionResult> GetRevenueByPlan()
         {
-            return Ok(await _svc.GetRevenueByPlanAsync());
+            var data = await _svc.GetRevenueByPlanAsync();
+            return Ok(data);
         }
+
         [HttpGet("posts/by-day")]
         public async Task<IActionResult> GetPostStatsByDay()
         {

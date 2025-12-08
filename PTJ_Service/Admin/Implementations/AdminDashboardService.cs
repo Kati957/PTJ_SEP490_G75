@@ -229,14 +229,14 @@ public class AdminDashboardService : IAdminDashboardService
             TotalRevenue = totalRevenue,
             ThisMonthRevenue = thisMonthRevenue,
             LastMonthRevenue = lastMonthRevenue,
-            GrowthPercent = Math.Round(growthPercent, 2)
+            MonthGrowthPercent = Math.Round(growthPercent, 2)
         };
     }
     public async Task<List<RevenueStatsDto>> GetRevenueByDayAsync()
     {
         return await _db.EmployerTransactions
-            .Where(t => t.Status == "Success" && t.PaidAt != null)
-            .GroupBy(t => t.PaidAt.Value.Date)
+            .Where(t => t.Status == "Paid" && t.PaidAt != null)
+            .GroupBy(t => t.PaidAt!.Value.Date)
             .Select(g => new RevenueStatsDto
             {
                 Date = g.Key,
@@ -251,22 +251,28 @@ public class AdminDashboardService : IAdminDashboardService
     public async Task<List<RevenueStatsDto>> GetRevenueByMonthAsync()
     {
         return await _db.EmployerTransactions
-            .Where(t => t.Status == "Success" && t.PaidAt != null)
-            .GroupBy(t => new { t.PaidAt.Value.Year, t.PaidAt.Value.Month })
+            .Where(t => t.Status == "Paid" && t.PaidAt != null)
+            .GroupBy(t => new
+            {
+                Year = t.PaidAt!.Value.Year,
+                Month = t.PaidAt!.Value.Month
+            })
             .Select(g => new RevenueStatsDto
             {
                 Year = g.Key.Year,
                 Month = g.Key.Month,
                 Revenue = g.Sum(e => (decimal?)e.Amount) ?? 0
             })
-            .OrderBy(x => x.Year).ThenBy(x => x.Month)
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
             .ToListAsync();
     }
+
     public async Task<List<RevenueStatsDto>> GetRevenueByYearAsync()
     {
         return await _db.EmployerTransactions
-            .Where(t => t.Status == "Success" && t.PaidAt != null)
-            .GroupBy(t => t.PaidAt.Value.Year)
+            .Where(t => t.Status == "Paid" && t.PaidAt != null)
+            .GroupBy(t => t.PaidAt!.Value.Year)
             .Select(g => new RevenueStatsDto
             {
                 Year = g.Key,
@@ -277,23 +283,61 @@ public class AdminDashboardService : IAdminDashboardService
     }
 
 
+
     public async Task<List<RevenueByPlanDto>> GetRevenueByPlanAsync()
     {
-        var query = await (
-            from t in _db.EmployerTransactions
-            join p in _db.EmployerPlans on t.PlanId equals p.PlanId
-            where t.Status == "Success"
-            group t by p.PlanName into g
-            select new RevenueByPlanDto
-            {
-                PlanName = g.Key,
-                Revenue = g.Sum(t => (decimal?)t.Amount) ?? 0,
-                Count = g.Count()
-            }
-        ).ToListAsync();
+        // Lấy toàn bộ danh sách kế hoạch
+        var plans = await _db.EmployerPlans.ToListAsync();
 
-        return query;
+        // Các giao dịch grouped theo PlanId
+        var paidTransactions = await _db.EmployerTransactions
+            .Where(t => t.Status == "Paid")
+            .GroupBy(t => t.PlanId)
+            .Select(g => new
+            {
+                PlanId = g.Key,
+                Revenue = g.Sum(x => x.Amount ?? 0),
+                Transactions = g.Count(),
+                Users = g.Select(x => x.UserId).Distinct().Count()
+            })
+            .ToListAsync();
+
+        // Tổng tất cả giao dịch (Paid + Cancelled + Pending)
+        var allTransactions = await _db.EmployerTransactions
+            .GroupBy(t => t.PlanId)
+            .Select(g => new
+            {
+                PlanId = g.Key,
+                TotalTransactions = g.Count()
+            })
+            .ToListAsync();
+
+        var result = plans.Select(plan =>
+        {
+            var paid = paidTransactions.FirstOrDefault(x => x.PlanId == plan.PlanId);
+            var total = allTransactions.FirstOrDefault(x => x.PlanId == plan.PlanId);
+
+            int success = paid?.Transactions ?? 0;
+            int totalTrans = total?.TotalTransactions ?? 0;
+
+            decimal successRate = totalTrans == 0
+                ? 0
+                : Math.Round((decimal)success / totalTrans * 100, 2);
+
+            return new RevenueByPlanDto
+            {
+                PlanName = plan.PlanName,
+                Revenue = paid?.Revenue ?? 0,
+                Transactions = paid?.Transactions ?? 0,
+                Users = paid?.Users ?? 0,
+                SuccessRate = successRate
+            };
+        })
+        .ToList();
+
+        return result;
     }
+
     public async Task<List<PostStatsByDayDto>> GetPostStatsByDayAsync()
     {
         var employer = await _db.EmployerPosts
