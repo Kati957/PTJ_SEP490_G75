@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PTJ_Data", "PTJ_Data\PTJ_Da
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PTJ_Models", "PTJ_Models\PTJ_Models.csproj", "{14D9B7B0-B6BB-42A7-AE64-0667140A5831}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PTJ_Service.Tests", "PTJ_Service.Tests\PTJ_Service.Tests.csproj", "{AD8D6B78-9551-49E1-9CC3-8EECC0D3375C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{14D9B7B0-B6BB-42A7-AE64-0667140A5831}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{14D9B7B0-B6BB-42A7-AE64-0667140A5831}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{14D9B7B0-B6BB-42A7-AE64-0667140A5831}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD8D6B78-9551-49E1-9CC3-8EECC0D3375C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD8D6B78-9551-49E1-9CC3-8EECC0D3375C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD8D6B78-9551-49E1-9CC3-8EECC0D3375C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD8D6B78-9551-49E1-9CC3-8EECC0D3375C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
