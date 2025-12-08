@@ -843,7 +843,7 @@
                 if (seekerProvince != 0 && seekerProvince == jobProvince)
                     return true;
 
-                // 4) Khoảng cách <= 100km
+                // 4) Khoảng cách <= 300km
                 try
                     {
                     seekerLocation = NormalizeLocation(seekerLocation);
@@ -859,7 +859,7 @@
                             toCoord.Value.lat, toCoord.Value.lng
                         );
 
-                        return dist <= 100;
+                        return dist <= 300;
                         }
                     }
                 catch { }
@@ -1292,7 +1292,5 @@
                 // Nếu chỉ 1 phần
                 return parts[0];
                 }
-
-
             }
         }

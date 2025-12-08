@@ -79,6 +79,7 @@ using PTJ_API.Middlewares;
 using PTJ_Service.PaymentsService;
 using PTJ_Service.PaymentsService.Implementations;
 using PTJ_API.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -166,6 +167,7 @@ builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>(
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<IAdminStatisticsService, AdminStatisticsService>();
 builder.Services.AddScoped<IAdminEmployerRegistrationService, AdminEmployerRegistrationService>();
+builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
 
 // Repository
 builder.Services.AddScoped<IEmployerRankingRepository, EmployerRankingRepository>();
@@ -264,16 +266,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
-
-                // Nếu là request tới SignalR hub thì lấy token từ query
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/hubs/payment"))
+
+                // Áp dụng cho tất cả các hub
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
                     {
                     context.Token = accessToken;
                     }
+
                 return Task.CompletedTask;
             },
+
             OnChallenge = context =>
             {
                 context.HandleResponse(); 

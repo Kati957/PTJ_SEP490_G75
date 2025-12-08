@@ -4,9 +4,15 @@ using Microsoft.AspNetCore.SignalR;
 namespace PTJ_API.Hubs
     {
     // Dùng Authorize để chỉ user đã login mới connect được
-    [Authorize]
-    public class PaymentHub : Hub
+    using System.Security.Claims;
+    using Microsoft.AspNetCore.SignalR;
+
+    public class SignalRUserIdProvider : IUserIdProvider
         {
-        // Tạm thời chưa cần method gì, chỉ dùng để server push về
+        public string? GetUserId(HubConnectionContext connection)
+            {
+            return connection.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            }
         }
+
     }
