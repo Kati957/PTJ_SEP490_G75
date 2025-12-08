@@ -84,8 +84,32 @@ public class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<ActionResult<AuthResponseDto>> Login(LoginDto dto)
-        => Ok(await _svc.LoginAsync(dto, IP));
+    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginDto dto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = "Invalid request",
+                errors = ModelState.Values.SelectMany(x => x.Errors.Select(e => e.ErrorMessage))
+            });
+        }
+
+        try
+        {
+            var result = await _svc.LoginAsync(dto, IP);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = ex.Message
+            });
+        }
+    }
 
     [HttpPost("refresh")]
     [AllowAnonymous]

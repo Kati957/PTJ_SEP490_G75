@@ -4,15 +4,13 @@ namespace PTJ_Models.DTO.Auth
 {
     public class LoginDto
     {
-        [Required(ErrorMessage = "Username or email is required.")]
-        [StringLength(100, ErrorMessage = "Username/Email is too long.")]
+        [Required(ErrorMessage = "Please enter a valid email")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email")]
         public string UsernameOrEmail { get; set; } = default!;
 
-        [Required(ErrorMessage = "Password is required.")]
+        [Required(ErrorMessage = "Please enter password")]
         [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
         public string Password { get; set; } = default!;
-
-        // FE không cần gửi — BE tự detect device nếu null
         public string? DeviceInfo { get; set; }
     }
 }
