@@ -15,6 +15,7 @@ using System.Text;
 using PTJ_Models.DTO.PaymentEmploy;
 using Microsoft.AspNetCore.SignalR;
 using PTJ_API.Hubs;
+using PTJ_Service.Hubs;
 
 namespace PTJ_Service.PaymentsService.Implementations
 {

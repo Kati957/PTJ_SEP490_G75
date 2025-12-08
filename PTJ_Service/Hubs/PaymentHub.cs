@@ -3,16 +3,13 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace PTJ_API.Hubs
     {
-    // Dùng Authorize để chỉ user đã login mới connect được
-    using System.Security.Claims;
-    using Microsoft.AspNetCore.SignalR;
-
-    public class SignalRUserIdProvider : IUserIdProvider
+    [Authorize]
+    public class PaymentHub : Hub
         {
-        public string? GetUserId(HubConnectionContext connection)
+        public override Task OnConnectedAsync()
             {
-            return connection.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            Console.WriteLine($"Client connected: {Context.UserIdentifier}");
+            return base.OnConnectedAsync();
             }
         }
-
     }
