@@ -242,26 +242,42 @@ namespace PTJ_Service.PaymentsService.Implementations
 
             Console.WriteLine($"📌 orderCode={orderCode}, code={code}, status={status}");
 
-            // --- Verify signature ---
+            // --- Lấy signature từ BODY webhook ---
+            string receivedSignature = payload["signature"]?.Value<string>() ?? "";
             string checksumKey = _config["PayOS:ChecksumKey"];
 
+            // Build data dùng để ký lại: chính là object "data" trong webhook
             var sorted = new SortedDictionary<string, string>();
             foreach (var prop in data.Properties())
-                sorted[prop.Name] = prop.Value?.ToString() ?? "";
+                {
+                var value = prop.Value?.ToString() ?? "";
 
+                // PayOS coi "null", "undefined" là chuỗi rỗng
+                if (value == "null" || value == "undefined")
+                    value = "";
+
+                sorted[prop.Name] = value;
+                }
+
+            // Tạo chuỗi key1=value1&key2=value2...
             string raw = string.Join("&", sorted.Select(k => $"{k.Key}={k.Value}"));
+
+            // Tính lại chữ ký
             string computed = ComputeSignature(raw, checksumKey);
 
             if (!_env.EnvironmentName.ToLower().Contains("development"))
-            {
-                if (!string.Equals(signature, computed, StringComparison.OrdinalIgnoreCase))
                 {
+                if (!string.Equals(receivedSignature, computed, StringComparison.OrdinalIgnoreCase))
+                    {
                     Console.WriteLine("❌ Sai chữ ký!");
+                    Console.WriteLine($"Expected: {computed}");
+                    Console.WriteLine($"Received: {receivedSignature}");
                     return;
+                    }
                 }
-            }
 
             Console.WriteLine("✅ Webhook hợp lệ!");
+
 
             bool success = code == "00" || status.ToUpper() == "PAID";
 
