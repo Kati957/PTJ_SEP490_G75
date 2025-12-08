@@ -78,7 +78,7 @@ using System.Security.Claims;
 using PTJ_API.Middlewares;
 using PTJ_Service.PaymentsService;
 using PTJ_Service.PaymentsService.Implementations;
-using PTJ_API.Hubs;
+using PTJ_Service.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using PTJ_Service.Hubs;
 

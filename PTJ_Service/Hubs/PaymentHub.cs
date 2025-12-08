@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
-namespace PTJ_API.Hubs
+namespace PTJ_Service.Hubs
     {
     [Authorize]
     public class PaymentHub : Hub
