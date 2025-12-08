@@ -1,4 +1,5 @@
-﻿using PTJ_Data.Repositories.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using PTJ_Data.Repositories.Interfaces;
 using PTJ_Models.DTO.CvDTO;
 using PTJ_Models.Models;
 using PTJ_Service.JobSeekerCvService.Interfaces;
@@ -15,11 +16,13 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
         {
         private readonly IJobSeekerCvRepository _repo;
         private readonly LocationDisplayService _location;
+        private readonly JobMatchingDbContext _db;
 
-        public JobSeekerCvService(IJobSeekerCvRepository repo, LocationDisplayService location)
+        public JobSeekerCvService(IJobSeekerCvRepository repo, LocationDisplayService location, JobMatchingDbContext db)
             {
             _repo = repo;
             _location = location;
+            _db = db;
             }
 
    
@@ -67,13 +70,6 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
 
         public async Task<JobSeekerCvResultDto> CreateAsync(int jobSeekerId, JobSeekerCvCreateDto dto)
             {
-            var existingCvs = await _repo.GetByJobSeekerAsync(jobSeekerId);
-
-            if (existingCvs.Count() >= 3)
-                {
-                throw new InvalidOperationException("Bạn chỉ được tạo tối đa 3 CV. Vui lòng xoá bớt để tạo mới.");
-                }
-
             var cv = new JobSeekerCv
                 {
                 JobSeekerId = jobSeekerId,
@@ -127,6 +123,14 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
         public async Task<bool> DeleteAsync(int jobSeekerId, int cvId)
             {
             var cv = await _repo.GetByIdAsync(cvId);
+
+            // Không cho xóa nếu CV đang được dùng trong bài đăng còn hoạt động
+            bool cvInUse = await _db.JobSeekerPosts
+                .AnyAsync(x => x.SelectedCvId == cvId && x.Status != "Deleted");
+
+            if (cvInUse)
+                throw new Exception("Không thể xoá CV vì bạn đang sử dụng CV này cho một bài đăng. Hãy xoá hoặc cập nhật bài đăng trước.");
+
 
             // Nếu không tồn tại hoặc không phải CV của JobSeeker hiện tại
             if (cv == null || cv.JobSeekerId != jobSeekerId)
