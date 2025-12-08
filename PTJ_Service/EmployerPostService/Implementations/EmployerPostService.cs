@@ -1050,7 +1050,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (seekerProvince == jobProvince && seekerProvince != 0)
                 return true;
 
-            // 4) Nếu không trùng → tính khoảng cách <=100km
+            // 4) Nếu không trùng → tính khoảng cách <=300km
             try
                 {
                 var fromCoord = await _map.GetCoordinatesAsync(seekerLocation);
@@ -1063,7 +1063,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                         toCoord.Value.lat, toCoord.Value.lng
                     );
 
-                    return dist <= 100;
+                    return dist <= 300;
                     }
                 }
             catch { }
