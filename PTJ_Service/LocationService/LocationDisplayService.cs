@@ -36,7 +36,7 @@
             return wards.FirstOrDefault(w => w.code == wardId)?.name ?? "Không tìm thấy phường/xã";
             }
 
-        public async Task<string> BuildAddressAsync(int provinceId, int districtId, int wardId)
+        public virtual async Task<string> BuildAddressAsync(int provinceId, int districtId, int wardId)
             {
             // Nếu cả 3 = 0 → chưa cập nhật
             if (provinceId == 0 && districtId == 0 && wardId == 0)
