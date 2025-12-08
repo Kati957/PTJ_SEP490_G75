@@ -19,7 +19,7 @@ namespace PTJ_Service.LocationService
         }
 
         //  Lấy tọa độ từ địa chỉ (có cache DB)
-        public async Task<(double lat, double lng)?> GetCoordinatesAsync(string address)
+        public virtual async Task<(double lat, double lng)?> GetCoordinatesAsync(string address)
             {
             if (string.IsNullOrWhiteSpace(address))
                 return null;
@@ -54,7 +54,7 @@ namespace PTJ_Service.LocationService
             }
 
         //  Tính khoảng cách giữa 2 tọa độ (km)
-        public double ComputeDistanceKm(double lat1, double lon1, double lat2, double lon2)
+        public virtual double ComputeDistanceKm(double lat1, double lon1, double lat2, double lon2)
         {
             const double R = 6371; // bán kính Trái Đất km
             double dLat = (lat2 - lat1) * Math.PI / 180.0;
