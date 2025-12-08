@@ -207,16 +207,16 @@ public class AdminDashboardService : IAdminDashboardService
         var lastMonth = now.AddMonths(-1).Month;
 
         var totalRevenue = await _db.EmployerTransactions
-            .Where(t => t.Status == "Success")
+            .Where(t => t.Status == "Paid")
             .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
         var thisMonthRevenue = await _db.EmployerTransactions
-            .Where(t => t.Status == "Success" &&
+            .Where(t => t.Status == "Paid" &&
                         t.PaidAt.Value.Month == thisMonth)
             .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
         var lastMonthRevenue = await _db.EmployerTransactions
-            .Where(t => t.Status == "Success" &&
+            .Where(t => t.Status == "Paid" &&
                         t.PaidAt.Value.Month == lastMonth)
             .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
@@ -286,11 +286,12 @@ public class AdminDashboardService : IAdminDashboardService
 
     public async Task<List<RevenueByPlanDto>> GetRevenueByPlanAsync()
     {
-        // Lấy toàn bộ danh sách kế hoạch
-        var plans = await _db.EmployerPlans.ToListAsync();
+        
+        var plans = await _db.EmployerPlans
+            .Where(p => p.Price > 0)
+            .ToListAsync();
 
-        // Các giao dịch grouped theo PlanId
-        var paidTransactions = await _db.EmployerTransactions
+        var paid = await _db.EmployerTransactions
             .Where(t => t.Status == "Paid")
             .GroupBy(t => t.PlanId)
             .Select(g => new
@@ -302,8 +303,8 @@ public class AdminDashboardService : IAdminDashboardService
             })
             .ToListAsync();
 
-        // Tổng tất cả giao dịch (Paid + Cancelled + Pending)
-        var allTransactions = await _db.EmployerTransactions
+        var total = await _db.EmployerTransactions
+            .Where(t => t.PlanId > 1)
             .GroupBy(t => t.PlanId)
             .Select(g => new
             {
@@ -314,22 +315,22 @@ public class AdminDashboardService : IAdminDashboardService
 
         var result = plans.Select(plan =>
         {
-            var paid = paidTransactions.FirstOrDefault(x => x.PlanId == plan.PlanId);
-            var total = allTransactions.FirstOrDefault(x => x.PlanId == plan.PlanId);
+            var p = paid.FirstOrDefault(x => x.PlanId == plan.PlanId);
+            var t = total.FirstOrDefault(x => x.PlanId == plan.PlanId);
 
-            int success = paid?.Transactions ?? 0;
-            int totalTrans = total?.TotalTransactions ?? 0;
+            int tranPaid = p?.Transactions ?? 0;
+            int tranTotal = t?.TotalTransactions ?? 0;
 
-            decimal successRate = totalTrans == 0
+            decimal successRate = tranTotal == 0
                 ? 0
-                : Math.Round((decimal)success / totalTrans * 100, 2);
+                : Math.Round((decimal)tranPaid / tranTotal * 100, 2);
 
             return new RevenueByPlanDto
             {
                 PlanName = plan.PlanName,
-                Revenue = paid?.Revenue ?? 0,
-                Transactions = paid?.Transactions ?? 0,
-                Users = paid?.Users ?? 0,
+                Revenue = p?.Revenue ?? 0,
+                Transactions = tranPaid,
+                Users = p?.Users ?? 0,
                 SuccessRate = successRate
             };
         })
@@ -337,6 +338,7 @@ public class AdminDashboardService : IAdminDashboardService
 
         return result;
     }
+
 
     public async Task<List<PostStatsByDayDto>> GetPostStatsByDayAsync()
     {
