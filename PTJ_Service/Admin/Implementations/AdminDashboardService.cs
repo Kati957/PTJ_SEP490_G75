@@ -207,16 +207,16 @@ public class AdminDashboardService : IAdminDashboardService
         var lastMonth = now.AddMonths(-1).Month;
 
         var totalRevenue = await _db.EmployerTransactions
-            .Where(t => t.Status == "Success")
+            .Where(t => t.Status == "Paid")
             .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
         var thisMonthRevenue = await _db.EmployerTransactions
-            .Where(t => t.Status == "Success" &&
+            .Where(t => t.Status == "Paid" &&
                         t.PaidAt.Value.Month == thisMonth)
             .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
         var lastMonthRevenue = await _db.EmployerTransactions
-            .Where(t => t.Status == "Success" &&
+            .Where(t => t.Status == "Paid" &&
                         t.PaidAt.Value.Month == lastMonth)
             .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
