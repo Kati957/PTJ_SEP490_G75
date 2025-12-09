@@ -160,7 +160,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
                 PreferredJobType = cv.PreferredJobType,
 
                 PreferredLocationName = fullAddress,
-
+                ProvinceId = cv.ProvinceId,
+                DistrictId = cv.DistrictId,
+                WardId = cv.WardId,
                 ContactPhone = cv.ContactPhone,
                 CreatedAt = (DateTime)cv.CreatedAt,
                 UpdatedAt = (DateTime)cv.UpdatedAt
