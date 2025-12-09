@@ -324,9 +324,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     p.ExpiredAt == null ||                     // bài bình thường
                     p.ExpiredAt.Value.Date >= DateTime.Today   // bài thời vụ còn hạn
                 ))
-
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
+
+            foreach (var p in posts)
+                await AutoFixPostStatusAsync(p);
 
             // 2️⃣ Lấy toàn bộ ảnh của các bài đăng bằng 1 query
             var postIds = posts.Select(x => x.EmployerPostId).ToList();
@@ -378,6 +380,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
             {
             // 1️⃣ Lấy tất cả bài đăng của employer đó
             var posts = await _repo.GetByUserAsync(userId);
+
+            foreach (var p in posts)
+                await AutoFixPostStatusAsync(p);
 
             // 2️⃣ Lọc theo quyền truy cập
             if (isAdmin)
@@ -458,6 +463,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (post == null)
                 return null;
 
+            await AutoFixPostStatusAsync(post);
+
             var user = post.User;
             bool isOwner = requesterId.HasValue && requesterId == post.UserId;
 
@@ -523,7 +530,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 CompanyLogo = user.EmployerProfile?.AvatarUrl ?? "",
                 ImageUrls = images
             };
-        }
+            }
 
         public async Task<IEnumerable<EmployerPostDtoOut>> FilterAsync(string status, int? currentUserId, bool isAdmin)
             {
@@ -570,6 +577,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 }
 
             var posts = await query.OrderByDescending(x => x.CreatedAt).ToListAsync();
+
+            foreach (var p in posts)
+                await AutoFixPostStatusAsync(p);
 
             return posts.Select(x => new EmployerPostDtoOut
                 {
@@ -742,6 +752,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     title = post.Title ?? "",
                     status = post.Status
                     });
+
+            await AutoFixPostStatusAsync(post);
 
             return await BuildCleanPostDto(post);
         }
@@ -1251,37 +1263,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
             return (vector, hash);
         }
 
-        private async Task<float[]> GetOrCreateTitleEmbeddingAsync(string title)
-        {
-            string entityType = "TitleCache";
-            string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(title.ToLowerInvariant())));
-
-            var cached = await _db.AiEmbeddingStatuses
-                .FirstOrDefaultAsync(x => x.EntityType == entityType && x.ContentHash == hash);
-
-            if (cached != null && !string.IsNullOrEmpty(cached.VectorData))
-                return JsonConvert.DeserializeObject<float[]>(cached.VectorData!)!;
-
-            var vector = await _ai.CreateEmbeddingAsync(title);
-            var json = JsonConvert.SerializeObject(vector);
-
-            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
-            {
-                EntityType = entityType,
-                EntityId = 0,
-                ContentHash = hash,
-                Model = "text-embedding-nomic-embed-text-v2-moe",
-                VectorDim = vector.Length,
-                PineconeId = $"{entityType}:{hash[..12]}",
-                Status = "OK",
-                UpdatedAt = DateTime.Now,
-                VectorData = json
-            });
-            await _db.SaveChangesAsync();
-
-            return vector;
-        }
-
         private async Task<EmployerPostDtoOut> BuildCleanPostDto(EmployerPostModel post)
         {
             var category = await _db.Categories.FindAsync(post.CategoryId);
@@ -1403,41 +1384,6 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             await _db.SaveChangesAsync();
         }
-        private async Task<float[]> GetIndustryEmbeddingAsync(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return Array.Empty<float>();
-
-            if (text.Length > 300)
-                text = text.Substring(0, 300);
-
-            string hash = Convert.ToHexString(
-                SHA256.HashData(Encoding.UTF8.GetBytes("industry:" + text.ToLower()))
-            );
-
-            var cache = await _db.AiEmbeddingStatuses
-                .FirstOrDefaultAsync(x => x.EntityType == "Industry" && x.ContentHash == hash);
-
-            if (cache != null && !string.IsNullOrEmpty(cache.VectorData))
-                return JsonConvert.DeserializeObject<float[]>(cache.VectorData)!;
-
-            var vec = await _ai.CreateEmbeddingAsync(text);
-
-            _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
-            {
-                EntityType = "Industry",
-                EntityId = 0,
-                ContentHash = hash,
-                Model = "text-embedding-nomic-embed-text-v2-moe",
-                VectorDim = vec.Length,
-                VectorData = JsonConvert.SerializeObject(vec),
-                UpdatedAt = DateTime.Now,
-            });
-
-            await _db.SaveChangesAsync();
-
-            return vec;
-        }
 
         public async Task<string> CloseEmployerPostAsync(int id)
         {
@@ -1537,44 +1483,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             throw new Exception($"Ngày hết hạn không hợp lệ. Hãy nhập theo dạng dd/MM/yyyy (VD: 30/11/2025).");
             }
 
-        private string NormalizeLocation(string raw)
-            {
-            if (string.IsNullOrWhiteSpace(raw))
-                return raw;
-
-            // Đổi dấu gạch ngang sang phẩy để unify format
-            // Ví dụ: "Hà Nội - Ba Đình" → "Hà Nội , Ba Đình"
-            raw = raw.Replace("-", ",");
-
-            // Tách mọi thành phần dựa vào dấu phẩy
-            var parts = raw
-                .Split(',')
-                .Select(x => x.Trim())
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .ToList();
-
-            if (parts.Count == 0)
-                return raw;
-
-            // Nếu có >= 3 phần → lấy 3 phần cuối (Ward, District, Province)
-            if (parts.Count >= 3)
-                {
-                var ward = parts[parts.Count - 3];
-                var district = parts[parts.Count - 2];
-                var province = parts[parts.Count - 1];
-                return $"{ward}, {district}, {province}";
-                }
-
-            // Nếu có 2 phần → District, Province
-            if (parts.Count == 2)
-                {
-                return $"{parts[0]}, {parts[1]}";
-                }
-
-            // Nếu chỉ có 1 phần → trả nguyên
-            return parts[0];
-            }
-
+        
         private async Task<EmployerSubscription> EnsureFreeSubscriptionAsync(int userId)
             {
             var now = DateTime.Now;
@@ -1624,6 +1533,63 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             return sub;
             }
+
+        private async Task AutoFixPostStatusAsync(EmployerPost post)
+            {
+            var today = DateTime.Today;
+
+            // Nếu expired
+            if (post.ExpiredAt != null && post.ExpiredAt.Value.Date < today)
+                {
+                if (post.Status != "Expired")
+                    {
+                    post.Status = "Expired";
+                    post.UpdatedAt = DateTime.Now;
+
+                    // Xóa vector AI
+                    await _ai.DeleteVectorAsync("employer_posts", $"EmployerPost:{post.EmployerPostId}");
+                    await _repo.UpdateAsync(post);
+                    await _repo.SaveChangesAsync();
+                    }
+                }
+            else
+                {
+                // Nếu chưa hết hạn mà status đangExpired -> Auto activate lại
+                if (post.Status == "Expired")
+                    {
+                    post.Status = "Active";
+                    post.UpdatedAt = DateTime.Now;
+
+                    // Recreate embedding + upsert
+                    var category = await _db.Categories.FindAsync(post.CategoryId);
+
+                    string embedText =
+                        $@"Tiêu đề: {post.Title}
+                Mô tả: {post.Description}
+                Yêu cầu: {post.Requirements}
+                Ngành: {category?.Name}
+                Giờ làm việc: {post.WorkHours}";
+
+                    var (vector, _) = await EnsureEmbeddingAsync("EmployerPost", post.EmployerPostId, embedText);
+
+                    await _ai.UpsertVectorAsync("employer_posts", $"EmployerPost:{post.EmployerPostId}", vector,
+                        new
+                            {
+                            numericPostId = post.EmployerPostId,
+                            categoryId = post.CategoryId,
+                            provinceId = post.ProvinceId,
+                            districtId = post.DistrictId,
+                            wardId = post.WardId,
+                            title = post.Title ?? "",
+                            status = post.Status
+                            });
+
+                    await _repo.UpdateAsync(post);
+                    await _repo.SaveChangesAsync();
+                    }
+                }
+            }
+
 
         }
     }

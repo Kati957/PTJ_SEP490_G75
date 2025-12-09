@@ -1046,37 +1046,6 @@
                 return (vector, hash);
             }
 
-            private async Task<float[]> GetOrCreateTitleEmbeddingAsync(string title)
-            {
-                string entityType = "TitleCache";
-                string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(title.ToLowerInvariant())));
-
-                var cached = await _db.AiEmbeddingStatuses
-                    .FirstOrDefaultAsync(x => x.EntityType == entityType && x.ContentHash == hash);
-
-                if (cached != null && !string.IsNullOrEmpty(cached.VectorData))
-                    return JsonConvert.DeserializeObject<float[]>(cached.VectorData!)!;
-
-                var vector = await _ai.CreateEmbeddingAsync(title);
-                var json = JsonConvert.SerializeObject(vector);
-
-                _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
-                {
-                    EntityType = entityType,
-                    EntityId = 0,
-                    ContentHash = hash,
-                    Model = "text-embedding-nomic-embed-text-v2-moe",
-                    VectorDim = vector.Length,
-                    PineconeId = $"{entityType}:{hash[..12]}",
-                    Status = "OK",
-                    UpdatedAt = DateTime.Now,
-                    VectorData = json
-                });
-                await _db.SaveChangesAsync();
-
-                return vector;
-            }
-
             private async Task<JobSeekerPostDtoOut> BuildCleanPostDto(JobSeekerPostModel post)
             {
                 var category = await _db.Categories.FindAsync(post.CategoryId);

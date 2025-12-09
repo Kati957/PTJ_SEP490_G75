@@ -20,37 +20,40 @@ public class PostExpirationService : BackgroundService
             {
             try
                 {
-                // Tính thời điểm chạy tiếp theo: 00:00
-                var now = DateTime.Now;
-                var midnight = DateTime.Today.AddDays(1);
-                var delay = midnight - now;
-
+                // Chờ đến 00:00 của ngày tiếp theo
+                TimeSpan delay = DateTime.Today.AddDays(1) - DateTime.Now;
                 await Task.Delay(delay, stoppingToken);
 
-                await ProcessExpiredPosts(stoppingToken);
+                await CleanupExpiredPosts(stoppingToken);
                 }
-            catch (Exception ex)
+            catch
                 {
+                // Nếu lỗi, chờ 1 phút chạy lại
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                 }
             }
         }
 
-    private async Task ProcessExpiredPosts(CancellationToken token)
+    private async Task CleanupExpiredPosts(CancellationToken token)
         {
         using var scope = _scopeFactory.CreateScope();
+
         var db = scope.ServiceProvider.GetRequiredService<JobMatchingDbContext>();
         var ai = scope.ServiceProvider.GetRequiredService<IAIService>();
 
-        var today = DateTime.Today;
+        DateTime today = DateTime.Today;
 
-        var expired = await db.EmployerPosts
-            .Where(p => p.Status == "Active" &&
-                        p.ExpiredAt != null &&
-                        p.ExpiredAt.Value.Date < today)
+        // Lấy các bài đã hết hạn nhưng chưa có trạng thái Expired
+        var expiredPosts = await db.EmployerPosts
+            .Where(p =>
+                p.ExpiredAt != null &&
+                p.ExpiredAt.Value.Date < today &&
+                p.Status != "Expired" &&
+                p.Status != "Deleted"
+            )
             .ToListAsync(token);
 
-        foreach (var post in expired)
+        foreach (var post in expiredPosts)
             {
             post.Status = "Expired";
             post.UpdatedAt = DateTime.Now;
