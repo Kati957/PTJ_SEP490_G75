@@ -142,15 +142,26 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Forgot(ForgotPasswordDto dto)
     {
         await _svc.RequestPasswordResetAsync(dto.Email);
-        return Ok(new { message = "Đã gửi yêu cầu đặt lại mật khẩu (nếu email hợp lệ)." });
+
+        return Ok(new
+        {
+            message = "Nếu email hợp lệ, hướng dẫn đặt lại mật khẩu đã được gửi."
+        });
     }
 
     [HttpPost("reset-password")]
     [AllowAnonymous]
     public async Task<IActionResult> Reset(ResetPasswordDto dto)
     {
-        await _svc.ResetPasswordAsync(dto);
-        return Ok(new { message = "Đặt lại mật khẩu thành công. Vui lòng đăng nhập." });
+        try
+        {
+            await _svc.ResetPasswordAsync(dto);
+            return Ok(new { message = "Đặt lại mật khẩu thành công." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("google/prepare")]

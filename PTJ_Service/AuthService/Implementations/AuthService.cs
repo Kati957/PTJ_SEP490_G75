@@ -351,31 +351,48 @@ public sealed class AuthService : IAuthService
     // 8. Request reset password
     public async Task RequestPasswordResetAsync(string email)
     {
-        var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == email);
-        if (user == null) return;
-
-        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
-
-        _db.PasswordResetTokens.Add(new PasswordResetToken
+        try
         {
-            UserId = user.UserId,
-            Token = token,
-            Expiration = DateTime.UtcNow.AddMinutes(30),
-            IsUsed = false
-        });
+            var normalized = email.Trim().ToLower();
+            var user = await _db.Users.FirstOrDefaultAsync(x => x.Email == normalized);
 
-        await _db.SaveChangesAsync();
+            if (user == null)
+                return;
 
-        // Dùng template
-        var link = $"{_cfg["Frontend:BaseUrl"]}/reset-password?token={WebUtility.UrlEncode(token)}";
-        var html = _templates.CreateResetPasswordTemplate(link);
+            if (!user.IsActive)
+                return;
 
-        await _email.SendEmailAsync(
-            user.Email,
-            "PTJ - Đặt lại mật khẩu",
-            html
-        );
+            if (user.LockoutEnd != null && user.LockoutEnd > DateTime.UtcNow)
+                return;
+
+            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+
+            _db.PasswordResetTokens.Add(new PasswordResetToken
+            {
+                UserId = user.UserId,
+                Token = token,
+                Expiration = DateTime.UtcNow.AddMinutes(30),
+                IsUsed = false
+            });
+
+            await _db.SaveChangesAsync();
+
+            var link = $"{_cfg["Frontend:BaseUrl"]}/reset-password?token={WebUtility.UrlEncode(token)}";
+            var html = _templates.CreateResetPasswordTemplate(link);
+
+            await _email.SendEmailAsync(
+                user.Email,
+                "PTJ - Đặt lại mật khẩu",
+                html
+            );
+        }
+        catch (Exception ex)
+        {
+           
+            Console.WriteLine($"[SECURITY] Forgot password error: {ex.Message}");
+        }
     }
+
 
     // 9. Reset password
     public async Task ResetPasswordAsync(ResetPasswordDto dto)
