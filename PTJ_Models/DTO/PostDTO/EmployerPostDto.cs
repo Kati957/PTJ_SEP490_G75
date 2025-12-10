@@ -7,6 +7,7 @@ namespace PTJ_Models.DTO.PostDTO
 {
     public class EmployerPostCreateDto
         {
+        [Range(1, int.MaxValue)]
         public int UserID { get; set; }
 
         [Required]
@@ -14,15 +15,19 @@ namespace PTJ_Models.DTO.PostDTO
         public string Title { get; set; } = string.Empty;
 
         [Required]
-        //[StringLength(5000, MinimumLength = 20)]
+        [StringLength(5000, MinimumLength = 20)]
         public string Description { get; set; } = string.Empty;
 
+        [Range(0, double.MaxValue)]
         public decimal? SalaryMin { get; set; }
+
+        [Range(0, double.MaxValue)]
         public decimal? SalaryMax { get; set; }
 
-        [Range(1, 5)] // enum 1..5
+        [Range(1, 5)]
         public int? SalaryType { get; set; }
 
+        [StringLength(3000, MinimumLength = 10)]
         public string? Requirements { get; set; }
 
         [Required]
@@ -33,8 +38,8 @@ namespace PTJ_Models.DTO.PostDTO
         [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$")]
         public string WorkHourEnd { get; set; } = string.Empty;
 
+        [RegularExpression(@"^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\d{4}$")]
         public string? ExpiredAt { get; set; }
-
 
         [Range(1, int.MaxValue)]
         public int ProvinceId { get; set; }
@@ -46,6 +51,7 @@ namespace PTJ_Models.DTO.PostDTO
         public int WardId { get; set; }
 
         [Required]
+        [StringLength(255)]
         public string DetailAddress { get; set; } = string.Empty;
 
         [Range(1, int.MaxValue)]
@@ -57,6 +63,7 @@ namespace PTJ_Models.DTO.PostDTO
 
         public List<IFormFile>? Images { get; set; }
         }
+
 
     public class EmployerPostUpdateDto
         {

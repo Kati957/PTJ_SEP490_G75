@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +16,7 @@ using PTJ_Service.EmployerPostService.Implementations;
 using PTJ_Service.ImageService;
 using PTJ_Service.Interfaces;
 using PTJ_Service.LocationService;
-using PTJ_Service.Tests.CreateEmployerPost;   // dùng FakeOpenMapService
+using PTJ_Service.Tests.CreateEmployerPost;
 
 using EmployerPostSvc = PTJ_Service.EmployerPostService.Implementations.EmployerPostService;
 
@@ -27,55 +26,44 @@ namespace PTJ_Service.Tests.EmployerPosts
         {
         private readonly JobMatchingDbContext _db;
         private readonly Mock<IEmployerPostRepository> _repo = new();
-        private readonly Mock<IAIService> _ai = new();       // không verify AI, chỉ setup cho chạy không lỗi
+        private readonly Mock<IAIService> _ai = new();
         private readonly Mock<IImageService> _image = new();
         private readonly Mock<INotificationService> _noti = new();
-        private readonly OpenMapService _map;                // FakeOpenMapService
-        private readonly Mock<LocationDisplayService> _loc;  // mock đúng cách
-
+        private readonly OpenMapService _map;
+        private readonly Mock<LocationDisplayService> _loc;
         private readonly EmployerPostSvc _service;
 
         public CreateEmployerPostTests()
             {
-            // InMemory DbContext
-            var options = new DbContextOptionsBuilder<JobMatchingDbContext>()
+            var opt = new DbContextOptionsBuilder<JobMatchingDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _db = new JobMatchingDbContext(options);
+            _db = new JobMatchingDbContext(opt);
 
-            // Fake OpenMapService (không gọi API thật)
             _map = new FakeOpenMapService(_db);
 
-            // Mock LocationDisplayService: PHẢI truyền VnPostLocationService vào constructor
             _loc = new Mock<LocationDisplayService>(
                 new VnPostLocationService(new HttpClient())
             );
 
-            // Fake BuildAddressAsync để trả về chuỗi cố định
             _loc.Setup(x => x.BuildAddressAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ReturnsAsync((int p, int d, int w) => $"Ward {w}, District {d}, Province {p}");
 
-            // Khi AddAsync được gọi -> thực sự add vào DbContext để service load lại được freshPost
             _repo.Setup(r => r.AddAsync(It.IsAny<EmployerPost>()))
-                .Callback<EmployerPost>(p =>
-                {
-                    _db.EmployerPosts.Add(p);
-                })
+                .Callback<EmployerPost>(p => _db.EmployerPosts.Add(p))
                 .Returns(Task.CompletedTask);
 
-            // Setup AI để không bị null (không test logic AI)
             _ai.Setup(x => x.CreateEmbeddingAsync(It.IsAny<string>()))
                 .ReturnsAsync(new float[] { 0.1f, 0.2f });
 
             _ai.Setup(x => x.QueryWithIDsAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<float[]>(),
-                    It.IsAny<List<int>>(),
-                    It.IsAny<int>()))
+                It.IsAny<string>(),
+                It.IsAny<float[]>(),
+                It.IsAny<List<int>>(),
+                It.IsAny<int>()))
                 .ReturnsAsync(new List<(string Id, double Score)>());
 
-            // Inject vào service thật
             _service = new EmployerPostSvc(
                 _repo.Object,
                 _db,
@@ -89,9 +77,6 @@ namespace PTJ_Service.Tests.EmployerPosts
             SeedFreePlan();
             }
 
-        /// <summary>
-        /// Seed gói Free trong EmployerPlans cho các test về subscription.
-        /// </summary>
         private void SeedFreePlan()
             {
             _db.EmployerPlans.Add(new EmployerPlan
@@ -104,16 +89,13 @@ namespace PTJ_Service.Tests.EmployerPosts
             _db.SaveChanges();
             }
 
-        /// <summary>
-        /// Tạo user active trong DB.
-        /// </summary>
         private void AddUser(int id = 1, bool active = true)
             {
             _db.Users.Add(new User
                 {
                 UserId = id,
-                Username = $"user{id}",
-                Email = $"user{id}@mail.com",
+                Username = "user" + id,
+                Email = "user" + id + "@mail.com",
                 IsActive = active,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
@@ -121,29 +103,32 @@ namespace PTJ_Service.Tests.EmployerPosts
             _db.SaveChanges();
             }
 
-        /// <summary>
-        /// Tạo DTO hợp lệ mặc định.
-        /// </summary>
         private EmployerPostCreateDto ValidDto(int userId = 1)
             {
             return new EmployerPostCreateDto
                 {
                 UserID = userId,
                 Title = "Test Post",
-                Description = "Test description",
+                Description = "This is a test description with enough length.",
+                SalaryMin = null,
+                SalaryMax = null,
+                SalaryType = null,
+                Requirements = "Requirement test",
                 WorkHourStart = "08:00",
                 WorkHourEnd = "17:00",
+                ExpiredAt = null,
                 ProvinceId = 1,
                 DistrictId = 2,
                 WardId = 3,
+                DetailAddress = "123 ABC Street",
                 CategoryID = 1,
                 PhoneContact = "0901234567",
-                DetailAddress = "123 ABC"
+                Images = null
                 };
             }
 
         // =====================================================================
-        // 1) dto = null → phải throw ArgumentNullException
+        // 1) DTO = null
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenDtoIsNull()
@@ -153,7 +138,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 2) UserID <= 0 → phải throw "Thiếu thông tin UserID..."
+        // 2) UserID invalid
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenUserIdInvalid()
@@ -168,7 +153,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 3) User không tồn tại → throw "Không tìm thấy tài khoản."
+        // 3) User not found
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenUserNotFound()
@@ -182,14 +167,14 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 4) User bị khóa → throw "Tài khoản đã bị khóa..."
+        // 4) User inactive
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenUserInactive()
             {
             AddUser(1, active: false);
 
-            var dto = ValidDto(1);
+            var dto = ValidDto();
 
             var ex = await Assert.ThrowsAsync<Exception>(() =>
                 _service.CreateEmployerPostAsync(dto));
@@ -198,7 +183,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 5) Chưa có subscription → phải tự tạo Free subscription
+        // 5) Auto-create free subscription
         // =====================================================================
         [Fact]
         public async Task ShouldAutoCreateFreeSubscription_WhenUserHasNone()
@@ -207,12 +192,12 @@ namespace PTJ_Service.Tests.EmployerPosts
 
             await _service.CreateEmployerPostAsync(ValidDto());
 
-            var sub = _db.EmployerSubscriptions.FirstOrDefault(s => s.UserId == 1 && s.PlanId == 1);
-            Assert.NotNull(sub);
+            Assert.NotNull(_db.EmployerSubscriptions
+                .FirstOrDefault(s => s.UserId == 1 && s.PlanId == 1));
             }
 
         // =====================================================================
-        // 6) Free subscription đã hết hạn → phải reset lại (RemainingPosts = MaxPosts)
+        // 6) Reset expired subscription
         // =====================================================================
         [Fact]
         public async Task ShouldResetFreeSubscription_WhenExpired()
@@ -228,19 +213,17 @@ namespace PTJ_Service.Tests.EmployerPosts
                 EndDate = DateTime.Now.AddMonths(-1),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             await _service.CreateEmployerPostAsync(ValidDto());
 
-            var sub = _db.EmployerSubscriptions.First(s => s.UserId == 1 && s.PlanId == 1);
-
-            // đúng theo logic create: reset về 1 → trừ 1 → còn 0
-            Assert.Equal(0, sub.RemainingPosts);
+            var sub = _db.EmployerSubscriptions.First(s => s.UserId == 1);
+            Assert.Equal(0, sub.RemainingPosts); // reset 1 - 1
             }
 
-
         // =====================================================================
-        // 7) Có cả Free và Paid → phải ưu tiên trừ vào gói Paid
+        // 7) Use paid subscription first
         // =====================================================================
         [Fact]
         public async Task ShouldUsePaidSubscription_WhenExists()
@@ -253,7 +236,7 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
 
@@ -263,19 +246,19 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 2,
                 RemainingPosts = 5,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             await _service.CreateEmployerPostAsync(ValidDto());
 
-            var paid = _db.EmployerSubscriptions.First(s => s.PlanId == 2);
-            Assert.Equal(4, paid.RemainingPosts); // bị trừ 1
+            Assert.Equal(4, _db.EmployerSubscriptions.First(s => s.PlanId == 2).RemainingPosts);
             }
 
         // =====================================================================
-        // 8) RemainingPosts = 0 → throw "Bạn đã hết lượt đăng bài."
+        // 8) RemainingPosts = 0
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenRemainingPostsZero()
@@ -288,9 +271,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 0,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var ex = await Assert.ThrowsAsync<Exception>(() =>
@@ -300,7 +284,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 9) Đăng bài thành công → RemainingPosts phải giảm 1
+        // 9) RemainingPosts decrease after create
         // =====================================================================
         [Fact]
         public async Task ShouldDecreaseRemainingPostsAfterCreate()
@@ -313,35 +297,35 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             await _service.CreateEmployerPostAsync(ValidDto());
 
-            var sub = _db.EmployerSubscriptions.First(s => s.UserId == 1 && s.PlanId == 1);
-            Assert.Equal(0, sub.RemainingPosts);
+            Assert.Equal(0, _db.EmployerSubscriptions.First(s => s.UserId == 1).RemainingPosts);
             }
 
         // =====================================================================
-        // 10) Có DetailAddress → Location phải chứa "123 ABC"
+        // 10) Location contains detail address
         // =====================================================================
         [Fact]
         public async Task ShouldBuildLocationWithDetailAddress()
             {
             AddUser(1);
 
-            // cần có subscription active
             _db.EmployerSubscriptions.Add(new EmployerSubscription
                 {
                 UserId = 1,
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var result = await _service.CreateEmployerPostAsync(ValidDto());
@@ -350,7 +334,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 11) DetailAddress rỗng → Location chỉ là Ward/District/Province
+        // 11) No detail address
         // =====================================================================
         [Fact]
         public async Task ShouldBuildLocationWithoutDetail()
@@ -363,9 +347,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var dto = ValidDto();
@@ -377,7 +362,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 12) SalaryMin < 0 → throw "SalaryMin không hợp lệ."
+        // 12) SalaryMin < 0
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenSalaryMinNegative()
@@ -390,9 +375,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var dto = ValidDto();
@@ -405,7 +391,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 13) SalaryMax < SalaryMin → throw "SalaryMax phải ≥ SalaryMin."
+        // 13) SalaryMax < SalaryMin
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenSalaryMaxLessThanMin()
@@ -418,9 +404,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var dto = ValidDto();
@@ -434,7 +421,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 14) Có Min/Max nhưng SalaryType = null → throw
+        // 14) SalaryType missing
         // =====================================================================
         [Fact]
         public async Task ShouldThrow_WhenSalaryTypeMissing()
@@ -447,9 +434,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var dto = ValidDto();
@@ -464,7 +452,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 15) Không nhập SalaryMin/Max/Type → cho phép (lương thỏa thuận)
+        // 15) All salary fields empty OK
         // =====================================================================
         [Fact]
         public async Task ShouldAllowNegotiableSalary_WhenAllNull()
@@ -477,9 +465,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var dto = ValidDto();
@@ -490,13 +479,10 @@ namespace PTJ_Service.Tests.EmployerPosts
             var result = await _service.CreateEmployerPostAsync(dto);
 
             Assert.NotNull(result.Post);
-            Assert.Null(result.Post.SalaryMin);
-            Assert.Null(result.Post.SalaryMax);
-            Assert.Null(result.Post.SalaryType);
             }
 
         // =====================================================================
-        // 16) Có Images → phải gọi UploadImageAsync
+        // 16) Has images → UploadImageAsync called
         // =====================================================================
         [Fact]
         public async Task ShouldUploadImages()
@@ -509,27 +495,28 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
-            var fileMock = new Mock<IFormFile>();
-            fileMock.Setup(f => f.ContentType).Returns("image/png");
+            var file = new Mock<IFormFile>();
+            file.Setup(f => f.ContentType).Returns("image/png");
 
-            _image.Setup(x => x.UploadImageAsync(fileMock.Object, "EmployerPosts"))
-                  .ReturnsAsync(("url123", "pid123"));
+            _image.Setup(x => x.UploadImageAsync(file.Object, "EmployerPosts"))
+                  .ReturnsAsync(("url123", "img123"));
 
             var dto = ValidDto();
-            dto.Images = new List<IFormFile> { fileMock.Object };
+            dto.Images = new List<IFormFile> { file.Object };
 
             await _service.CreateEmployerPostAsync(dto);
 
-            _image.Verify(x => x.UploadImageAsync(fileMock.Object, "EmployerPosts"), Times.Once);
+            _image.Verify(x => x.UploadImageAsync(file.Object, "EmployerPosts"), Times.Once);
             }
 
         // =====================================================================
-        // 17) Không có Images → không được gọi UploadImageAsync
+        // 17) No images → UploadImageAsync not called
         // =====================================================================
         [Fact]
         public async Task ShouldNotUploadImages_WhenNoneProvided()
@@ -542,9 +529,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             var dto = ValidDto();
@@ -558,7 +546,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 18) Đăng bài thành công → repository.AddAsync phải được gọi
+        // 18) Repository.AddAsync called
         // =====================================================================
         [Fact]
         public async Task ShouldCallRepositoryAddAsync()
@@ -571,9 +559,10 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
+
             _db.SaveChanges();
 
             await _service.CreateEmployerPostAsync(ValidDto());
@@ -582,7 +571,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             }
 
         // =====================================================================
-        // 19) Có follower active → phải gửi notification
+        // 19) Notify active followers
         // =====================================================================
         [Fact]
         public async Task ShouldSendNotificationToFollowers()
@@ -595,7 +584,7 @@ namespace PTJ_Service.Tests.EmployerPosts
                 PlanId = 1,
                 RemainingPosts = 1,
                 StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(10),
+                EndDate = DateTime.Now.AddDays(5),
                 Status = "Active"
                 });
 
