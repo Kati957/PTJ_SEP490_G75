@@ -256,40 +256,62 @@ namespace PTJ_API.Controllers.Post
             bool isAdmin = User.IsInRole("Admin");
 
             if (!isAdmin && currentUserId != userId)
-                return StatusCode(403, new { success = false, message = "Bạn không có quyền xem dữ liệu này." });
+                return StatusCode(403, new { success = false, message = "Không có quyền." });
 
-            // Lấy subscription active
-            var sub = await _db.EmployerSubscriptions
-                .Where(s => s.UserId == userId && s.Status == "Active")
+            // 1️⃣ Ưu tiên gói trả phí active
+            var paidSub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == userId && s.Status == "Active" && s.PlanId != 1)
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefaultAsync();
 
-            // 🔥 Nếu user chưa mua gì, trả về Free
-            if (sub == null)
+            if (paidSub != null)
+                {
+                var paidPlanName = await _db.EmployerPlans
+                    .Where(p => p.PlanId == paidSub.PlanId)
+                    .Select(p => p.PlanName)
+                    .FirstOrDefaultAsync();
+
+                return Ok(new
+                    {
+                    planId = paidSub.PlanId,
+                    planName = paidPlanName,
+                    remaining = paidSub.RemainingPosts,
+                    endDate = paidSub.EndDate
+                    });
+                }
+
+            // 2️⃣ Không có paid → trả FREE
+            var freePlanId = 1;
+
+            var freeSub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == userId && s.Status == "Active" && s.PlanId == freePlanId)
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            // nếu chưa có free → tạo response free mặc định
+            if (freeSub == null)
                 {
                 return Ok(new
                     {
-                    planId = 1,              // FREE
+                    planId = freePlanId,
                     planName = "Free",
                     remaining = 0,
                     endDate = (DateTime?)null
                     });
                 }
 
-            // Lấy plan name
-            var planName = await _db.EmployerPlans
-                .Where(p => p.PlanId == sub.PlanId)
+            var freeName = await _db.EmployerPlans
+                .Where(p => p.PlanId == freePlanId)
                 .Select(p => p.PlanName)
                 .FirstOrDefaultAsync();
 
             return Ok(new
                 {
-                planId = sub.PlanId,
-                planName = planName ?? "Unknown",
-                remaining = sub.RemainingPosts,
-                endDate = sub.EndDate
+                planId = freePlanId,
+                planName = freeName,
+                remaining = freeSub.RemainingPosts,
+                endDate = freeSub.EndDate
                 });
             }
-
         }
     }
