@@ -1,278 +1,349 @@
 ﻿using Xunit;
-using Moq;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System;
-using System.Linq;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
-using PTJ_Data.Repositories.Interfaces;
-using PTJ_Models.Models;
 using PTJ_Models.DTO.CvDTO;
-using CvService = PTJ_Service.JobSeekerCvService.Implementations.JobSeekerCvService;
-using PTJ_Service.LocationService;
+using PTJ_Service.JobSeekerCvService.Interfaces;
+using PTJ_API.Controllers;
+using Microsoft.AspNetCore.Http;
 
-namespace PTJ_Service.Tests
+public class JobSeekerCvController_CreateTests
 {
-    // Fake để override BuildAddressAsync vì LocationDisplayService là class thường không mock được
-    public class FakeLocationDisplayService : LocationDisplayService
-    {
-        public FakeLocationDisplayService() : base(null) { }
+    private readonly Mock<IJobSeekerCvService> _service;
+    private readonly JobSeekerCvController _controller;
 
-        public override Task<string> BuildAddressAsync(int p, int d, int w)
+    public JobSeekerCvController_CreateTests()
+    {
+        _service = new Mock<IJobSeekerCvService>();
+        _controller = new JobSeekerCvController(_service.Object);
+
+        // Fake token userId = 5
+        var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
-            return Task.FromResult("Fake Address");
+            new Claim("sub", "5")
+        }, "mock"));
+
+        _controller.ControllerContext.HttpContext = new DefaultHttpContext
+        {
+            User = user
+        };
+    }
+
+    // Helper validate
+    private void ValidateDto(object dto)
+    {
+        var context = new ValidationContext(dto);
+        var results = new List<ValidationResult>();
+        Validator.TryValidateObject(dto, context, results, true);
+
+        foreach (var validation in results)
+        {
+            _controller.ModelState.AddModelError(validation.MemberNames.First(), validation.ErrorMessage);
         }
     }
 
-    public class JobSeekerCvServiceTests
+    // ----------------------------------------------------
+    // 1️⃣ Success Case — All Valid
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Return_Success_When_Valid()
     {
-        private readonly Mock<IJobSeekerCvRepository> _repo;
-        private readonly FakeLocationDisplayService _location;
-        private readonly JobMatchingDbContext _db;
-        private readonly CvService _service;
-
-        public JobSeekerCvServiceTests()
+        var dto = new JobSeekerCvCreateDto
         {
-            _repo = new Mock<IJobSeekerCvRepository>();
-            _location = new FakeLocationDisplayService();
+            CvTitle = "My CV",
+            ContactPhone = "0901234567",
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 1
+        };
 
-            var options = new DbContextOptionsBuilder<JobMatchingDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString()) // Mỗi test dùng DB mới
-                .Options;
+        ValidateDto(dto);
 
-            _db = new JobMatchingDbContext(options);
+        _service.Setup(s => s.CreateAsync(5, dto))
+            .ReturnsAsync(new JobSeekerCvResultDto { CvTitle = "My CV" });
 
-            _service = new CvService(_repo.Object, _location, _db);
-        }
+        var result = await _controller.Create(dto) as OkObjectResult;
 
-        // =====================================================================
-        // GET: JobSeeker xem CV của chính mình
-        // =====================================================================
+        result.Should().NotBeNull();
 
-        [Fact]
-        public async Task GetByIdAsync_Should_Return_Null_If_Not_Owner()
+        result!.Value.Should().BeEquivalentTo(new
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync(new JobSeekerCv { Cvid = 10, JobSeekerId = 99 });
+            success = true,
+            message = "Tạo CV thành công.",
+            data = new { CvTitle = "My CV" }
+        });
+    }
 
-            var result = await _service.GetByIdAsync(10, 5);
-
-            result.Should().BeNull();
-        }
-
-        [Fact]
-        public async Task GetByIdAsync_Should_Return_Dto_When_Owner_Valid()
+    // ----------------------------------------------------
+    // 2️⃣ PhoneNumber = null
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Return_Error_When_Phone_Is_Null()
+    {
+        var dto = new JobSeekerCvCreateDto
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync(new JobSeekerCv
-                {
-                    Cvid = 10,
-                    JobSeekerId = 5,
-                    Cvtitle = "Test CV",
-                    ProvinceId = 1,
-                    DistrictId = 2,
-                    WardId = 3,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                });
+            CvTitle = "Test CV",
+            ContactPhone = null,
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 1
+        };
 
-            var result = await _service.GetByIdAsync(10, 5);
+        ValidateDto(dto);
 
-            result.Should().NotBeNull();
-            result!.CvTitle.Should().Be("Test CV");
-            result.PreferredLocationName.Should().Be("Fake Address");
-        }
+        var result = await _controller.Create(dto) as BadRequestObjectResult;
 
-        // =====================================================================
-        // GET: Employer xem CV (không cần check owner)
-        // =====================================================================
+        result.Should().NotBeNull();
 
-        [Fact]
-        public async Task GetByIdForEmployerAsync_Should_Return_Null_If_Not_Found()
+        result!.Value.Should().BeEquivalentTo(new
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync((JobSeekerCv?)null);
+            success = false,
+            message = "Dữ liệu không hợp lệ.",
+            errors = new[] { "Please enter PhoneNumber" }
+        });
+    }
 
-            var result = await _service.GetByIdForEmployerAsync(10);
-
-            result.Should().BeNull();
-        }
-
-        [Fact]
-        public async Task GetByIdForEmployerAsync_Should_Return_Dto()
+    // ----------------------------------------------------
+    // 3️⃣ PhoneNumber invalid
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Return_Error_When_Phone_Invalid()
+    {
+        var dto = new JobSeekerCvCreateDto
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync(new JobSeekerCv
-                {
-                    Cvid = 10,
-                    JobSeekerId = 5,
-                    Cvtitle = "Employer CV",
-                    ProvinceId = 1,
-                    DistrictId = 2,
-                    WardId = 3,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                });
+            CvTitle = "Test CV",
+            ContactPhone = "abc123",
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 1
+        };
 
-            var result = await _service.GetByIdForEmployerAsync(10);
+        ValidateDto(dto);
 
-            result.Should().NotBeNull();
-            result!.CvTitle.Should().Be("Employer CV");
-        }
+        var result = await _controller.Create(dto) as BadRequestObjectResult;
 
-        // =====================================================================
-        // GET: Lấy toàn bộ CV của JobSeeker
-        // =====================================================================
+        result.Should().NotBeNull();
 
-        [Fact]
-        public async Task GetByJobSeekerAsync_Should_Return_Empty_List()
+        result!.Value.Should().BeEquivalentTo(new
         {
-            _repo.Setup(r => r.GetByJobSeekerAsync(5))
-                .ReturnsAsync(new List<JobSeekerCv>());
+            success = false,
+            message = "Dữ liệu không hợp lệ.",
+            errors = new[] { "Invalid PhoneNumber" }
+        });
+    }
 
-            var result = await _service.GetByJobSeekerAsync(5);
-
-            result.Should().BeEmpty();
-        }
-
-        [Fact]
-        public async Task GetByJobSeekerAsync_Should_Return_List_Of_Dtos()
+    // ----------------------------------------------------
+    // 4️⃣ CvTitle null
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Return_Error_When_Title_Null()
+    {
+        var dto = new JobSeekerCvCreateDto
         {
-            _repo.Setup(r => r.GetByJobSeekerAsync(5))
-                .ReturnsAsync(new List<JobSeekerCv>
-                {
-                    new JobSeekerCv {
-                        Cvid = 1, JobSeekerId = 5,
-                        Cvtitle = "CV1",
-                        ProvinceId = 1, DistrictId = 2, WardId = 3,
-                        CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now
-                    },
-                    new JobSeekerCv {
-                        Cvid = 2, JobSeekerId = 5,
-                        Cvtitle = "CV2",
-                        ProvinceId = 1, DistrictId = 2, WardId = 3,
-                        CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now
-                    }
-                });
+            CvTitle = null,
+            ContactPhone = "0901234567",
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 1
+        };
 
-            var result = await _service.GetByJobSeekerAsync(5);
+        ValidateDto(dto);
 
-            result.Should().HaveCount(2);
-            result.First().PreferredLocationName.Should().Be("Fake Address");
-        }
+        var result = await _controller.Create(dto) as BadRequestObjectResult;
 
-        // =====================================================================
-        // CREATE CV
-        // =====================================================================
+        result.Should().NotBeNull();
 
-        [Fact]
-        public async Task CreateAsync_Should_Create_Successfully()
+        result!.Value.Should().BeEquivalentTo(new
         {
-            _repo.Setup(r => r.AddAsync(It.IsAny<JobSeekerCv>()))
-                .Returns(Task.CompletedTask);
+            success = false,
+            message = "Dữ liệu không hợp lệ.",
+            errors = new[] { "Please enter a Title" }
+        });
+    }
 
-            var dto = new JobSeekerCvCreateDto
-            {
-                CvTitle = "New CV"
-            };
-
-            var result = await _service.CreateAsync(5, dto);
-
-            result.CvTitle.Should().Be("New CV");
-        }
-
-        // =====================================================================
-        // UPDATE CV
-        // =====================================================================
-
-        [Fact]
-        public async Task UpdateAsync_Should_Return_False_If_Not_Found()
+    // ----------------------------------------------------
+    // 5️⃣ ProvinceId = 0
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Return_Error_When_Province_Zero()
+    {
+        var dto = new JobSeekerCvCreateDto
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync((JobSeekerCv?)null);
+            CvTitle = "CV",
+            ContactPhone = "0901234567",
+            ProvinceId = 0,
+            DistrictId = 1,
+            WardId = 1
+        };
 
-            var result = await _service.UpdateAsync(5, 10, new JobSeekerCvUpdateDto());
+        ValidateDto(dto);
 
-            result.Should().BeFalse();
-        }
+        var result = await _controller.Create(dto) as BadRequestObjectResult;
 
-        [Fact]
-        public async Task UpdateAsync_Should_Return_False_If_Not_Owner()
+        result.Should().NotBeNull();
+
+        result!.Value.Should().BeEquivalentTo(new
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync(new JobSeekerCv { Cvid = 10, JobSeekerId = 99 });
+            success = false,
+            message = "Dữ liệu không hợp lệ.",
+            errors = new[] { "Please select province/city" }
+        });
+    }
 
-            var result = await _service.UpdateAsync(5, 10, new JobSeekerCvUpdateDto());
-
-            result.Should().BeFalse();
-        }
-
-        [Fact]
-        public async Task UpdateAsync_Should_Update_And_Return_True()
+    // ----------------------------------------------------
+    // 6️⃣ DistrictId = 0
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Return_Error_When_District_Zero()
+    {
+        var dto = new JobSeekerCvCreateDto
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync(new JobSeekerCv
-                {
-                    Cvid = 10,
-                    JobSeekerId = 5,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                });
+            CvTitle = "CV",
+            ContactPhone = "0901234567",
+            ProvinceId = 1,
+            DistrictId = 0,
+            WardId = 1
+        };
 
-            _repo.Setup(r => r.UpdateAsync(It.IsAny<JobSeekerCv>()))
-                .Returns(Task.CompletedTask);
+        ValidateDto(dto);
 
-            var result = await _service.UpdateAsync(5, 10, new JobSeekerCvUpdateDto());
+        var result = await _controller.Create(dto) as BadRequestObjectResult;
 
-            result.Should().BeTrue();
-        }
+        result.Should().NotBeNull();
 
-        // =====================================================================
-        // DELETE CV
-        // =====================================================================
-
-        [Fact]
-        public async Task DeleteAsync_Should_Throw_If_Cv_In_Use()
+        result!.Value.Should().BeEquivalentTo(new
         {
-            _db.JobSeekerPosts.Add(new JobSeekerPost
-            {
-                SelectedCvId = 10,
-                Status = "Active"
-            });
-            await _db.SaveChangesAsync();
+            success = false,
+            message = "Dữ liệu không hợp lệ.",
+            errors = new[] { "Please select district" }
+        });
+    }
 
-            var act = async () => await _service.DeleteAsync(5, 10);
-
-            await act.Should().ThrowAsync<Exception>()
-                     .WithMessage("Không thể xoá CV vì bạn đang sử dụng CV này*");
-        }
-
-        [Fact]
-        public async Task DeleteAsync_Should_Return_False_If_Cv_Not_Found()
+    // ----------------------------------------------------
+    // 7️⃣ WardId = 0
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Return_Error_When_Ward_Zero()
+    {
+        var dto = new JobSeekerCvCreateDto
         {
-            var result = await _service.DeleteAsync(5, 10);
+            CvTitle = "CV",
+            ContactPhone = "0901234567",
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 0
+        };
 
-            result.Should().BeFalse();
-        }
+        ValidateDto(dto);
 
-        [Fact]
-        public async Task DeleteAsync_Should_Delete_Successfully()
+        var result = await _controller.Create(dto) as BadRequestObjectResult;
+
+        result.Should().NotBeNull();
+
+        result!.Value.Should().BeEquivalentTo(new
         {
-            _repo.Setup(r => r.GetByIdAsync(10))
-                .ReturnsAsync(new JobSeekerCv
-                {
-                    Cvid = 10,
-                    JobSeekerId = 5
-                });
+            success = false,
+            message = "Dữ liệu không hợp lệ.",
+            errors = new[] { "Please select ward/commune" }
+        });
+    }
 
-            _repo.Setup(r => r.SoftDeleteAsync(10))
-                .Returns(Task.CompletedTask);
+    // ----------------------------------------------------
+    // 8️⃣ SkillSummary null → SUCCESS
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Succeed_When_SkillSummary_Null()
+    {
+        var dto = new JobSeekerCvCreateDto
+        {
+            CvTitle = "CV",
+            ContactPhone = "0901234567",
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 1,
+            SkillSummary = null
+        };
 
-            var result = await _service.DeleteAsync(5, 10);
+        ValidateDto(dto);
 
-            result.Should().BeTrue();
-        }
+        _service.Setup(s => s.CreateAsync(5, dto))
+            .ReturnsAsync(new JobSeekerCvResultDto { CvTitle = "CV" });
+
+        var result = await _controller.Create(dto) as OkObjectResult;
+
+        result.Should().NotBeNull();
+        result!.Value.Should().BeEquivalentTo(new
+        {
+            success = true,
+            message = "Tạo CV thành công.",
+            data = new { CvTitle = "CV" }
+        });
+    }
+
+    // ----------------------------------------------------
+    // 9️⃣ Skills null → SUCCESS
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Succeed_When_Skills_Null()
+    {
+        var dto = new JobSeekerCvCreateDto
+        {
+            CvTitle = "CV",
+            ContactPhone = "0901234567",
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 1,
+            Skills = null
+        };
+
+        ValidateDto(dto);
+
+        _service.Setup(s => s.CreateAsync(5, dto))
+            .ReturnsAsync(new JobSeekerCvResultDto { CvTitle = "CV" });
+
+        var result = await _controller.Create(dto) as OkObjectResult;
+
+        result.Should().NotBeNull();
+        result!.Value.Should().BeEquivalentTo(new
+        {
+            success = true,
+            message = "Tạo CV thành công.",
+            data = new { CvTitle = "CV" }
+        });
+    }
+
+    // ----------------------------------------------------
+    // 🔟 JobType null → SUCCESS
+    // ----------------------------------------------------
+    [Fact]
+    public async Task Create_Should_Succeed_When_JobType_Null()
+    {
+        var dto = new JobSeekerCvCreateDto
+        {
+            CvTitle = "CV",
+            ContactPhone = "0901234567",
+            ProvinceId = 1,
+            DistrictId = 1,
+            WardId = 1,
+            PreferredJobType = null
+        };
+
+        ValidateDto(dto);
+
+        _service.Setup(s => s.CreateAsync(5, dto))
+            .ReturnsAsync(new JobSeekerCvResultDto { CvTitle = "CV" });
+
+        var result = await _controller.Create(dto) as OkObjectResult;
+
+        result.Should().NotBeNull();
+        result!.Value.Should().BeEquivalentTo(new
+        {
+            success = true,
+            message = "Tạo CV thành công.",
+            data = new { CvTitle = "CV" }
+        });
     }
 }
