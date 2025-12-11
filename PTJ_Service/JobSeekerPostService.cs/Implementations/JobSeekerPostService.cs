@@ -44,20 +44,21 @@
             }
 
 
-            // CREATE
-            public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostCreateDto dto)
+        // CREATE
+        public async Task<JobSeekerPostResultDto> CreateJobSeekerPostAsync(JobSeekerPostCreateDto dto)
             {
+            using var transaction = await _db.Database.BeginTransactionAsync();
+            try
+                {
                 if (dto == null)
                     throw new ArgumentNullException(nameof(dto));
                 if (dto.UserID <= 0)
                     throw new Exception("Missing UserID.");
 
-                // 0) VALIDATE SelectedCvId: phải thuộc user + chưa dùng ở post khác
                 JobSeekerCv? selectedCv = null;
 
                 if (dto.SelectedCvId.HasValue)
-                {
-                    // CV phải thuộc về user này
+                    {
                     selectedCv = await _db.JobSeekerCvs
                         .FirstOrDefaultAsync(c => c.Cvid == dto.SelectedCvId.Value &&
                                                   c.JobSeekerId == dto.UserID);
@@ -65,7 +66,6 @@
                     if (selectedCv == null)
                         throw new Exception("CV không hợp lệ hoặc không thuộc về người dùng.");
 
-                    // CV này đã gắn vào bài đăng nào khác chưa?
                     bool cvUsed = await _db.JobSeekerPosts
                         .AnyAsync(x =>
                             x.UserId == dto.UserID &&
@@ -73,12 +73,12 @@
                             x.Status != "Deleted");
 
                     if (cvUsed)
-                        throw new Exception("CV này đã được sử dụng cho một bài đăng khác. Vui lòng chọn CV khác hoặc sửa bài đăng cũ.");
-                }
+                        throw new Exception("CV này đã được sử dụng cho một bài đăng khác.");
+                    }
 
                 var posts = await _db.JobSeekerPosts
-         .Where(x => x.UserId == dto.UserID && x.Status != "Deleted")
-         .ToListAsync();
+                    .Where(x => x.UserId == dto.UserID && x.Status != "Deleted")
+                    .ToListAsync();
 
                 int totalPosts = posts.Count;
                 bool hasArchived = posts.Any(x => x.Status == "Archived");
@@ -102,42 +102,31 @@
                         }
                     }
 
-
-
                 string fullLocation = await _locDisplay.BuildAddressAsync(
-                    dto.ProvinceId,
-                    dto.DistrictId,
-                    dto.WardId
-                );
+                    dto.ProvinceId, dto.DistrictId, dto.WardId);
 
-                // 1) Create Post
                 var post = new JobSeekerPostModel
-                {
+                    {
                     UserId = dto.UserID,
                     Title = dto.Title,
                     Description = dto.Description,
                     Age = dto.Age,
                     Gender = dto.Gender,
                     PreferredWorkHours = $"{dto.PreferredWorkHourStart} - {dto.PreferredWorkHourEnd}",
-
                     PreferredLocation = fullLocation,
-
                     ProvinceId = dto.ProvinceId,
                     DistrictId = dto.DistrictId,
                     WardId = dto.WardId,
-
                     CategoryId = dto.CategoryID,
-
                     PhoneContact = dto.PhoneContact,
-                    SelectedCvId = dto.SelectedCvId,   // GẮN CV VÀO BÀI ĐĂNG
+                    SelectedCvId = dto.SelectedCvId,
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now,
                     Status = "Active"
-                };
+                    };
 
                 await _repo.AddAsync(post);
                 await _db.SaveChangesAsync();
-
 
                 var freshPost = await _db.JobSeekerPosts
                     .Include(x => x.User)
@@ -148,74 +137,67 @@
                 if (freshPost == null)
                     throw new Exception("Không thể tải lại bài đăng.");
 
-                // 2) SELECTED CV → TẠO EMBEDDING CV (nếu có) (dùng để cache, không chấm điểm riêng)
                 float[] cvEmbedding = Array.Empty<float>();
 
                 if (selectedCv != null)
-                {
+                    {
                     string cvText =
                         $"{selectedCv.Skills}. {selectedCv.SkillSummary}. {selectedCv.PreferredJobType}. {selectedCv.PreferredLocation}";
 
                     cvEmbedding = await _ai.CreateEmbeddingAsync(cvText);
 
                     _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
-                    {
+                        {
                         EntityType = "JobSeekerCV",
                         EntityId = selectedCv.Cvid,
-                        ContentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(cvText))),
+                        ContentHash = Convert.ToHexString(
+                            SHA256.HashData(Encoding.UTF8.GetBytes(cvText))),
                         Model = "text-embedding-nomic-embed-text-v2-moe",
                         VectorDim = cvEmbedding.Length,
                         PineconeId = $"JobSeekerCV:{selectedCv.Cvid}",
                         Status = "OK",
                         UpdatedAt = DateTime.Now,
                         VectorData = JsonConvert.SerializeObject(cvEmbedding)
-                    });
+                        });
 
                     await _db.SaveChangesAsync();
-                }
+                    }
 
-                // 3) EMBEDDING CHO JOB SEEKER POST (gồm CV text nếu có)
                 var category = await _db.Categories.FindAsync(freshPost.CategoryId);
 
                 string embedText =
-                    $"{freshPost.Title}. " +
-                    $"{freshPost.Description}. " +
-                    $"Giờ làm: {freshPost.PreferredWorkHours}. ";
-
+                    $"{freshPost.Title}. {freshPost.Description}. Giờ làm: {freshPost.PreferredWorkHours}. ";
 
                 if (selectedCv != null)
-                {
+                    {
                     embedText += $" | CV: {selectedCv.Skills} {selectedCv.SkillSummary} {selectedCv.PreferredJobType}";
-                }
+                    }
 
                 var (vector, hash) = await EnsureEmbeddingAsync(
                     "JobSeekerPost",
                     freshPost.JobSeekerPostId,
-                    embedText
-                );
+                    embedText);
 
                 await _ai.UpsertVectorAsync(
-                ns: "job_seeker_posts",
-                id: $"JobSeekerPost:{freshPost.JobSeekerPostId}",
-                vector: vector,
-                metadata: new
-                    {
-                    numericPostId = freshPost.JobSeekerPostId,
-                    categoryId = freshPost.CategoryId,
-                    provinceId = freshPost.ProvinceId,
-                    districtId = freshPost.DistrictId,
-                    wardId = freshPost.WardId,
-                    title = freshPost.Title ?? "",
-                    status = freshPost.Status
-                    });
+                    ns: "job_seeker_posts",
+                    id: $"JobSeekerPost:{freshPost.JobSeekerPostId}",
+                    vector: vector,
+                    metadata: new
+                        {
+                        numericPostId = freshPost.JobSeekerPostId,
+                        categoryId = freshPost.CategoryId,
+                        provinceId = freshPost.ProvinceId,
+                        districtId = freshPost.DistrictId,
+                        wardId = freshPost.WardId,
+                        title = freshPost.Title ?? "",
+                        status = freshPost.Status
+                        });
 
                 var scored = await ScoreAndFilterJobsAsync(
-                    vector, // embedding của seeker
+                    vector,
                     freshPost.CategoryId,
                     freshPost.PreferredLocation ?? ""
                 );
-
-
 
                 await UpsertSuggestionsAsync(
                     "JobSeekerPost",
@@ -235,11 +217,11 @@
                     .OrderByDescending(x => x.Score)
                     .Take(5)
                     .Select(x => new AIResultDto
-                    {
+                        {
                         Id = $"EmployerPost:{x.Job.EmployerPostId}",
                         Score = Math.Round(x.Score * 100, 2),
                         ExtraInfo = new
-                        {
+                            {
                             x.Job.EmployerPostId,
                             EmployerID = x.Job.UserId,
                             x.Job.Title,
@@ -249,31 +231,35 @@
                             SalaryMax = x.Job.SalaryMax,
                             SalaryType = x.Job.SalaryType,
                             SalaryDisplay = FormatSalary(x.Job.SalaryMin, x.Job.SalaryMax, x.Job.SalaryType),
-
                             x.Job.Location,
                             x.Job.WorkHours,
-
                             ExpiredAtText = x.Job.ExpiredAt?.ToString("dd/MM/yyyy"),
-
                             x.Job.PhoneContact,
                             CategoryName = x.Job.Category?.Name,
                             EmployerName = x.Job.User.Username,
                             IsSaved = savedIds.Contains(x.Job.EmployerPostId)
-                        }
-                    })
+                            }
+                        })
                     .ToList();
 
+                await transaction.CommitAsync();
+
                 return new JobSeekerPostResultDto
-                {
+                    {
                     Post = await BuildCleanPostDto(freshPost),
                     SuggestedJobs = suggestions
-                };
+                    };
+                }
+            catch
+                {
+                await transaction.RollbackAsync();
+                throw;
+                }
             }
 
+        // READ
 
-            // READ
-
-            public async Task<IEnumerable<JobSeekerPostDtoOut>> GetAllAsync()
+        public async Task<IEnumerable<JobSeekerPostDtoOut>> GetAllAsync()
             {
                 var posts = await _db.JobSeekerPosts
                     .Include(x => x.User)
