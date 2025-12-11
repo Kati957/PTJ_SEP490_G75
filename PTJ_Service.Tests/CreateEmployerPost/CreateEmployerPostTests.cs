@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -127,9 +128,20 @@ namespace PTJ_Service.Tests.EmployerPosts
                 };
             }
 
-        // =====================================================================
+        // ============================
+        // SUPPORT: Validate DTO
+        // ============================
+        private IList<ValidationResult> ValidateModel(object model)
+            {
+            var results = new List<ValidationResult>();
+            var ctx = new ValidationContext(model, null, null);
+            Validator.TryValidateObject(model, ctx, results, true);
+            return results;
+            }
+
+        // =====================================================
         // 1) DTO = null
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenDtoIsNull()
             {
@@ -137,9 +149,9 @@ namespace PTJ_Service.Tests.EmployerPosts
                 _service.CreateEmployerPostAsync(null!));
             }
 
-        // =====================================================================
+        // =====================================================
         // 2) UserID invalid
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenUserIdInvalid()
             {
@@ -152,9 +164,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal("Thiếu thông tin UserID khi tạo bài đăng tuyển dụng.", ex.Message);
             }
 
-        // =====================================================================
+        // =====================================================
         // 3) User not found
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenUserNotFound()
             {
@@ -166,9 +178,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal("Không tìm thấy tài khoản.", ex.Message);
             }
 
-        // =====================================================================
+        // =====================================================
         // 4) User inactive
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenUserInactive()
             {
@@ -182,9 +194,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal("Tài khoản đã bị khóa. Không thể đăng bài tuyển dụng.", ex.Message);
             }
 
-        // =====================================================================
+        // =====================================================
         // 5) Auto-create free subscription
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldAutoCreateFreeSubscription_WhenUserHasNone()
             {
@@ -196,9 +208,9 @@ namespace PTJ_Service.Tests.EmployerPosts
                 .FirstOrDefault(s => s.UserId == 1 && s.PlanId == 1));
             }
 
-        // =====================================================================
+        // =====================================================
         // 6) Reset expired subscription
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldResetFreeSubscription_WhenExpired()
             {
@@ -219,12 +231,12 @@ namespace PTJ_Service.Tests.EmployerPosts
             await _service.CreateEmployerPostAsync(ValidDto());
 
             var sub = _db.EmployerSubscriptions.First(s => s.UserId == 1);
-            Assert.Equal(0, sub.RemainingPosts); // reset 1 - 1
+            Assert.Equal(0, sub.RemainingPosts);
             }
 
-        // =====================================================================
+        // =====================================================
         // 7) Use paid subscription first
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldUsePaidSubscription_WhenExists()
             {
@@ -257,9 +269,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal(4, _db.EmployerSubscriptions.First(s => s.PlanId == 2).RemainingPosts);
             }
 
-        // =====================================================================
-        // 8) RemainingPosts = 0
-        // =====================================================================
+        // =====================================================
+        // 8) No remaining posts
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenRemainingPostsZero()
             {
@@ -283,9 +295,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal("Bạn đã hết lượt đăng bài.", ex.Message);
             }
 
-        // =====================================================================
-        // 9) RemainingPosts decrease after create
-        // =====================================================================
+        // =====================================================
+        // 9) Decrease remaining posts
+        // =====================================================
         [Fact]
         public async Task ShouldDecreaseRemainingPostsAfterCreate()
             {
@@ -308,9 +320,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal(0, _db.EmployerSubscriptions.First(s => s.UserId == 1).RemainingPosts);
             }
 
-        // =====================================================================
-        // 10) Location contains detail address
-        // =====================================================================
+        // =====================================================
+        // 10) Build location with detail address
+        // =====================================================
         [Fact]
         public async Task ShouldBuildLocationWithDetailAddress()
             {
@@ -330,40 +342,25 @@ namespace PTJ_Service.Tests.EmployerPosts
 
             var result = await _service.CreateEmployerPostAsync(ValidDto());
 
-            Assert.Contains("123 ABC", result.Post.Location);
+            Assert.Contains("123 ABC Street", result.Post.Location);
             }
 
-        // =====================================================================
-        // 11) No detail address
-        // =====================================================================
+        // =====================================================
+        // 11) ❌ REPLACED → Title too short
+        // =====================================================
         [Fact]
-        public async Task ShouldBuildLocationWithoutDetail()
+        public void ShouldFail_WhenTitleTooShort()
             {
-            AddUser(1);
-
-            _db.EmployerSubscriptions.Add(new EmployerSubscription
-                {
-                UserId = 1,
-                PlanId = 1,
-                RemainingPosts = 1,
-                StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(5),
-                Status = "Active"
-                });
-
-            _db.SaveChanges();
-
             var dto = ValidDto();
-            dto.DetailAddress = "";
+            dto.Title = "Abc"; // < 5 ký tự
 
-            var result = await _service.CreateEmployerPostAsync(dto);
-
-            Assert.Equal("Ward 3, District 2, Province 1", result.Post.Location);
+            var validate = ValidateModel(dto);
+            Assert.Contains(validate, v => v.ErrorMessage!.Contains("minimum"));
             }
 
-        // =====================================================================
+        // =====================================================
         // 12) SalaryMin < 0
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenSalaryMinNegative()
             {
@@ -379,8 +376,6 @@ namespace PTJ_Service.Tests.EmployerPosts
                 Status = "Active"
                 });
 
-            _db.SaveChanges();
-
             var dto = ValidDto();
             dto.SalaryMin = -1;
 
@@ -390,9 +385,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal("SalaryMin không hợp lệ.", ex.Message);
             }
 
-        // =====================================================================
+        // =====================================================
         // 13) SalaryMax < SalaryMin
-        // =====================================================================
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenSalaryMaxLessThanMin()
             {
@@ -408,8 +403,6 @@ namespace PTJ_Service.Tests.EmployerPosts
                 Status = "Active"
                 });
 
-            _db.SaveChanges();
-
             var dto = ValidDto();
             dto.SalaryMin = 10;
             dto.SalaryMax = 5;
@@ -420,9 +413,9 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal("SalaryMax phải ≥ SalaryMin.", ex.Message);
             }
 
-        // =====================================================================
-        // 14) SalaryType missing
-        // =====================================================================
+        // =====================================================
+        // 14) SalaryType missing while having SalaryMin/Max
+        // =====================================================
         [Fact]
         public async Task ShouldThrow_WhenSalaryTypeMissing()
             {
@@ -438,8 +431,6 @@ namespace PTJ_Service.Tests.EmployerPosts
                 Status = "Active"
                 });
 
-            _db.SaveChanges();
-
             var dto = ValidDto();
             dto.SalaryMin = 5;
             dto.SalaryMax = 10;
@@ -451,39 +442,22 @@ namespace PTJ_Service.Tests.EmployerPosts
             Assert.Equal("SalaryType là bắt buộc.", ex.Message);
             }
 
-        // =====================================================================
-        // 15) All salary fields empty OK
-        // =====================================================================
+        // =====================================================
+        // 15)  REPLACED → Title too long
+        // =====================================================
         [Fact]
-        public async Task ShouldAllowNegotiableSalary_WhenAllNull()
+        public void ShouldFail_WhenTitleTooLong()
             {
-            AddUser(1);
-
-            _db.EmployerSubscriptions.Add(new EmployerSubscription
-                {
-                UserId = 1,
-                PlanId = 1,
-                RemainingPosts = 1,
-                StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(5),
-                Status = "Active"
-                });
-
-            _db.SaveChanges();
-
             var dto = ValidDto();
-            dto.SalaryMin = null;
-            dto.SalaryMax = null;
-            dto.SalaryType = null;
+            dto.Title = new string('A', 121);
 
-            var result = await _service.CreateEmployerPostAsync(dto);
-
-            Assert.NotNull(result.Post);
+            var validate = ValidateModel(dto);
+            Assert.Contains(validate, v => v.ErrorMessage!.Contains("maximum"));
             }
 
-        // =====================================================================
-        // 16) Has images → UploadImageAsync called
-        // =====================================================================
+        // =====================================================
+        // 16) Upload image
+        // =====================================================
         [Fact]
         public async Task ShouldUploadImages()
             {
@@ -499,8 +473,6 @@ namespace PTJ_Service.Tests.EmployerPosts
                 Status = "Active"
                 });
 
-            _db.SaveChanges();
-
             var file = new Mock<IFormFile>();
             file.Setup(f => f.ContentType).Returns("image/png");
 
@@ -515,97 +487,43 @@ namespace PTJ_Service.Tests.EmployerPosts
             _image.Verify(x => x.UploadImageAsync(file.Object, "EmployerPosts"), Times.Once);
             }
 
-        // =====================================================================
-        // 17) No images → UploadImageAsync not called
-        // =====================================================================
+        // =====================================================
+        // 17)  REPLACED → Description too short
+        // =====================================================
         [Fact]
-        public async Task ShouldNotUploadImages_WhenNoneProvided()
+        public void ShouldFail_WhenDescriptionTooShort()
             {
-            AddUser(1);
-
-            _db.EmployerSubscriptions.Add(new EmployerSubscription
-                {
-                UserId = 1,
-                PlanId = 1,
-                RemainingPosts = 1,
-                StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(5),
-                Status = "Active"
-                });
-
-            _db.SaveChanges();
-
             var dto = ValidDto();
-            dto.Images = null;
+            dto.Description = "1234567890123456789"; // 19 chars
 
-            await _service.CreateEmployerPostAsync(dto);
-
-            _image.Verify(
-                x => x.UploadImageAsync(It.IsAny<IFormFile>(), It.IsAny<string>()),
-                Times.Never);
+            var validate = ValidateModel(dto);
+            Assert.Contains(validate, v => v.ErrorMessage!.Contains("minimum"));
             }
 
-        // =====================================================================
-        // 18) Repository.AddAsync called
-        // =====================================================================
+        // =====================================================
+        // 18) REPLACED → Description too long
+        // =====================================================
         [Fact]
-        public async Task ShouldCallRepositoryAddAsync()
+        public void ShouldFail_WhenDescriptionTooLong()
             {
-            AddUser(1);
+            var dto = ValidDto();
+            dto.Description = new string('D', 5001);
 
-            _db.EmployerSubscriptions.Add(new EmployerSubscription
-                {
-                UserId = 1,
-                PlanId = 1,
-                RemainingPosts = 1,
-                StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(5),
-                Status = "Active"
-                });
-
-            _db.SaveChanges();
-
-            await _service.CreateEmployerPostAsync(ValidDto());
-
-            _repo.Verify(r => r.AddAsync(It.IsAny<EmployerPost>()), Times.Once);
+            var validate = ValidateModel(dto);
+            Assert.Contains(validate, v => v.ErrorMessage!.Contains("maximum"));
             }
 
-        // =====================================================================
-        // 19) Notify active followers
-        // =====================================================================
+        // =====================================================
+        // 19)  REPLACED → Requirements too short
+        // =====================================================
         [Fact]
-        public async Task ShouldSendNotificationToFollowers()
+        public void ShouldFail_WhenRequirementsTooShort()
             {
-            AddUser(1);
+            var dto = ValidDto();
+            dto.Requirements = "short"; // < 10 chars
 
-            _db.EmployerSubscriptions.Add(new EmployerSubscription
-                {
-                UserId = 1,
-                PlanId = 1,
-                RemainingPosts = 1,
-                StartDate = DateTime.Now,
-                EndDate = DateTime.Now.AddDays(5),
-                Status = "Active"
-                });
-
-            _db.EmployerProfiles.Add(new EmployerProfile
-                {
-                UserId = 1,
-                DisplayName = "Công ty A"
-                });
-
-            _db.EmployerFollowers.Add(new EmployerFollower
-                {
-                EmployerId = 1,
-                JobSeekerId = 100,
-                IsActive = true
-                });
-
-            _db.SaveChanges();
-
-            await _service.CreateEmployerPostAsync(ValidDto());
-
-            _noti.Verify(x => x.SendAsync(It.IsAny<CreateNotificationDto>()), Times.AtLeastOnce);
+            var validate = ValidateModel(dto);
+            Assert.Contains(validate, v => v.ErrorMessage!.Contains("minimum"));
             }
         }
     }

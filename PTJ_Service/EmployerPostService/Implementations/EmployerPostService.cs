@@ -52,262 +52,267 @@ namespace PTJ_Service.EmployerPostService.Implementations
         // CREATE
 
         public async Task<EmployerPostResultDto> CreateEmployerPostAsync(EmployerPostCreateDto dto)
-        {
-            if (dto == null)
-                throw new ArgumentNullException(nameof(dto), "Dữ liệu không hợp lệ.");
-
-            if (dto.UserID <= 0)
-                throw new Exception("Thiếu thông tin UserID khi tạo bài đăng tuyển dụng.");
-
-            // 1️⃣ Check employer exist & active
-            var employerUser = await _db.Users.FirstOrDefaultAsync(u => u.UserId == dto.UserID);
-            if (employerUser == null)
-                throw new Exception("Không tìm thấy tài khoản.");
-
-            if (!employerUser.IsActive)
-                throw new Exception("Tài khoản đã bị khóa. Không thể đăng bài tuyển dụng.");
-
-            // 1️⃣ Auto Free Subscription
-            var sub = await EnsureFreeSubscriptionAsync(dto.UserID);
-
-            // 2️⃣ Nếu user đã mua gói → ưu tiên gói trả phí
-            var paidSub = await _db.EmployerSubscriptions
-                .Where(s => s.UserId == dto.UserID && s.Status == "Active" && s.PlanId != 1) // != Free
-                .OrderByDescending(s => s.StartDate)
-                .FirstOrDefaultAsync();
-
-            if (paidSub != null)
-                sub = paidSub;
-
-            // 3️⃣ Kiểm tra hạn & lượt
-            if (sub.EndDate != null && sub.EndDate < DateTime.Now)
-                throw new Exception("Gói đăng bài đã hết hạn.");
-
-            if (sub.RemainingPosts <= 0)
-                throw new Exception("Bạn đã hết lượt đăng bài.");
-
-            sub.RemainingPosts--;
-            sub.UpdatedAt = DateTime.Now;
-            await _db.SaveChangesAsync();
-
-
-            // 2️⃣ Build location
-            string fullLocation = await _locDisplay.BuildAddressAsync(
-                dto.ProvinceId,
-                dto.DistrictId,
-                dto.WardId
-            );
-
-            if (!string.IsNullOrWhiteSpace(dto.DetailAddress))
-                fullLocation = $"{dto.DetailAddress}, {fullLocation}";
-
-            // 3️⃣ Tạo bài đăng
-            var post = new EmployerPostModel
             {
-                UserId = dto.UserID,
-                Title = dto.Title,
-                Description = dto.Description,
-
-                SalaryMin = dto.SalaryMin,
-                SalaryMax = dto.SalaryMax,
-                SalaryType = dto.SalaryType,
-
-                Requirements = dto.Requirements,
-                WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}",
-                ExpiredAt = ParseDate(dto.ExpiredAt),
-                Location = fullLocation,
-                ProvinceId = dto.ProvinceId,
-                DistrictId = dto.DistrictId,
-                WardId = dto.WardId,
-                CategoryId = dto.CategoryID,
-                PhoneContact = dto.PhoneContact,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now,
-                Status = "Active"
-            };
-
-            await _repo.AddAsync(post);
-
-            // --- Validate Salary ---
-            if (post.SalaryMin == null && post.SalaryMax == null && post.SalaryType == null)
+            using var transaction = await _db.Database.BeginTransactionAsync();
+            try
                 {
-                // Thỏa thuận → giữ nguyên null
-                }
-            else
-                {
-                if (post.SalaryMin < 0)
-                    throw new Exception("SalaryMin không hợp lệ.");
+                if (dto == null)
+                    throw new ArgumentNullException(nameof(dto), "Dữ liệu không hợp lệ.");
 
-                if (post.SalaryMax < post.SalaryMin)
-                    throw new Exception("SalaryMax phải ≥ SalaryMin.");
+                if (dto.UserID <= 0)
+                    throw new Exception("Thiếu thông tin UserID khi tạo bài đăng tuyển dụng.");
 
-                if (post.SalaryType == null)
-                    throw new Exception("SalaryType là bắt buộc.");
-                }
+                // 1️⃣ Check employer exist & active
+                var employerUser = await _db.Users.FirstOrDefaultAsync(u => u.UserId == dto.UserID);
+                if (employerUser == null)
+                    throw new Exception("Không tìm thấy tài khoản.");
 
-            await _db.SaveChangesAsync();
+                if (!employerUser.IsActive)
+                    throw new Exception("Tài khoản đã bị khóa. Không thể đăng bài tuyển dụng.");
 
-            // 4️⃣ Gửi thông báo cho follower của employer
-            var followers = await _db.EmployerFollowers
-     .Where(f => f.EmployerId == post.UserId && f.IsActive)
-     .Select(f => f.JobSeekerId)
-     .ToListAsync();
+                // 1️⃣ Auto Free Subscription
+                var sub = await EnsureFreeSubscriptionAsync(dto.UserID);
 
-            // Lấy tên employer từ bảng EmployerProfiles
-            var employerName = await _db.EmployerProfiles
-                .Where(x => x.UserId == post.UserId)
-                .Select(x => x.DisplayName)
-                .FirstOrDefaultAsync() ?? "Nhà tuyển dụng";
+                // 2️⃣ Nếu user đã mua gói → ưu tiên gói trả phí
+                var paidSub = await _db.EmployerSubscriptions
+                    .Where(s => s.UserId == dto.UserID && s.Status == "Active" && s.PlanId != 1) // != Free
+                    .OrderByDescending(s => s.StartDate)
+                    .FirstOrDefaultAsync();
 
-            if (followers.Any())
-            {
-                foreach (var jsId in followers)
-                {
-                    await _noti.SendAsync(new CreateNotificationDto
+                if (paidSub != null)
+                    sub = paidSub;
+
+                // 3️⃣ Kiểm tra hạn & lượt
+                if (sub.EndDate != null && sub.EndDate < DateTime.Now)
+                    throw new Exception("Gói đăng bài đã hết hạn.");
+
+                if (sub.RemainingPosts <= 0)
+                    throw new Exception("Bạn đã hết lượt đăng bài.");
+
+                sub.RemainingPosts--;
+                sub.UpdatedAt = DateTime.Now;
+                await _db.SaveChangesAsync();
+
+                // 2️⃣ Build location
+                string fullLocation = await _locDisplay.BuildAddressAsync(
+                    dto.ProvinceId,
+                    dto.DistrictId,
+                    dto.WardId
+                );
+
+                if (!string.IsNullOrWhiteSpace(dto.DetailAddress))
+                    fullLocation = $"{dto.DetailAddress}, {fullLocation}";
+
+                // 3️⃣ Tạo bài đăng
+                var post = new EmployerPostModel
                     {
-                        UserId = jsId,                                
-                        NotificationType = "FollowEmployerPosted",
-                        RelatedItemId = post.EmployerPostId,
-                        Data = new()
-            {
-                { "EmployerName", employerName },         
-                { "PostTitle", post.Title ?? "" }
-            }
-                    });
-                }
-            }
+                    UserId = dto.UserID,
+                    Title = dto.Title,
+                    Description = dto.Description,
 
+                    SalaryMin = dto.SalaryMin,
+                    SalaryMax = dto.SalaryMax,
+                    SalaryType = dto.SalaryType,
 
-            // 5️⃣ Upload ảnh bài đăng
-            if (dto.Images != null && dto.Images.Any())
-            {
-                foreach (var file in dto.Images)
-                {
-                    var (url, publicId) = await _imageService.UploadImageAsync(file, "EmployerPosts");
-
-                    var img = new Image
-                    {
-                        EntityType = "EmployerPost",
-                        EntityId = post.EmployerPostId,
-                        Url = url,
-                        PublicId = publicId,
-                        Format = file.ContentType,
-                        CreatedAt = DateTime.Now
+                    Requirements = dto.Requirements,
+                    WorkHours = $"{dto.WorkHourStart} - {dto.WorkHourEnd}",
+                    ExpiredAt = ParseDate(dto.ExpiredAt),
+                    Location = fullLocation,
+                    ProvinceId = dto.ProvinceId,
+                    DistrictId = dto.DistrictId,
+                    WardId = dto.WardId,
+                    CategoryId = dto.CategoryID,
+                    PhoneContact = dto.PhoneContact,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now,
+                    Status = "Active"
                     };
 
-                    _db.Images.Add(img);
-                }
+                await _repo.AddAsync(post);
+
+                // --- Validate Salary ---
+                if (post.SalaryMin == null && post.SalaryMax == null && post.SalaryType == null)
+                    {
+                    // Thỏa thuận → giữ nguyên null
+                    }
+                else
+                    {
+                    if (post.SalaryMin < 0)
+                        throw new Exception("SalaryMin không hợp lệ.");
+
+                    if (post.SalaryMax < post.SalaryMin)
+                        throw new Exception("SalaryMax phải ≥ SalaryMin.");
+
+                    if (post.SalaryType == null)
+                        throw new Exception("SalaryType là bắt buộc.");
+                    }
+
                 await _db.SaveChangesAsync();
-            }
 
-            // 6️⃣ Load lại bài để tạo embedding
-            var freshPost = await _db.EmployerPosts
-                .Include(x => x.User)
-                .Include(x => x.Category)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.EmployerPostId == post.EmployerPostId);
+                // 4️⃣ Gửi thông báo cho follower của employer
+                var followers = await _db.EmployerFollowers
+                    .Where(f => f.EmployerId == post.UserId && f.IsActive)
+                    .Select(f => f.JobSeekerId)
+                    .ToListAsync();
 
-            if (freshPost == null)
-                throw new Exception("Không thể load lại bài đăng vừa tạo.");
+                // Lấy tên employer từ bảng EmployerProfiles
+                var employerName = await _db.EmployerProfiles
+                    .Where(x => x.UserId == post.UserId)
+                    .Select(x => x.DisplayName)
+                    .FirstOrDefaultAsync() ?? "Nhà tuyển dụng";
 
-            // Realtime expiry check
-            if (freshPost.ExpiredAt != null && freshPost.ExpiredAt.Value.Date < DateTime.Today)
-                {
-                // Không chạy AI vì bài đã hết hạn
+                if (followers.Any())
+                    {
+                    foreach (var jsId in followers)
+                        {
+                        await _noti.SendAsync(new CreateNotificationDto
+                            {
+                            UserId = jsId,
+                            NotificationType = "FollowEmployerPosted",
+                            RelatedItemId = post.EmployerPostId,
+                            Data = new()
+                    {
+                        { "EmployerName", employerName },
+                        { "PostTitle", post.Title ?? "" }
+                    }
+                            });
+                        }
+                    }
+
+                // 5️⃣ Upload ảnh bài đăng
+                if (dto.Images != null && dto.Images.Any())
+                    {
+                    foreach (var file in dto.Images)
+                        {
+                        var (url, publicId) = await _imageService.UploadImageAsync(file, "EmployerPosts");
+
+                        var img = new Image
+                            {
+                            EntityType = "EmployerPost",
+                            EntityId = post.EmployerPostId,
+                            Url = url,
+                            PublicId = publicId,
+                            Format = file.ContentType,
+                            CreatedAt = DateTime.Now
+                            };
+
+                        _db.Images.Add(img);
+                        }
+                    await _db.SaveChangesAsync();
+                    }
+
+                // 6️⃣ Load lại bài để tạo embedding
+                var freshPost = await _db.EmployerPosts
+                    .Include(x => x.User)
+                    .Include(x => x.Category)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.EmployerPostId == post.EmployerPostId);
+
+                if (freshPost == null)
+                    throw new Exception("Không thể load lại bài đăng vừa tạo.");
+
+                // Realtime expiry check
+                if (freshPost.ExpiredAt != null && freshPost.ExpiredAt.Value.Date < DateTime.Today)
+                    {
+                    await transaction.CommitAsync(); // COMMIT trước khi return
+                    return new EmployerPostResultDto
+                        {
+                        Post = await BuildCleanPostDto(freshPost),
+                        SuggestedCandidates = new List<AIResultDto>()
+                        };
+                    }
+
+                var category = await _db.Categories.FindAsync(freshPost.CategoryId);
+
+                string embedText =
+                    $@"Tiêu đề: {freshPost.Title}
+            Mô tả công việc: {freshPost.Description}
+            Yêu cầu ứng viên: {freshPost.Requirements}
+            Ngành nghề: {category?.Name}
+            Giờ làm việc: {freshPost.WorkHours}";
+
+                var (vector, hash) = await EnsureEmbeddingAsync(
+                    "EmployerPost",
+                    freshPost.EmployerPostId,
+                    embedText
+                );
+
+                // 7️⃣ Upsert vector vào Pinecone
+                await _ai.UpsertVectorAsync(
+                    ns: "employer_posts",
+                    id: $"EmployerPost:{freshPost.EmployerPostId}",
+                    vector: vector,
+                    metadata: new
+                        {
+                        numericPostId = freshPost.EmployerPostId,
+                        categoryId = freshPost.CategoryId,
+                        provinceId = freshPost.ProvinceId,
+                        districtId = freshPost.DistrictId,
+                        wardId = freshPost.WardId,
+                        title = freshPost.Title ?? "",
+                        status = freshPost.Status,
+                        });
+
+                // 9️⃣ Tính điểm
+                var scored = await ScoreAndFilterCandidatesAsync(vector, freshPost);
+
+                // 1️⃣0️⃣ Lưu gợi ý
+                var scoredWithCv = scored.Select(x => (x.Seeker, x.Score, x.CvId)).ToList();
+
+                await UpsertSuggestionsAsync(
+                    "EmployerPost",
+                    freshPost.EmployerPostId,
+                    "JobSeekerPost",
+                    scoredWithCv,
+                    keepTop: 5
+                );
+
+                // 1️⃣1️⃣ Build danh sách gợi ý trả về
+                var savedIds = await _db.EmployerShortlistedCandidates
+                    .Where(x => x.EmployerPostId == freshPost.EmployerPostId)
+                    .Select(x => x.JobSeekerId)
+                    .ToListAsync();
+
+                var suggestions = scored
+                    .OrderByDescending(x => x.Score)
+                    .Take(5)
+                    .Select(x => new AIResultDto
+                        {
+                        Id = $"JobSeekerPost:{x.Seeker.JobSeekerPostId}",
+                        Score = Math.Round(x.Score * 100, 2),
+                        ExtraInfo = new
+                            {
+                            x.Seeker.JobSeekerPostId,
+                            SeekerID = x.Seeker.UserId,
+                            x.Seeker.Title,
+                            x.Seeker.Description,
+                            x.Seeker.Age,
+                            x.Seeker.Gender,
+                            x.Seeker.PreferredLocation,
+                            x.Seeker.PreferredWorkHours,
+                            x.Seeker.PhoneContact,
+                            CategoryName = x.Seeker.Category?.Name,
+                            SeekerName = x.Seeker.User.Username,
+                            SelectedCvId = x.CvId,
+                            IsSaved = savedIds.Contains(x.Seeker.JobSeekerPostId)
+                            }
+                        })
+                    .ToList();
+
+                await transaction.CommitAsync();
+
                 return new EmployerPostResultDto
                     {
                     Post = await BuildCleanPostDto(freshPost),
-                    SuggestedCandidates = new List<AIResultDto>()
+                    SuggestedCandidates = suggestions
                     };
                 }
-
-            var category = await _db.Categories.FindAsync(freshPost.CategoryId);
-
-            string embedText =
-                $@"Tiêu đề: {freshPost.Title}
-                Mô tả công việc: {freshPost.Description}
-                Yêu cầu ứng viên: {freshPost.Requirements}
-                Ngành nghề: {category?.Name}
-                Giờ làm việc: {freshPost.WorkHours}";
-
-
-
-            var (vector, hash) = await EnsureEmbeddingAsync(
-                "EmployerPost",
-                freshPost.EmployerPostId,
-                embedText
-            );
-
-            // 7️⃣ Upsert vector vào Pinecone
-            await _ai.UpsertVectorAsync(
-    ns: "employer_posts",
-    id: $"EmployerPost:{freshPost.EmployerPostId}",
-    vector: vector,
-    metadata: new
-        {
-        numericPostId = freshPost.EmployerPostId,
-        categoryId = freshPost.CategoryId,
-        provinceId = freshPost.ProvinceId,
-        districtId = freshPost.DistrictId,
-        wardId = freshPost.WardId,
-        title = freshPost.Title ?? "",
-        status = freshPost.Status,
-        });
-
-            // 9️⃣ Tính điểm
-            var scored = await ScoreAndFilterCandidatesAsync(vector, freshPost);
-
-            // 1️⃣0️⃣ Lưu gợi ý
-            var scoredWithCv = scored.Select(x => (x.Seeker, x.Score, x.CvId)).ToList();
-
-            await UpsertSuggestionsAsync(
-                "EmployerPost",
-                freshPost.EmployerPostId,
-                "JobSeekerPost",
-                scoredWithCv,
-                keepTop: 5
-            );
-
-            // 1️⃣1️⃣ Build danh sách gợi ý trả về
-            var savedIds = await _db.EmployerShortlistedCandidates
-                .Where(x => x.EmployerPostId == freshPost.EmployerPostId)
-                .Select(x => x.JobSeekerId)
-                .ToListAsync();
-
-            var suggestions = scored
-                .OrderByDescending(x => x.Score)
-                .Take(5)
-                .Select(x => new AIResultDto
+            catch
                 {
-                    Id = $"JobSeekerPost:{x.Seeker.JobSeekerPostId}",
-                    Score = Math.Round(x.Score * 100, 2),
-                    ExtraInfo = new
-                    {
-                        x.Seeker.JobSeekerPostId,
-                        SeekerID = x.Seeker.UserId,
-                        x.Seeker.Title,
-                        x.Seeker.Description,
-                        x.Seeker.Age,
-                        x.Seeker.Gender,
-                        x.Seeker.PreferredLocation,
-                        x.Seeker.PreferredWorkHours,
-                        x.Seeker.PhoneContact,
-                        CategoryName = x.Seeker.Category?.Name,
-                        SeekerName = x.Seeker.User.Username,
-                        SelectedCvId = x.CvId,
-                        IsSaved = savedIds.Contains(x.Seeker.JobSeekerPostId)
-                    }
-                })
-                .ToList();
-
-            return new EmployerPostResultDto
-            {
-                Post = await BuildCleanPostDto(freshPost),
-                SuggestedCandidates = suggestions
-            };
-        }
-
-
+                await transaction.RollbackAsync();
+                throw;
+                }
+            }
 
         // READ
 
