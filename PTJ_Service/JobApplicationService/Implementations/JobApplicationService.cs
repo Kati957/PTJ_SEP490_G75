@@ -229,18 +229,37 @@ namespace PTJ_Service.JobApplicationService.Implementations
         // 5. EMPLOYER CẬP NHẬT TRẠNG THÁI ĐƠN
         public async Task<bool> UpdateStatusAsync(int submissionId, string status, string? note = null)
         {
-            var validStatuses = new[] { "Interviewing", "Accepted", "Rejected" };
-            if (!validStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
+            var allowedStatuses = new[] { "Interviewing", "Accepted", "Rejected" };
+            if (!allowedStatuses.Contains(status, StringComparer.OrdinalIgnoreCase))
                 throw new ArgumentException("Trạng thái không hợp lệ.");
 
             var entity = await _repo.GetByIdAsync(submissionId);
             if (entity == null)
                 throw new Exception("Không tìm thấy đơn ứng tuyển.");
 
-            if (entity.Status == "Withdrawn")
-                throw new Exception("Không thể cập nhật đơn đã rút.");
+            var newStatus = status.Trim();
 
-            entity.Status = status.Trim();
+            var finalStates = new[] { "Accepted", "Rejected", "Withdrawn" };
+            if (finalStates.Contains(entity.Status, StringComparer.OrdinalIgnoreCase))
+                throw new Exception($"Đơn đã chốt ({entity.Status}), không thể thay đổi.");
+
+            bool isValidTransition = entity.Status switch
+            {
+                "Pending" =>
+                    new[] { "Interviewing", "Accepted", "Rejected" }
+                        .Contains(newStatus, StringComparer.OrdinalIgnoreCase),
+
+                "Interviewing" =>
+                    new[] { "Accepted", "Rejected" }
+                        .Contains(newStatus, StringComparer.OrdinalIgnoreCase),
+
+                _ => false
+            };
+
+            if (!isValidTransition)
+                throw new Exception($"Không thể chuyển từ {entity.Status} sang {newStatus}.");
+
+            entity.Status = newStatus;
             entity.Notes = note;
             entity.UpdatedAt = DateTime.Now;
 
