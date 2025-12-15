@@ -326,8 +326,8 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 p.Status == "Active" &&
                 p.User.IsActive &&
                 (
-                    p.ExpiredAt == null ||                     // bài bình thường
-                    p.ExpiredAt.Value.Date >= DateTime.Today   // bài thời vụ còn hạn
+                    p.ExpiredAt == null ||                     
+                    p.ExpiredAt.Value.Date >= DateTime.Today   
                 ))
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
@@ -367,6 +367,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
+                CategoryId = p.CategoryId,
                 CategoryName = p.Category?.Name,
                 EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = p.CreatedAt,
@@ -450,6 +451,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Location = p.Location,
                 PhoneContact = p.PhoneContact,
+                CategoryId = p.CategoryId,
                 CategoryName = p.Category?.Name,
                 EmployerName = p.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = p.CreatedAt,
@@ -528,6 +530,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 DistrictId = post.DistrictId,
                 WardId = post.WardId,
                 PhoneContact = post.PhoneContact,
+                CategoryId = post.CategoryId,
                 CategoryName = post.Category?.Name,
                 EmployerName = post.User.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = post.CreatedAt,
@@ -606,6 +609,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
                 Location = x.Location,
                 PhoneContact = x.PhoneContact,
+                CategoryId = x.CategoryId,
                 CategoryName = x.Category?.Name,
                 EmployerName = x.User?.EmployerProfile?.DisplayName,
                 CreatedAt = x.CreatedAt,
@@ -1309,6 +1313,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 //WardId = post.WardId,
 
                 PhoneContact = post.PhoneContact,
+                CategoryId = post.CategoryId,
                 CategoryName = category?.Name,
                 EmployerName = user?.EmployerProfile?.DisplayName ?? "Nhà tuyển dụng",
                 CreatedAt = post.CreatedAt,

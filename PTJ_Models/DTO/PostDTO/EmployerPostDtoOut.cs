@@ -33,6 +33,7 @@ namespace PTJ_Models.DTO.PostDTO
 
         public string? PhoneContact { get; set; }
         public string? CategoryName { get; set; }
+        public int? CategoryId { get; set; }
         public string EmployerName { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
 
