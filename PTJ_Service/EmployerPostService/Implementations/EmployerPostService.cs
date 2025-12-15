@@ -1493,23 +1493,23 @@ namespace PTJ_Service.EmployerPostService.Implementations
             throw new Exception($"Ngày hết hạn không hợp lệ. Hãy nhập theo dạng dd/MM/yyyy (VD: 30/11/2025).");
             }
 
-        
+
         private async Task<EmployerSubscription> EnsureFreeSubscriptionAsync(int userId)
             {
             var now = DateTime.Now;
 
-            // Tìm free plan trong DB
+            // Lấy gói Free
             var freePlan = await _db.EmployerPlans.FirstOrDefaultAsync(p => p.PlanName == "Free");
             if (freePlan == null)
                 throw new Exception("Không tìm thấy gói Free trong hệ thống.");
 
-            // Kiểm tra subscription hiện tại
+            // Subscription free gần nhất
             var sub = await _db.EmployerSubscriptions
                 .Where(s => s.UserId == userId && s.PlanId == freePlan.PlanId)
                 .OrderByDescending(s => s.StartDate)
                 .FirstOrDefaultAsync();
 
-            // 1️⃣ Chưa từng có FREE → Tạo mới
+            // 1️⃣ Chưa có free → tạo mới
             if (sub == null)
                 {
                 sub = new EmployerSubscription
@@ -1529,10 +1529,12 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 return sub;
                 }
 
-            // 2️⃣ Đã có FREE nhưng hết hạn tháng cũ → reset FREE
-            if (sub.EndDate < now)
+            // 2️⃣ ĐÃ CÓ FREE → CHỈ reset khi QUA THÁNG MỚI
+            bool isDifferentMonth = sub.StartDate.Month != now.Month || sub.StartDate.Year != now.Year;
+
+            if (isDifferentMonth)
                 {
-                sub.RemainingPosts = freePlan.MaxPosts; // reset lại 1 bài
+                sub.RemainingPosts = freePlan.MaxPosts;
                 sub.StartDate = now;
                 sub.EndDate = now.AddDays(freePlan.DurationDays ?? 30);
                 sub.Status = "Active";
@@ -1543,6 +1545,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             return sub;
             }
+
 
         private async Task AutoFixPostStatusAsync(EmployerPost post)
             {
