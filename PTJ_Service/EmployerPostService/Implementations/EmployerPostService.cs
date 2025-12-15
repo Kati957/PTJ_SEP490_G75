@@ -1594,7 +1594,5 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     }
                 }
             }
-
-
         }
     }
