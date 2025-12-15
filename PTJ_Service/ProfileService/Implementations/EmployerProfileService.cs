@@ -18,7 +18,7 @@ namespace PTJ_Services.Implementations
         {
         private readonly IEmployerProfileRepository _repo;
         private readonly Cloudinary _cloudinary;
-        private readonly VnPostLocationService _locationService;
+        private readonly VnProstLocationService _locationService;
         private readonly JobMatchingDbContext _db;
         private const string DefaultAvatarUrl =
             "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
@@ -29,7 +29,7 @@ namespace PTJ_Services.Implementations
             IEmployerProfileRepository repo,
             IConfiguration config,
             JobMatchingDbContext db,
-            VnPostLocationService locationService)
+            VnProstLocationService locationService)
             {
             _db = db;
             _repo = repo;

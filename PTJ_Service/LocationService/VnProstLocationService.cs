@@ -1,11 +1,11 @@
 ﻿using Newtonsoft.Json;
 using PTJ_Service.LocationService.Models;
 
-public class VnPostLocationService
+public class VnProstLocationService
     {
     private readonly HttpClient _http;
 
-    public VnPostLocationService(HttpClient http)
+    public VnProstLocationService(HttpClient http)
         {
         _http = http;
         _http.BaseAddress = new Uri("https://provinces.open-api.vn/api/");

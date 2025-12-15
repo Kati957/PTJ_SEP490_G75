@@ -161,7 +161,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IFollowService, FollowService>();
 builder.Services.AddScoped<IJobSeekerCvService, JobSeekerCvService>();
-builder.Services.AddHttpClient<VnPostLocationService>();
+builder.Services.AddHttpClient<VnProstLocationService>();
 builder.Services.AddScoped<LocationDisplayService>();
 builder.Services.AddScoped<ILocationService, LocationService>();
 builder.Services.AddScoped<IAdminSystemReportService, AdminSystemReportService>();

@@ -2,9 +2,9 @@
     {
     public class LocationDisplayService
         {
-        private readonly VnPostLocationService _vnpost;
+        private readonly VnProstLocationService _vnpost;
 
-        public LocationDisplayService(VnPostLocationService vnpost)
+        public LocationDisplayService(VnProstLocationService vnpost)
             {
             _vnpost = vnpost;
             }

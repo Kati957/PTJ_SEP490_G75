@@ -7,9 +7,9 @@ namespace PTJ_API.Controllers
     [Route("api/location")]
     public class LocationController : ControllerBase
         {
-        private readonly VnPostLocationService _location;
+        private readonly VnProstLocationService _location;
 
-        public LocationController(VnPostLocationService location)
+        public LocationController(VnProstLocationService location)
             {
             _location = location;
             }

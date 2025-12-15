@@ -72,7 +72,7 @@ namespace PTJ_Service.Tests.EmployerProfiles
             var repo = new Mock<IEmployerProfileRepository>();
 
             // Dùng real VnPostLocationService với HttpClient thật
-            var locationService = new VnPostLocationService(new HttpClient());
+            var locationService = new VnProstLocationService(new HttpClient());
 
             var existing = new EmployerProfile
                 {
@@ -111,7 +111,7 @@ namespace PTJ_Service.Tests.EmployerProfiles
             // Arrange
             var db = CreateDb();
             var repo = new Mock<IEmployerProfileRepository>();
-            var locationService = new VnPostLocationService(new HttpClient());
+            var locationService = new VnProstLocationService(new HttpClient());
 
             repo.Setup(r => r.GetByUserIdAsync(10))
                 .ReturnsAsync((EmployerProfile)null);

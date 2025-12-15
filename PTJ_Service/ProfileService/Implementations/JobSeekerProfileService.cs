@@ -17,7 +17,7 @@ namespace PTJ_Services.Implementations
         {
         private readonly IJobSeekerProfileRepository _repo;
         private readonly Cloudinary _cloudinary;
-        private readonly VnPostLocationService _locationService;
+        private readonly VnProstLocationService _locationService;
 
         private const string DefaultPictureUrl =
             "https://res.cloudinary.com/do5rtjymt/image/upload/v1761994164/avtDefaut_huflze.jpg";
@@ -27,7 +27,7 @@ namespace PTJ_Services.Implementations
         public JobSeekerProfileService(
             IJobSeekerProfileRepository repo,
             IConfiguration config,
-            VnPostLocationService locationService)
+            VnProstLocationService locationService)
             {
             _repo = repo;
             _locationService = locationService;

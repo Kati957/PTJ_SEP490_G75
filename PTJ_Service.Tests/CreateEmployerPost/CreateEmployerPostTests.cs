@@ -45,7 +45,7 @@ namespace PTJ_Service.Tests.EmployerPosts
             _map = new FakeOpenMapService(_db);
 
             _loc = new Mock<LocationDisplayService>(
-                new VnPostLocationService(new HttpClient())
+                new VnProstLocationService(new HttpClient())
             );
 
             _loc.Setup(x => x.BuildAddressAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))

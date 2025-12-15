@@ -50,7 +50,7 @@ public class JobSeekerProfileServiceTests
     public async Task UpdateProfile_ShouldReturnTrue_WhenValid()
         {
         var repo = new Mock<IJobSeekerProfileRepository>();
-        var loc = new Mock<VnPostLocationService>(new HttpClient()).Object;
+        var loc = new Mock<VnProstLocationService>(new HttpClient()).Object;
 
         var profile = new JobSeekerProfile { UserId = 10 };
 
@@ -72,7 +72,7 @@ public class JobSeekerProfileServiceTests
     public async Task UpdateProfile_ShouldReturnFalse_WhenNotFound()
         {
         var repo = new Mock<IJobSeekerProfileRepository>();
-        var loc = new Mock<VnPostLocationService>(new HttpClient()).Object;
+        var loc = new Mock<VnProstLocationService>(new HttpClient()).Object;
 
         repo.Setup(r => r.GetByUserIdAsync(10)).ReturnsAsync((JobSeekerProfile?)null);
 
@@ -199,7 +199,7 @@ public class JobSeekerProfileServiceTests
     public async Task UpdateProfile_ShouldSkipUpload_WhenImageEmpty()
         {
         var repo = new Mock<IJobSeekerProfileRepository>();
-        var loc = new Mock<VnPostLocationService>(new HttpClient()).Object;
+        var loc = new Mock<VnProstLocationService>(new HttpClient()).Object;
 
         var profile = new JobSeekerProfile { UserId = 10 };
 
