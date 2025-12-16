@@ -216,13 +216,14 @@ namespace PTJ_API.Controllers.Payment
         //     Ai cũng xem được — KHÔNG cần đăng nhập
         // ======================================================
         [HttpGet("public/active-subscriptions")]
-        public async Task<IActionResult> GetAllActiveSubscriptionsPublic()
+        public async Task<IActionResult> GetAllActivePremiumSubscriptionsPublic()
             {
             var data = await (
                 from sub in _db.EmployerSubscriptions
                 join user in _db.Users on sub.UserId equals user.UserId
                 join plan in _db.EmployerPlans on sub.PlanId equals plan.PlanId
                 where sub.Status == "Active"
+                      && sub.PlanId == 3   // ✅ Chỉ lấy gói Premium
                 orderby sub.StartDate descending
                 select new
                     {
