@@ -32,7 +32,7 @@ namespace PTJ_Service.Helpers.Implementations
               style='padding-top:30px; font-size:12px; color:#95a5a6; line-height:1.5;'>
             <p style='margin:0;'>© {DateTime.UtcNow.Year} PTJ System</p>
             <p style='margin:4px 0;'>Đây là email tự động, vui lòng không trả lời.</p>
-            <p style='margin:0;'>Hỗ trợ: support@ptj.vn</p>
+            <p style='margin:0;'>Hỗ trợ: smarparttimejobfinder3@gmail.com</p>
           </td>
         </tr>
 
