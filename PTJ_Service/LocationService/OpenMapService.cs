@@ -15,7 +15,7 @@ namespace PTJ_Service.LocationService
         {
             _db = db;
             _http = new HttpClient();
-            _http.DefaultRequestHeaders.UserAgent.ParseAdd("JobMatchingAI/1.0 (contact: support@yourdomain.com)");
+            _http.DefaultRequestHeaders.UserAgent.ParseAdd("JobMatchingAI/1.0 (contact: smarparttimejobfinder3@gmail.com)");
         }
 
         //  Lấy tọa độ từ địa chỉ (có cache DB)
