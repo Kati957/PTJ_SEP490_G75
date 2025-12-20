@@ -14,6 +14,7 @@
 
         string CreateGoogleEmployerApprovedTemplate(string companyName);
         string CreateGoogleEmployerRejectedTemplate(string companyName, string reason);
+
         string CreateEmployerPaymentSuccessTemplate(
             string employerName,
             string planName,
@@ -21,6 +22,11 @@
             int remainingPosts,
             DateTime startDate,
             DateTime? endDate
+        );
+        string CreateAccountLockedTemplate(
+            string name,
+            string reason
+          
         );
     }
 }

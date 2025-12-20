@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using PTJ_Models.Models;
 using System.Linq;
 using System;
+using PTJ_Service.Helpers.Interfaces;
 
 namespace PTJ_Service.Admin.Implementations
 {
@@ -19,17 +20,23 @@ namespace PTJ_Service.Admin.Implementations
         private readonly ILocationService _location;
         private readonly INotificationService _noti;
         private readonly JobMatchingDbContext _db;
+        private readonly IEmailSender _email;
+        private readonly IEmailTemplateService _emailTemplate;
 
-        public AdminUserService(
-            IAdminUserRepository repo,
-            ILocationService location,
-            INotificationService noti,
-            JobMatchingDbContext db)
+    public AdminUserService(
+    IAdminUserRepository repo,
+    ILocationService location,
+    INotificationService noti,
+    JobMatchingDbContext db,
+    IEmailSender email,
+    IEmailTemplateService emailTemplate)
         {
             _repo = repo;
             _location = location;
             _noti = noti;
             _db = db;
+            _email = email;
+            _emailTemplate = emailTemplate;
         }
 
         public Task<PagedResult<AdminUserDto>> GetUsersAsync(
@@ -135,9 +142,6 @@ namespace PTJ_Service.Admin.Implementations
             }
         }
 
-        
-        //   KHÓA ACCOUNT: Block bài + Xóa AI + Hủy đơn...
-        
         private async Task HandleUserDeactivationAsync(User user, string? reason)
         {
             var roleName = user.Roles
@@ -145,6 +149,27 @@ namespace PTJ_Service.Admin.Implementations
                 .FirstOrDefault();
 
             int userId = user.UserId;
+            var now = DateTime.Now;
+
+            //  DISPLAY NAME 
+            string displayName = user.Email;
+
+            if (roleName == "jobseeker")
+            {
+                displayName = await _db.JobSeekerProfiles
+                    .Where(p => p.UserId == userId)
+                    .Select(p => p.FullName)
+                    .FirstOrDefaultAsync()
+                    ?? user.Email;
+            }
+            else if (roleName == "employer")
+            {
+                displayName = await _db.EmployerProfiles
+                    .Where(p => p.UserId == userId)
+                    .Select(p => p.DisplayName)
+                    .FirstOrDefaultAsync()
+                    ?? user.Email;
+            }
 
             //  EMPLOYER 
             if (roleName == "employer")
@@ -158,7 +183,7 @@ namespace PTJ_Service.Admin.Implementations
                 foreach (var post in posts)
                 {
                     post.Status = "Blocked";
-                    post.UpdatedAt = DateTime.Now;
+                    post.UpdatedAt = now;
                 }
                 await _db.SaveChangesAsync();
 
@@ -172,14 +197,17 @@ namespace PTJ_Service.Admin.Implementations
                 foreach (var app in apps)
                 {
                     app.Status = "Cancelled";
-                    app.UpdatedAt = DateTime.Now;
+                    app.UpdatedAt = now;
 
                     await _noti.SendAsync(new CreateNotificationDto
                     {
                         UserId = app.JobSeekerId,
                         NotificationType = "ApplicationCancelled",
                         RelatedItemId = app.SubmissionId,
-                        Data = new() { { "Message", "Nhà tuyển dụng đã bị khóa, đơn của bạn không còn hiệu lực." } }
+                        Data = new()
+                {
+                    { "Message", "Nhà tuyển dụng đã bị khóa, đơn của bạn không còn hiệu lực." }
+                }
                     });
                 }
 
@@ -205,11 +233,11 @@ namespace PTJ_Service.Admin.Implementations
                 foreach (var post in posts)
                 {
                     post.Status = "Blocked";
-                    post.UpdatedAt = DateTime.Now;
+                    post.UpdatedAt = now;
                 }
                 await _db.SaveChangesAsync();
 
-                var postIds = posts.Select(x => x.JobSeekerPostId).ToList();
+                var postIds = posts.Select(p => p.JobSeekerPostId).ToList();
 
                 var ai = await _db.AiMatchSuggestions
                     .Where(s =>
@@ -233,25 +261,44 @@ namespace PTJ_Service.Admin.Implementations
                         UserId = empId,
                         NotificationType = "JobSeekerSuspended",
                         RelatedItemId = userId,
-                        Data = new() { { "Message", "Ứng viên bạn lưu đã bị khóa tài khoản." } }
+                        Data = new()
+                {
+                    { "Message", "Ứng viên bạn lưu đã bị khóa tài khoản." }
+                }
                     });
                 }
             }
 
             //  NOTIFICATION TO USER 
-            var data = new Dictionary<string, string>();
+            var notiData = new Dictionary<string, string>
+    {
+        { "Message", "Tài khoản của bạn đã bị khóa bởi quản trị viên." }
+    };
+
             if (!string.IsNullOrWhiteSpace(reason))
-                data["Reason"] = reason;
-            else
-                data["Message"] = "Tài khoản của bạn đã bị khóa.";
+                notiData["Reason"] = reason;
 
             await _noti.SendAsync(new CreateNotificationDto
             {
                 UserId = userId,
                 NotificationType = "AccountSuspended",
                 RelatedItemId = userId,
-                Data = data
+                Data = notiData
             });
+
+            //  EMAIL TO USER 
+
+            var emailContent = _emailTemplate.CreateAccountLockedTemplate(
+            displayName,
+            reason ?? "Vi phạm chính sách hệ thống"
+
+            );
+
+            await _email.SendEmailAsync(
+                user.Email,
+                "Tài khoản PTJ của bạn đã bị khóa",
+                emailContent
+            );
         }
     }
 }

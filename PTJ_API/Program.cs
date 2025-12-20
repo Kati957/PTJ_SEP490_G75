@@ -367,6 +367,7 @@ app.UseCors("AllowLocalhost");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<AccountDisabledMiddleware>();
 app.UseMiddleware<PendingEmployerMiddleware>();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 // SignalR Hub Registration

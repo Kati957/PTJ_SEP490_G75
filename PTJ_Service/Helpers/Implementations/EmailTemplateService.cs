@@ -165,13 +165,13 @@ namespace PTJ_Service.Helpers.Implementations
 
             return BaseEmailLayout("Google Employer bị từ chối", content);
         }
-    public string CreateEmployerPaymentSuccessTemplate(
-    string employerName,
-    string planName,
-    decimal amount,
-    int remainingPosts,
-    DateTime startDate,
-    DateTime? endDate)
+        public string CreateEmployerPaymentSuccessTemplate(
+        string employerName,
+        string planName,
+        decimal amount,
+        int remainingPosts,
+        DateTime startDate,
+        DateTime? endDate)
         {
             var content = $@"
 <p>Xin chào <b>{employerName}</b>,</p>
@@ -195,6 +195,38 @@ namespace PTJ_Service.Helpers.Implementations
 
             return BaseEmailLayout("Thanh toán thành công", content);
         }
+        public string CreateAccountLockedTemplate(
+        string name,
+        string reason)
+        {
+            var content = $@"
+<p>Xin chào <b>{name}</b>,</p>
+
+<p>Tài khoản của bạn đã bị <b>khóa bởi quản trị viên</b>.</p>
+
+<p><b>Lý do:</b> {reason}</p>
+
+<p>Nếu bạn cho rằng đây là nhầm lẫn hoặc cần được hỗ trợ, vui lòng liên hệ qua email:</p>
+
+<p style='font-size:16px; font-weight:bold; color:#2980b9;'>
+    smarparttimejobfinder3@gmail.com
+</p>
+
+<p><b>Tiêu đề email gợi ý:</b> Khiếu nại khóa tài khoản PTJ</p>
+
+<p>Vui lòng cung cấp thông tin:</p>
+<ul>
+    <li>Email đăng ký tài khoản</li>
+    <li>Vai trò (JobSeeker / Employer)</li>
+    <li>Mô tả ngắn gọn vấn đề</li>
+</ul>
+
+<p>Chúng tôi sẽ phản hồi trong thời gian sớm nhất.</p>
+
+<p>Trân trọng,<br/>PTJ Support Team</p>";
+
+            return BaseEmailLayout("Tài khoản bị khóa", content);
+        }
+    }
 
     }
-}
