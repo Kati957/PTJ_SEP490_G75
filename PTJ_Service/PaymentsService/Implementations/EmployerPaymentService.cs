@@ -300,7 +300,12 @@ namespace PTJ_Service.PaymentsService.Implementations
                 // Kích hoạt subscription
                 await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
 
-                // Bắn realtime cho FE
+                
+
+                // Sau đó gửi email (dùng subscription vừa kích hoạt)
+                await SendPaymentSuccessEmailToEmployerAsync(trans);
+                await _db.SaveChangesAsync();
+               // Bắn realtime cho FE
                 await _hub.Clients.User(trans.UserId.ToString())
                     .SendAsync("PaymentStatusChanged", new
                         {
@@ -309,10 +314,6 @@ namespace PTJ_Service.PaymentsService.Implementations
                         planId = trans.PlanId,
                         paidAt = trans.PaidAt
                         });
-
-                // Sau đó gửi email (dùng subscription vừa kích hoạt)
-                await SendPaymentSuccessEmailToEmployerAsync(trans);
-                await _db.SaveChangesAsync();
                 }
             }
 
