@@ -141,9 +141,8 @@
 
                 if (selectedCv != null)
                     {
-                    string cvText =
-                        $"{selectedCv.Skills}. {selectedCv.SkillSummary}. {selectedCv.PreferredJobType}. {selectedCv.PreferredLocation}";
-
+                    string cvText = $"{selectedCv.Skills}. {selectedCv.SkillSummary}.";
+                                    
                     cvEmbedding = await _ai.CreateEmbeddingAsync(cvText);
 
                     _db.AiEmbeddingStatuses.Add(new AiEmbeddingStatus
@@ -170,7 +169,7 @@
 
                 if (selectedCv != null)
                     {
-                    embedText += $" | CV: {selectedCv.Skills} {selectedCv.SkillSummary} {selectedCv.PreferredJobType}";
+                    embedText += $" | Kỹ năng: {selectedCv.Skills}. {selectedCv.SkillSummary}.";
                     }
 
                 var (vector, hash) = await EnsureEmbeddingAsync(
@@ -493,14 +492,12 @@
                 string cvText = "";
                 if (selectedCv != null)
                 {
-                    cvText =
+                cvText =
                         $"Kỹ năng: {selectedCv.Skills}. " +
-                        $"Tóm tắt: {selectedCv.SkillSummary}. " +
-                        $"Công việc mong muốn: {selectedCv.PreferredJobType}. " +
-                        $"Địa điểm mong muốn: {selectedCv.PreferredLocation}. ";
+                        $"Tóm tắt: {selectedCv.SkillSummary}. ";
                 }
 
-                var category = await _db.Categories.FindAsync(post.CategoryId);
+            var category = await _db.Categories.FindAsync(post.CategoryId);
 
                 string embedText =
                     $"{post.Title}. " +
@@ -587,14 +584,12 @@
                 string cvText = "";
                 if (selectedCv != null)
                 {
-                    cvText =
+                cvText =
                         $"Kỹ năng: {selectedCv.Skills}. " +
-                        $"Tóm tắt: {selectedCv.SkillSummary}. " +
-                        $"Công việc mong muốn: {selectedCv.PreferredJobType}. " +
-                        $"Địa điểm mong muốn: {selectedCv.PreferredLocation}. ";
+                        $"Tóm tắt: {selectedCv.SkillSummary}. ";
                 }
 
-                var category = await _db.Categories.FindAsync(post.CategoryId);
+            var category = await _db.Categories.FindAsync(post.CategoryId);
 
                 string embedText =
                     $"{post.Title}. " +

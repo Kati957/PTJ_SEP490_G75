@@ -101,25 +101,49 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             if (cv == null || cv.JobSeekerId != jobSeekerId)
                 return false;
 
+            bool hasActivePost = await _db.JobSeekerPosts
+                .AnyAsync(x => x.SelectedCvId == cvId && x.Status == "Active");
+
+            if (hasActivePost)
+                {
+                bool coreChanged =
+                    cv.PreferredJobType != dto.PreferredJobType
+                 || cv.ProvinceId != dto.ProvinceId
+                 || cv.DistrictId != dto.DistrictId
+                 || cv.WardId != dto.WardId;
+
+                if (coreChanged)
+                    {
+                    throw new Exception(
+                        "CV đang được sử dụng cho bài đăng tìm việc đang hoạt động. " +
+                        "Bạn chỉ có thể cập nhật kỹ năng và mô tả, không thể thay đổi ngành hoặc khu vực."
+                    );
+                    }
+                }
+
+            // ✅ LUÔN CHO UPDATE
             cv.Cvtitle = dto.CvTitle;
             cv.SkillSummary = dto.SkillSummary;
             cv.Skills = dto.Skills;
-            cv.PreferredJobType = dto.PreferredJobType;
-
-            cv.ProvinceId = dto.ProvinceId;
-            cv.DistrictId = dto.DistrictId;
-            cv.WardId = dto.WardId;
-
             cv.ContactPhone = dto.ContactPhone;
+
+            // ✅ CHỈ UPDATE CORE KHI KHÔNG CÓ POST ACTIVE
+            if (!hasActivePost)
+                {
+                cv.PreferredJobType = dto.PreferredJobType;
+                cv.ProvinceId = dto.ProvinceId;
+                cv.DistrictId = dto.DistrictId;
+                cv.WardId = dto.WardId;
+                }
+
             cv.UpdatedAt = DateTime.Now;
 
             await _repo.UpdateAsync(cv);
             return true;
             }
 
-   
         // Xoá CV
-   
+
         public async Task<bool> DeleteAsync(int jobSeekerId, int cvId)
             {
             var cv = await _repo.GetByIdAsync(cvId);
