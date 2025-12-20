@@ -12,6 +12,9 @@ namespace PTJ_Service.PaymentsService
         Task<List<EmployerPurchaseDto>> GetActiveSubscriptionsAsync();
         Task<List<EmployerTransactionHistoryDto>> GetTransactionHistoryAsync(int userId);
         Task<List<EmployerSubscriptionHistoryDto>> GetSubscriptionHistoryAsync(int userId);
+
+        Task VerifyAndFinalizePaymentAsync(long orderCode);
+
         }
 
     }

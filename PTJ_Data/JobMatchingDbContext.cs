@@ -15,8 +15,6 @@ public partial class JobMatchingDbContext : DbContext
     {
     }
 
-    public virtual DbSet<AiContentForEmbedding> AiContentForEmbeddings { get; set; }
-
     public virtual DbSet<AiEmbeddingStatus> AiEmbeddingStatuses { get; set; }
 
     public virtual DbSet<AiMatchSuggestion> AiMatchSuggestions { get; set; }
@@ -92,29 +90,11 @@ public partial class JobMatchingDbContext : DbContext
     public virtual DbSet<UserActivityLog> UserActivityLogs { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database = JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<AiContentForEmbedding>(entity =>
-        {
-            entity.HasKey(e => e.ContentId);
-
-            entity.ToTable("AI_ContentForEmbedding");
-
-            entity.Property(e => e.ContentId).HasColumnName("ContentID");
-            entity.Property(e => e.EntityId).HasColumnName("EntityID");
-            entity.Property(e => e.EntityType)
-                .HasMaxLength(30)
-                .IsUnicode(false);
-            entity.Property(e => e.Hash)
-                .HasMaxLength(64)
-                .IsUnicode(false);
-            entity.Property(e => e.Lang)
-                .HasMaxLength(10)
-                .IsUnicode(false);
-            entity.Property(e => e.LastPreparedAt).HasColumnType("datetime");
-        });
-
         modelBuilder.Entity<AiEmbeddingStatus>(entity =>
         {
             entity.HasKey(e => e.EmbeddingId);

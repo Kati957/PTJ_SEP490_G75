@@ -34,5 +34,4 @@ public partial class News
 
     [NotMapped]
     public List<Image> Images { get; set; } = new();
-
     }

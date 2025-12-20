@@ -1,4 +1,5 @@
 ﻿using PTJ_Models.DTO.PostDTO;
+using PTJ_Models.Models;
 
 public interface IEmployerPostService
 {
@@ -37,5 +38,5 @@ public interface IEmployerPostService
     Task<string> ReopenEmployerPostAsync(int id);
 
     Task<IEnumerable<EmployerPostDtoOut>> FilterAsync(string status, int? currentUserId, bool isAdmin);
-
+    Task<EmployerSubscription> GetCurrentSubscriptionAsync(int userId);
     }

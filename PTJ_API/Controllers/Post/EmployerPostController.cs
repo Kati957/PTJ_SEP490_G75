@@ -258,59 +258,21 @@ namespace PTJ_API.Controllers.Post
             if (!isAdmin && currentUserId != userId)
                 return StatusCode(403, new { success = false, message = "Không có quyền." });
 
-            // 1️⃣ Ưu tiên gói trả phí active
-            var paidSub = await _db.EmployerSubscriptions
-                .Where(s => s.UserId == userId && s.Status == "Active" && s.PlanId != 1)
-                .OrderByDescending(s => s.StartDate)
-                .FirstOrDefaultAsync();
+            //  LẤY GÓI HIỆN TẠI TỪ SERVICE (ưu tiên paid, không có thì free)
+            var sub = await _service.GetCurrentSubscriptionAsync(userId);
 
-            if (paidSub != null)
-                {
-                var paidPlanName = await _db.EmployerPlans
-                    .Where(p => p.PlanId == paidSub.PlanId)
-                    .Select(p => p.PlanName)
-                    .FirstOrDefaultAsync();
-
-                return Ok(new
-                    {
-                    planId = paidSub.PlanId,
-                    planName = paidPlanName,
-                    remaining = paidSub.RemainingPosts,
-                    endDate = paidSub.EndDate
-                    });
-                }
-
-            // 2️⃣ Không có paid → trả FREE
-            var freePlanId = 1;
-
-            var freeSub = await _db.EmployerSubscriptions
-                .Where(s => s.UserId == userId && s.Status == "Active" && s.PlanId == freePlanId)
-                .OrderByDescending(s => s.StartDate)
-                .FirstOrDefaultAsync();
-
-            // nếu chưa có free → tạo response free mặc định
-            if (freeSub == null)
-                {
-                return Ok(new
-                    {
-                    planId = freePlanId,
-                    planName = "Free",
-                    remaining = 0,
-                    endDate = (DateTime?)null
-                    });
-                }
-
-            var freeName = await _db.EmployerPlans
-                .Where(p => p.PlanId == freePlanId)
+            //  lấy tên gói để trả về client (vẫn dùng _db ở controller nhưng chỉ đọc plan name)
+            var planName = await _db.EmployerPlans
+                .Where(p => p.PlanId == sub.PlanId)
                 .Select(p => p.PlanName)
                 .FirstOrDefaultAsync();
 
             return Ok(new
                 {
-                planId = freePlanId,
-                planName = freeName,
-                remaining = freeSub.RemainingPosts,
-                endDate = freeSub.EndDate
+                planId = sub.PlanId,
+                planName = planName,
+                remaining = sub.RemainingPosts,
+                endDate = sub.EndDate
                 });
             }
         }

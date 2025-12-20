@@ -27,6 +27,8 @@ public partial class EmployerTransaction
 
     public DateTime? QrExpiredAt { get; set; }
 
+    public bool EmailSent { get; set; }
+
     public virtual EmployerPlan Plan { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
