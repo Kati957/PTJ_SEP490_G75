@@ -166,12 +166,19 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
             }
 
 
-   
+
         // Helper convert entity → DTO
-   
+
         private async Task<JobSeekerCvResultDto> ToDto(JobSeekerCv cv)
             {
-            var fullAddress = await _location.BuildAddressAsync(cv.ProvinceId, cv.DistrictId, cv.WardId);
+            var fullAddress = await _location.BuildAddressAsync(
+                cv.ProvinceId, cv.DistrictId, cv.WardId);
+
+            // 🔥 CHECK CV CÓ ĐANG GẮN POST ACTIVE KHÔNG
+            bool isLinkedToActivePost = await _db.JobSeekerPosts
+                .AnyAsync(x =>
+                    x.SelectedCvId == cv.Cvid &&
+                    x.Status == "Active");
 
             return new JobSeekerCvResultDto
                 {
@@ -188,9 +195,14 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
                 DistrictId = cv.DistrictId,
                 WardId = cv.WardId,
                 ContactPhone = cv.ContactPhone,
+
                 CreatedAt = (DateTime)cv.CreatedAt,
-                UpdatedAt = (DateTime)cv.UpdatedAt
+                UpdatedAt = (DateTime)cv.UpdatedAt,
+
+                // 🔥 GÁN FLAG
+                IsLinkedToActivePost = isLinkedToActivePost
                 };
             }
+
         }
     }

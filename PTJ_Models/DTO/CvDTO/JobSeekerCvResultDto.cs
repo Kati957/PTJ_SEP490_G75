@@ -18,6 +18,8 @@ namespace PTJ_Models.DTO.CvDTO
         public string ContactPhone { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+
+        public bool IsLinkedToActivePost { get; set; }
         }
 
     }
