@@ -285,10 +285,10 @@ namespace PTJ_Service.PaymentsService.Implementations
                 .FirstOrDefaultAsync(x => x.PayOsorderCode == orderCode.ToString());
 
             if (trans == null)
-            {
-                Console.WriteLine($"❌ Transaction not found: {orderCode}");
-                return;
-            }
+                throw new Exception($"Transaction not found: {orderCode}");
+
+            if (trans.Status == "Paid")
+                return; // webhook retry → bỏ qua
 
             trans.RawWebhookData = rawJson;
 
@@ -300,7 +300,12 @@ namespace PTJ_Service.PaymentsService.Implementations
                 // Kích hoạt subscription
                 await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
 
-                // Bắn realtime cho FE
+                
+
+                // Sau đó gửi email (dùng subscription vừa kích hoạt)
+                await SendPaymentSuccessEmailToEmployerAsync(trans);
+                await _db.SaveChangesAsync();
+               // Bắn realtime cho FE
                 await _hub.Clients.User(trans.UserId.ToString())
                     .SendAsync("PaymentStatusChanged", new
                         {
@@ -310,9 +315,6 @@ namespace PTJ_Service.PaymentsService.Implementations
                         paidAt = trans.PaidAt
                         });
                 }
-                // Sau đó gửi email (dùng subscription vừa kích hoạt)
-                await SendPaymentSuccessEmailToEmployerAsync(trans);
-                await _db.SaveChangesAsync();
             }
 
         // ============================
@@ -320,6 +322,14 @@ namespace PTJ_Service.PaymentsService.Implementations
         // ============================
         private async Task ActivateSubscriptionAsync(int userId, int planId)
         {
+            bool alreadyActive = await _db.EmployerSubscriptions.AnyAsync(x =>
+        x.UserId == userId &&
+        x.PlanId == planId &&
+        x.Status == "Active");
+
+            if (alreadyActive)
+                return;
+
             var plan = await _db.EmployerPlans.FindAsync(planId);
             if (plan == null) return;
 
@@ -345,7 +355,7 @@ namespace PTJ_Service.PaymentsService.Implementations
             };
 
             _db.EmployerSubscriptions.Add(newSub);
-            await _db.SaveChangesAsync();
+            //await _db.SaveChangesAsync();
         }
 
         // ============================
@@ -499,16 +509,20 @@ namespace PTJ_Service.PaymentsService.Implementations
 
         // Gửi email thanh toán thành công cho Employer
         private async Task SendPaymentSuccessEmailToEmployerAsync(EmployerTransaction trans)
-        {
+            {
+            if (trans.EmailSent)
+                return;
+
             var user = await _db.Users.FindAsync(trans.UserId);
             var plan = await _db.EmployerPlans.FindAsync(trans.PlanId);
 
             if (user == null || plan == null)
                 return;
 
-            // lấy subscription mới nhất đã được Activate
             var sub = await _db.EmployerSubscriptions
-                .Where(x => x.UserId == trans.UserId && x.PlanId == trans.PlanId && x.Status == "Active")
+                .Where(x => x.UserId == trans.UserId
+                         && x.PlanId == trans.PlanId
+                         && x.Status == "Active")
                 .OrderByDescending(x => x.SubscriptionId)
                 .FirstOrDefaultAsync();
 
@@ -524,7 +538,51 @@ namespace PTJ_Service.PaymentsService.Implementations
                 endDate: sub.EndDate
             );
 
-            await _smtpEmailSender.SendEmailAsync(user.Email, "Thanh toán thành công", html);
+            await _smtpEmailSender.SendEmailAsync(
+                user.Email,
+                "Thanh toán thành công",
+                html
+            );
+
+            trans.EmailSent = true;
+            await _db.SaveChangesAsync();
+            }
+
+
+        public async Task VerifyAndFinalizePaymentAsync(long orderCode)
+            {
+            var trans = await _db.EmployerTransactions
+                .FirstOrDefaultAsync(x => x.PayOsorderCode == orderCode.ToString());
+
+            if (trans == null)
+                return;
+
+            if (trans.Status == "Paid" && trans.EmailSent)
+                return;
+
+            _http.DefaultRequestHeaders.Clear();
+            _http.DefaultRequestHeaders.Add("x-client-id", _config["PayOS:ClientId"]);
+            _http.DefaultRequestHeaders.Add("x-api-key", _config["PayOS:ApiKey"]);
+
+
+            // CALL PAYOS VERIFY API
+            var response = await _http.GetAsync(
+                $"{_config["PayOS:BaseUrl"]}/v2/payment-requests/{orderCode}");
+
+            var content = await response.Content.ReadAsStringAsync();
+            dynamic result = JsonConvert.DeserializeObject(content);
+
+            if (result?.data?.status == "PAID")
+                {
+                trans.Status = "Paid";
+                trans.PaidAt = DateTime.Now;
+
+                await ActivateSubscriptionAsync(trans.UserId, trans.PlanId);
+                await SendPaymentSuccessEmailToEmployerAsync(trans);
+
+                await _db.SaveChangesAsync();
+                }
+            }
+
         }
     }
-}

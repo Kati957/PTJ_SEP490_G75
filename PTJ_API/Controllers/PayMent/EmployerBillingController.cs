@@ -64,14 +64,20 @@ namespace PTJ_API.Controllers.Payment
         [HttpPost("/api/payos/webhook")]
         public async Task<IActionResult> Webhook()
             {
-            using var reader = new StreamReader(Request.Body);
-            string rawJson = await reader.ReadToEndAsync();
+            try
+                {
+                using var reader = new StreamReader(Request.Body);
+                var rawJson = await reader.ReadToEndAsync();
+                var signature = Request.Headers["x-payos-signature"];
 
-            string signature = Request.Headers["x-payos-signature"];
-
-            await _payment.HandleWebhookAsync(rawJson, signature);
-
-            return Ok(new { received = true });
+                await _payment.HandleWebhookAsync(rawJson, signature);
+                return Ok(); // CHỈ khi xử lý thành công
+                }
+            catch (Exception ex)
+                {
+                // log ex
+                return StatusCode(500); // ÉP PayOS retry
+                }
             }
 
         // ======================================================
@@ -80,13 +86,15 @@ namespace PTJ_API.Controllers.Payment
         [HttpGet("success")]
         public async Task<IActionResult> PaymentSuccess(long orderCode)
             {
+            // 🔴 THÊM DUY NHẤT DÒNG NÀY
+            await _payment.VerifyAndFinalizePaymentAsync(orderCode);
+
             var trans = await _db.EmployerTransactions
                 .FirstOrDefaultAsync(x => x.PayOsorderCode == orderCode.ToString());
 
             if (trans == null)
                 return BadRequest(new { message = "Không tìm thấy giao dịch" });
 
-            // Trạng thái đã được Webhook cập nhật
             if (trans.Status != "Paid")
                 {
                 return Ok(new

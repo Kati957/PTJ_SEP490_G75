@@ -16,6 +16,7 @@ using PTJ_Models.DTO.Notification;
 
 using EmployerPostModel = PTJ_Models.Models.EmployerPost;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Data.SqlClient;
 
 namespace PTJ_Service.EmployerPostService.Implementations
 {
@@ -86,12 +87,18 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 if (sub.EndDate != null && sub.EndDate < DateTime.Now)
                     throw new Exception("Gói đăng bài đã hết hạn.");
 
-                if (sub.RemainingPosts <= 0)
+                var affected = await _db.Database.ExecuteSqlRawAsync(@"
+                    UPDATE EmployerSubscriptions
+                    SET RemainingPosts = RemainingPosts - 1,
+                        UpdatedAt = GETDATE()
+                    WHERE SubscriptionId = @sid
+                      AND RemainingPosts > 0",
+                    new SqlParameter("@sid", sub.SubscriptionId)
+                );
+
+                if (affected == 0)
                     throw new Exception("Bạn đã hết lượt đăng bài.");
 
-                sub.RemainingPosts--;
-                sub.UpdatedAt = DateTime.Now;
-                await _db.SaveChangesAsync();
 
                 // 2️⃣ Build location
                 string fullLocation = await _locDisplay.BuildAddressAsync(
@@ -1518,7 +1525,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     PlanId = freePlan.PlanId,
                     RemainingPosts = freePlan.MaxPosts,
                     StartDate = now,
-                    EndDate = now.AddDays(freePlan.DurationDays ?? 30),
+                    EndDate = null,
                     Status = "Active",
                     CreatedAt = now,
                     UpdatedAt = now
@@ -1530,16 +1537,29 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 }
 
             // 2️⃣ ĐÃ CÓ FREE → CHỈ reset khi QUA THÁNG MỚI
-            bool isDifferentMonth = sub.StartDate.Month != now.Month || sub.StartDate.Year != now.Year;
+            bool isDifferentMonth =
+                sub.StartDate.Month != now.Month ||
+                sub.StartDate.Year != now.Year;
 
             if (isDifferentMonth)
                 {
                 sub.RemainingPosts = freePlan.MaxPosts;
                 sub.StartDate = now;
-                sub.EndDate = now.AddDays(freePlan.DurationDays ?? 30);
                 sub.Status = "Active";
                 sub.UpdatedAt = now;
 
+                await _db.SaveChangesAsync();
+                }
+
+            var paidActive = await _db.EmployerSubscriptions.AnyAsync(s =>
+                s.UserId == userId &&
+                s.Status == "Active" &&
+                s.PlanId != freePlan.PlanId
+);
+
+            if (paidActive)
+                {
+                sub.Status = "Expired";
                 await _db.SaveChangesAsync();
                 }
 
@@ -1602,5 +1622,21 @@ namespace PTJ_Service.EmployerPostService.Implementations
                     }
                 }
             }
+
+        public async Task<EmployerSubscription> GetCurrentSubscriptionAsync(int userId)
+            {
+            // 1️⃣ Ưu tiên PAID
+            var paidSub = await _db.EmployerSubscriptions
+                .Where(s => s.UserId == userId && s.Status == "Active" && s.PlanId != 1)
+                .OrderByDescending(s => s.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (paidSub != null)
+                return paidSub;
+
+            // 2️⃣ Không có paid → đảm bảo FREE tồn tại & reset đúng tháng
+            return await EnsureFreeSubscriptionAsync(userId);
+            }
+
         }
     }
