@@ -61,18 +61,9 @@ namespace PTJ_Service.JobApplicationService.Implementations
 
             var existing = await _repo.GetAsync(jobSeekerId, employerPostId);
             if (existing != null)
-            {
-                if (existing.Status == "Withdrawn")
                 {
-                    existing.Status = "Pending";
-                    existing.Notes = note;
-                    existing.Cvid = cvid;
-                    existing.UpdatedAt = DateTime.Now;
-                    await _repo.UpdateAsync(existing);
-                    return (true, null);
+                return (false, "Bạn đã từng ứng tuyển bài này và không thể ứng tuyển lại.");
                 }
-                return (false, "Bạn đã ứng tuyển bài này trước đó.");
-            }
 
             var submission = new JobSeekerSubmission
             {
