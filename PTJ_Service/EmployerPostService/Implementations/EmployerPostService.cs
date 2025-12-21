@@ -110,6 +110,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 if (!string.IsNullOrWhiteSpace(dto.DetailAddress))
                     fullLocation = $"{dto.DetailAddress}, {fullLocation}";
 
+                string normalizedEmployerAddress = WithCountry(NormalizeLocation(fullLocation));
+                await _map.GetCoordinatesAsync(normalizedEmployerAddress);
+
                 // 3️⃣ Tạo bài đăng
                 var post = new EmployerPostModel
                     {
@@ -647,6 +650,7 @@ namespace PTJ_Service.EmployerPostService.Implementations
             if (post.Status == "Archived" && !isOwner && !isAdmin)
                 return null;
 
+
             //  Validate địa chỉ
             string fullLocation = await _locDisplay.BuildAddressAsync(
                 dto.ProvinceId ?? throw new Exception("ProvinceId is required"),
@@ -667,6 +671,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             post.Requirements = dto.Requirements;
             post.Location = fullLocation;
+
+            string normalizedEmployerAddress = WithCountry(NormalizeLocation(post.Location));
+            await _map.GetCoordinatesAsync(normalizedEmployerAddress);
 
             post.ProvinceId = dto.ProvinceId ?? post.ProvinceId;
             post.DistrictId = dto.DistrictId ?? post.DistrictId;
@@ -836,6 +843,11 @@ namespace PTJ_Service.EmployerPostService.Implementations
             //  Archived → chỉ owner hoặc admin
             if (post.Status == "Archived" && !isOwner && !isAdmin)
                 throw new Exception("Bạn không có quyền làm mới gợi ý của bài đăng này.");
+
+            string normalizedEmployerAddress =
+                WithCountry(NormalizeLocation(post.Location ?? ""));
+            await _map.GetCoordinatesAsync(normalizedEmployerAddress);
+
 
             //  Lấy category
             var category = await _db.Categories.FindAsync(post.CategoryId);
@@ -1057,46 +1069,65 @@ namespace PTJ_Service.EmployerPostService.Implementations
             }
 
         private async Task<bool> IsWithinDistanceAsync(
-     int seekerProvince,
-     int seekerDistrict,
-     int seekerWard,
-     int jobProvince,
-     int jobDistrict,
-     int jobWard,
-     string seekerLocation,
-     string jobLocation)
+    int seekerProvince,
+    int seekerDistrict,
+    int seekerWard,
+    int jobProvince,
+    int jobDistrict,
+    int jobWard,
+    string seekerLocation,
+    string jobLocation)
             {
-            // 1) TRÙNG WARD → MATCH
-            if (seekerWard == jobWard && seekerWard != 0)
+            // 1) TRÙNG WARD
+            if (seekerWard != 0 && seekerWard == jobWard)
                 return true;
 
-            // 2) TRÙNG DISTRICT → MATCH
-            if (seekerDistrict == jobDistrict && seekerDistrict != 0)
+            // 2) TRÙNG DISTRICT
+            if (seekerDistrict != 0 && seekerDistrict == jobDistrict)
                 return true;
 
-            // 3) TRÙNG PROVINCE → MATCH
-            if (seekerProvince == jobProvince && seekerProvince != 0)
+            // 3) TRÙNG PROVINCE
+            if (seekerProvince != 0 && seekerProvince == jobProvince)
                 return true;
 
-            // 4) Nếu không trùng → tính khoảng cách <=300km
+            // 4) KHÁC TỈNH → TÍNH KHOẢNG CÁCH <= 300KM
             try
                 {
-                var fromCoord = await _map.GetCoordinatesAsync(seekerLocation);
-                var toCoord = await _map.GetCoordinatesAsync(jobLocation);
+                // Ưu tiên dùng ID để build address chuẩn (ổn định hơn string tự do)
+                string seekerAddress = await _locDisplay.BuildAddressAsync(
+                    seekerProvince,
+                    seekerDistrict,
+                    seekerWard
+                );
 
-                if (fromCoord != null && toCoord != null)
-                    {
-                    double dist = _map.ComputeDistanceKm(
-                        fromCoord.Value.lat, fromCoord.Value.lng,
-                        toCoord.Value.lat, toCoord.Value.lng
-                    );
+                string jobAddress = await _locDisplay.BuildAddressAsync(
+                    jobProvince,
+                    jobDistrict,
+                    jobWard
+                );
 
-                    return dist <= 300;
-                    }
+                string seekerQuery = WithCountry(NormalizeLocation(seekerAddress));
+                string jobQuery = WithCountry(NormalizeLocation(jobAddress));
+
+                var fromCoord = await _map.GetCoordinatesAsync(seekerQuery);
+                var toCoord = await _map.GetCoordinatesAsync(jobQuery);
+
+                // fallback an toàn: nếu geocode fail thì chỉ match theo tỉnh
+                if (fromCoord == null || toCoord == null)
+                    return seekerProvince != 0 && seekerProvince == jobProvince;
+
+                double dist = _map.ComputeDistanceKm(
+                    fromCoord.Value.lat, fromCoord.Value.lng,
+                    toCoord.Value.lat, toCoord.Value.lng
+                );
+
+                return dist <= 300;
                 }
-            catch { }
-
-            return false;
+            catch
+                {
+                // fallback an toàn
+                return seekerProvince != 0 && seekerProvince == jobProvince;
+                }
             }
 
         // SHORTLIST
@@ -1315,9 +1346,9 @@ namespace PTJ_Service.EmployerPostService.Implementations
                 Location = post.Location,
 
                 //  TRẢ ĐÚNG VỀ CLIENT
-                //ProvinceId = post.ProvinceId,
-                //DistrictId = post.DistrictId,
-                //WardId = post.WardId,
+                ProvinceId = post.ProvinceId,
+                DistrictId = post.DistrictId,
+                WardId = post.WardId,
 
                 PhoneContact = post.PhoneContact,
                 CategoryId = post.CategoryId,
@@ -1636,6 +1667,48 @@ namespace PTJ_Service.EmployerPostService.Implementations
 
             // 2️⃣ Không có paid → đảm bảo FREE tồn tại & reset đúng tháng
             return await EnsureFreeSubscriptionAsync(userId);
+            }
+
+        private static string NormalizeLocation(string raw)
+            {
+            if (string.IsNullOrWhiteSpace(raw))
+                return raw;
+
+            raw = raw.Replace("-", ",");
+            raw = raw.Replace("Tỉnh ", "");
+            raw = raw.Replace("Thành phố ", "");
+            raw = raw.Replace("Quận ", "");
+            raw = raw.Replace("Huyện ", "");
+            raw = raw.Replace("Phường ", "");
+            raw = raw.Replace("Xã ", "");
+            raw = raw.Replace("Thị trấn ", "");
+            raw = raw.Replace("Thị xã ", "");
+
+            var parts = raw
+                .Split(',')
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            if (parts.Count == 0) return raw;
+
+            // Ưu tiên 3 phần cuối: ward, district, province
+            if (parts.Count >= 3)
+                return $"{parts[^3]}, {parts[^2]}, {parts[^1]}";
+
+            if (parts.Count == 2)
+                return $"{parts[0]}, {parts[1]}";
+
+            return parts[0];
+            }
+
+        private static string WithCountry(string address)
+            {
+            if (string.IsNullOrWhiteSpace(address)) return address;
+
+            return address.Contains("Vietnam", StringComparison.OrdinalIgnoreCase)
+                ? address
+                : address + ", Vietnam";
             }
 
         }

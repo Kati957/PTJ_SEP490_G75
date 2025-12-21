@@ -105,6 +105,9 @@
                 string fullLocation = await _locDisplay.BuildAddressAsync(
                     dto.ProvinceId, dto.DistrictId, dto.WardId);
 
+                string normalizedSeekerAddress = WithCountry(NormalizeLocation(fullLocation));
+                await _map.GetCoordinatesAsync(normalizedSeekerAddress);
+
                 var post = new JobSeekerPostModel
                     {
                     UserId = dto.UserID,
@@ -193,10 +196,11 @@
                         });
 
                 var scored = await ScoreAndFilterJobsAsync(
+                    freshPost.JobSeekerPostId,
                     vector,
-                    freshPost.CategoryId,
-                    freshPost.PreferredLocation ?? ""
+                    freshPost.CategoryId
                 );
+
 
                 await UpsertSuggestionsAsync(
                     "JobSeekerPost",
@@ -475,8 +479,10 @@
                 post.PhoneContact = dto.PhoneContact;
                 post.SelectedCvId = dto.SelectedCvId;
                 post.UpdatedAt = DateTime.Now;
+            string normalizedSeekerAddress = WithCountry(NormalizeLocation(post.PreferredLocation));
+            await _map.GetCoordinatesAsync(normalizedSeekerAddress);
 
-                await _repo.UpdateAsync(post);
+            await _repo.UpdateAsync(post);
                 await _db.SaveChangesAsync();
 
 
@@ -618,14 +624,18 @@
                     status = post.Status
                     });
 
+            string normalizedSeekerAddress = WithCountry(NormalizeLocation(post.PreferredLocation ?? ""));
+            await _map.GetCoordinatesAsync(normalizedSeekerAddress);
 
-                var scored = await ScoreAndFilterJobsAsync(
-                    vector,
-                    post.CategoryId,
-                    post.PreferredLocation ?? ""
+
+            var scored = await ScoreAndFilterJobsAsync(
+                post.JobSeekerPostId,
+                vector,
+                post.CategoryId
                 );
 
-                await UpsertSuggestionsAsync(
+
+            await UpsertSuggestionsAsync(
                     "JobSeekerPost",
                     post.JobSeekerPostId,
                     "EmployerPost",
@@ -674,18 +684,19 @@
             }
 
 
-            // SCORING – 1 SCORE DUY NHẤT TỪ PINECONE
-            // SCORING – Query Pinecone chỉ trong các bài Employer đã qua HARD FILTER
-            private async Task<List<(EmployerPost Job, double Score)>>
-         ScoreAndFilterJobsAsync(
-             float[] seekerVector,
-             int? mustMatchCategoryId,
-             string seekerLocation
-         )
-                {
-                // 1) LỌC CATEGORY
-                // Tìm category Other
-                var otherCategoryId = await _db.Categories
+        // SCORING – 1 SCORE DUY NHẤT TỪ PINECONE
+        // SCORING – Query Pinecone chỉ trong các bài Employer đã qua HARD FILTER
+           private async Task<List<(EmployerPost Job, double Score)>>
+                ScoreAndFilterJobsAsync(
+                int seekerPostId,
+                float[] seekerVector,
+                int? mustMatchCategoryId
+                )
+
+            {
+            // 1) LỌC CATEGORY
+            // Tìm category Other
+            var otherCategoryId = await _db.Categories
                     .Where(c => c.Name == "Other" || c.Name == "Khác")
                     .Select(c => (int?)c.CategoryId)
                     .FirstOrDefaultAsync();
@@ -720,42 +731,32 @@
 
                 if (!categoryFiltered.Any())
                     return new List<(EmployerPost, double)>();
-                // 2) LẤY THÔNG TIN SEEKER (Province/District/Ward)
-                var seekerPost = await _db.JobSeekerPosts
-                    .AsNoTracking()
-                    .Where(x => x.PreferredLocation == seekerLocation)
-                    .FirstOrDefaultAsync();
+            // 2) LẤY THÔNG TIN SEEKER (Province/District/Ward)
+            var seekerPost = await _db.JobSeekerPosts
+                 .AsNoTracking()
+                 .FirstOrDefaultAsync(x => x.JobSeekerPostId == seekerPostId);
 
-                // fallback nếu không khớp chính xác
-                if (seekerPost == null)
-                    {
-                    seekerPost = await _db.JobSeekerPosts
-                        .AsNoTracking()
-                        .OrderByDescending(x => x.CreatedAt)
-                        .FirstOrDefaultAsync();
-                    }
+            if (seekerPost == null)
+                return new List<(EmployerPost, double)>();
 
-                if (seekerPost == null)
-                    return new List<(EmployerPost, double)>();
-
-
-                // 3) LỌC LOCATION (WARD → DISTRICT → PROVINCE → <=100km)
-                var locationPassed = new List<EmployerPost>();
+            // 3) LỌC LOCATION (WARD → DISTRICT → PROVINCE → <=100km)
+            var locationPassed = new List<EmployerPost>();
 
                 foreach (var job in categoryFiltered)
                     {
-                    bool ok = await IsWithinDistanceAsync(
+                bool ok = await IsWithinDistanceAsync(
                         seekerProvince: seekerPost.ProvinceId,
                         seekerDistrict: seekerPost.DistrictId,
                         seekerWard: seekerPost.WardId,
                         jobProvince: job.ProvinceId,
                         jobDistrict: job.DistrictId,
                         jobWard: job.WardId,
-                        seekerLocation: seekerLocation,
-                        jobLocation: job.Location
+                        seekerLocation: seekerPost.PreferredLocation ?? "",
+                        jobLocation: job.Location ?? ""
                     );
 
-                    if (ok)
+
+                if (ok)
                         locationPassed.Add(job);
                     }
 
@@ -800,57 +801,74 @@
                 return results;
                 }
 
-            // LOCATION FILTER – ưu tiên ward → district → province → cuối cùng khoảng cách <= 100km
-            private async Task<bool> IsWithinDistanceAsync(
-        int seekerProvince,
-        int seekerDistrict,
-        int seekerWard,
-        int jobProvince,
-        int jobDistrict,
-        int jobWard,
-        string seekerLocation,
-        string jobLocation
-    )
+        // LOCATION FILTER – ưu tiên ward → district → province → cuối cùng khoảng cách <= 100km
+        private async Task<bool> IsWithinDistanceAsync(
+    int seekerProvince,
+    int seekerDistrict,
+    int seekerWard,
+    int jobProvince,
+    int jobDistrict,
+    int jobWard,
+    string seekerLocation,
+    string jobLocation
+)
+            {
+            // 1) TRÙNG WARD
+            if (seekerWard != 0 && seekerWard == jobWard)
+                return true;
+
+            // 2) TRÙNG DISTRICT
+            if (seekerDistrict != 0 && seekerDistrict == jobDistrict)
+                return true;
+
+            // 3) TRÙNG PROVINCE
+            if (seekerProvince != 0 && seekerProvince == jobProvince)
+                return true;
+
+            // 4) KHÁC TỈNH → TÍNH KHOẢNG CÁCH <= 300KM
+            try
                 {
-                // 1) TRÙNG WARD → match
-                if (seekerWard != 0 && seekerWard == jobWard)
-                    return true;
+                string seekerAddress = await _locDisplay.BuildAddressAsync(
+                    seekerProvince,
+                    seekerDistrict,
+                    seekerWard
+                );
 
-                // 2) TRÙNG DISTRICT
-                if (seekerDistrict != 0 && seekerDistrict == jobDistrict)
-                    return true;
+                string jobAddress = await _locDisplay.BuildAddressAsync(
+                    jobProvince,
+                    jobDistrict,
+                    jobWard
+                );
 
-                // 3) TRÙNG PROVINCE
-                if (seekerProvince != 0 && seekerProvince == jobProvince)
-                    return true;
+                var seekerQuery = WithCountry(NormalizeLocation(seekerAddress));
+                var jobQuery = WithCountry(NormalizeLocation(jobAddress));
 
-                // 4) Khoảng cách <= 300km
-                try
+                var fromCoord = await _map.GetCoordinatesAsync(seekerQuery);
+                var toCoord = await _map.GetCoordinatesAsync(jobQuery);
+
+                // fallback an toàn
+                if (fromCoord == null || toCoord == null)
                     {
-                    seekerLocation = NormalizeLocation(seekerLocation);
-                    jobLocation = NormalizeLocation(jobLocation);
-
-                    var fromCoord = await _map.GetCoordinatesAsync(seekerLocation);
-                    var toCoord = await _map.GetCoordinatesAsync(jobLocation);
-
-                    if (fromCoord != null && toCoord != null)
-                        {
-                        double dist = _map.ComputeDistanceKm(
-                            fromCoord.Value.lat, fromCoord.Value.lng,
-                            toCoord.Value.lat, toCoord.Value.lng
-                        );
-
-                        return dist <= 300;
-                        }
+                    return seekerProvince != 0 && seekerProvince == jobProvince;
                     }
-                catch { }
 
-                return false;
+                double dist = _map.ComputeDistanceKm(
+                    fromCoord.Value.lat, fromCoord.Value.lng,
+                    toCoord.Value.lat, toCoord.Value.lng
+                );
+
+                return dist <= 300;
                 }
+            catch (Exception ex)
+                {
+                Console.WriteLine("Distance check error: " + ex.Message);
+                return seekerProvince != 0 && seekerProvince == jobProvince;
+                }
+            }
 
-            // SHORTLIST
+        // SHORTLIST
 
-            public async Task SaveJobAsync(SaveJobDto dto)
+        public async Task SaveJobAsync(SaveJobDto dto)
             {
                 bool exists = await _db.JobSeekerShortlistedJobs
                     .AnyAsync(x => x.JobSeekerId == dto.JobSeekerId && x.EmployerPostId == dto.EmployerPostId);
@@ -1050,7 +1068,10 @@
                     PreferredWorkHourEnd = post.PreferredWorkHours?.Split('-').Length > 1
                         ? post.PreferredWorkHours.Split('-')[1].Trim()
                         : null,
-
+                    ProvinceId = post.ProvinceId,
+                    DistrictId = post.DistrictId,
+                    WardId = post.WardId,
+                    CategoryID = post.CategoryId ?? 0,
                     CategoryName = category?.Name,
                     SeekerName = user?.JobSeekerProfile?.FullName ?? "",
                     CreatedAt = post.CreatedAt,
@@ -1207,40 +1228,47 @@
                 return "Thỏa thuận";
                 }
 
-            private string NormalizeLocation(string raw)
-                {
-                if (string.IsNullOrWhiteSpace(raw))
-                    return raw;
+        private static string NormalizeLocation(string raw)
+            {
+            if (string.IsNullOrWhiteSpace(raw))
+                return raw;
 
-                // Đổi dấu gạch ngang sang dấu phẩy
-                // "Hà Nội - Ba Đình" → "Hà Nội , Ba Đình"
-                raw = raw.Replace("-", ",");
+            raw = raw.Replace("-", ",");
+            raw = raw.Replace("Tỉnh ", "");
+            raw = raw.Replace("Thành phố ", "");
+            raw = raw.Replace("Quận ", "");
+            raw = raw.Replace("Huyện ", "");
+            raw = raw.Replace("Phường ", "");
+            raw = raw.Replace("Xã ", "");
+            raw = raw.Replace("Thị trấn ", "");
+            raw = raw.Replace("Thị xã ", "");
 
-                // Tách thành phần theo dấu phẩy
-                var parts = raw
-                    .Split(',')
-                    .Select(x => x.Trim())
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .ToList();
+            var parts = raw
+                .Split(',')
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
 
-                if (parts.Count == 0)
-                    return raw;
+            if (parts.Count == 0) return raw;
 
-                // Nếu có >= 3 phần → trả về 3 phần cuối
-                if (parts.Count >= 3)
-                    {
-                    var ward = parts[^3];
-                    var district = parts[^2];
-                    var province = parts[^1];
-                    return $"{ward}, {district}, {province}";
-                    }
+            // Ưu tiên 3 phần cuối: ward, district, province
+            if (parts.Count >= 3)
+                return $"{parts[^3]}, {parts[^2]}, {parts[^1]}";
 
-                // Nếu có 2 phần → District, Province
-                if (parts.Count == 2)
-                    return $"{parts[0]}, {parts[1]}";
+            if (parts.Count == 2)
+                return $"{parts[0]}, {parts[1]}";
 
-                // Nếu chỉ 1 phần
-                return parts[0];
-                }
+            return parts[0];
             }
+
+        private static string WithCountry(string address)
+            {
+            if (string.IsNullOrWhiteSpace(address)) return address;
+            // thêm quốc gia để Nominatim dễ parse
+            return address.Contains("Vietnam", StringComparison.OrdinalIgnoreCase)
+                ? address
+                : address + ", Vietnam";
+            }
+
         }
+    }
