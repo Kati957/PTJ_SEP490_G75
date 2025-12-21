@@ -9,9 +9,9 @@ namespace PTJ_Data.Repositories.Implementations.JPost
     {
     public class JobSeekerSearchRepository : IJobSeekerSearchRepository
         {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public JobSeekerSearchRepository(JobMatchingDbContext db)
+        public JobSeekerSearchRepository(JobMatchingOpenAiDbContext db)
             {
             _db = db;
             }

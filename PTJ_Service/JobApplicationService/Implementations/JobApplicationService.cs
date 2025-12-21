@@ -13,14 +13,14 @@ namespace PTJ_Service.JobApplicationService.Implementations
     public class JobApplicationService : IJobApplicationService
     {
         private readonly IJobApplicationRepository _repo;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly INotificationService _noti;
         private readonly IEmailSender _email;                 
         private readonly IEmailTemplateService _templates;    
 
         public JobApplicationService(
             IJobApplicationRepository repo,
-            JobMatchingDbContext db,
+            JobMatchingOpenAiDbContext db,
             INotificationService noti,
             IEmailSender email,
             IEmailTemplateService templates)

@@ -14,10 +14,10 @@ namespace YourProject.Controllers
     [Route("api/[controller]")]
     public class MatchController : ControllerBase
         {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly IJobSeekerPostService _seekerService;
 
-        public MatchController(JobMatchingDbContext db, IJobSeekerPostService seekerService)
+        public MatchController(JobMatchingOpenAiDbContext db, IJobSeekerPostService seekerService)
         {
             _seekerService = seekerService;
             _db = db;

@@ -8,9 +8,9 @@ namespace PTJ_Service.Admin.Implementations
 {
     public class AdminSystemReportService : IAdminSystemReportService
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public AdminSystemReportService(JobMatchingDbContext db)
+        public AdminSystemReportService(JobMatchingOpenAiDbContext db)
         {
             _db = db;
         }

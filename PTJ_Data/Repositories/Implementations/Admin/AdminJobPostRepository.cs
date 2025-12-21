@@ -7,8 +7,8 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminJobPostRepository : IAdminJobPostRepository
     {
-        private readonly JobMatchingDbContext _db;
-        public AdminJobPostRepository(JobMatchingDbContext db) => _db = db;
+        private readonly JobMatchingOpenAiDbContext _db;
+        public AdminJobPostRepository(JobMatchingOpenAiDbContext db) => _db = db;
 
 
         // EMPLOYER POSTS

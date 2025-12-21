@@ -16,9 +16,9 @@ namespace PTJ_API.Controllers.Post
     public class EmployerPostController : ControllerBase
     {
         private readonly IEmployerPostService _service;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public EmployerPostController(IEmployerPostService service, JobMatchingDbContext db)
+        public EmployerPostController(IEmployerPostService service, JobMatchingOpenAiDbContext db)
         {
             _service = service;
             _db = db;

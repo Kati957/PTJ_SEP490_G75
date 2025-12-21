@@ -9,9 +9,9 @@ namespace PTJ_Data.Repositories.Implementations.EPost
 {
     public class EmployerSearchRepository : IEmployerSearchRepository
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public EmployerSearchRepository(JobMatchingDbContext db)
+        public EmployerSearchRepository(JobMatchingOpenAiDbContext db)
         {
             _db = db;
         }

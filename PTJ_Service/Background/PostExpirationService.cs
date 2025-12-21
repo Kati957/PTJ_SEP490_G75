@@ -38,7 +38,7 @@ public class PostExpirationService : BackgroundService
         {
         using var scope = _scopeFactory.CreateScope();
 
-        var db = scope.ServiceProvider.GetRequiredService<JobMatchingDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<JobMatchingOpenAiDbContext>();
         var ai = scope.ServiceProvider.GetRequiredService<IAIService>();
 
         DateTime today = DateTime.Today;

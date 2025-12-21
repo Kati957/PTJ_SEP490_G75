@@ -13,9 +13,9 @@ namespace PTJ_Data.Repositories.Implementations.ActivityUsers
 {
     public class UserActivityRepository : IUserActivityRepository
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public UserActivityRepository(JobMatchingDbContext context)
+        public UserActivityRepository(JobMatchingOpenAiDbContext context)
         {
             _context = context;
         }

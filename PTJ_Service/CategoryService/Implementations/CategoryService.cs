@@ -9,9 +9,9 @@ namespace PTJ_Service.CategoryService.Implementations
 {
     public class CategoryService : ICategoryService
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public CategoryService(JobMatchingDbContext context)
+        public CategoryService(JobMatchingOpenAiDbContext context)
         {
             _context = context;
         }

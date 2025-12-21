@@ -7,8 +7,8 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminUserRepository : IAdminUserRepository
     {
-        private readonly JobMatchingDbContext _db;
-        public AdminUserRepository(JobMatchingDbContext db) => _db = db;
+        private readonly JobMatchingOpenAiDbContext _db;
+        public AdminUserRepository(JobMatchingOpenAiDbContext db) => _db = db;
 
         // 1️⃣ Danh sách user (phân trang)
         public async Task<PagedResult<AdminUserDto>> GetUsersPagedAsync(

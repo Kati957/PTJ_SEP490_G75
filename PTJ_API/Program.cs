@@ -93,7 +93,7 @@ builder.Services.AddAuthorization();
 
 // 1️⃣ CONFIG DATABASE (EF CORE)
 
-builder.Services.AddDbContext<JobMatchingDbContext>(opt =>
+builder.Services.AddDbContext<JobMatchingOpenAiDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn"));
 });
@@ -228,7 +228,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnTokenValidated = async context =>
             {
                 var db = context.HttpContext.RequestServices
-                    .GetRequiredService<JobMatchingDbContext>();
+                    .GetRequiredService<JobMatchingOpenAiDbContext>();
 
                 var claims = context.Principal.Claims;
 

@@ -17,14 +17,14 @@ namespace PTJ_Service.Admin.Implementations
 {
     public class AdminEmployerRegistrationService : IAdminEmployerRegistrationService
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly IEmailSender _email;
         private readonly IEmailTemplateService _templates;
         private readonly IConfiguration _cfg;
         private readonly INotificationService _noti;
 
         public AdminEmployerRegistrationService(
-            JobMatchingDbContext db,
+            JobMatchingOpenAiDbContext db,
             IEmailSender email,
             IEmailTemplateService templates,
             IConfiguration cfg,

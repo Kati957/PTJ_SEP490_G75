@@ -6,9 +6,9 @@ namespace PTJ_Data.Repositories.Implementations.NewsPost
     {
     public class NewsRepository : INewsRepository
         {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public NewsRepository(JobMatchingDbContext db) => _db = db;
+        public NewsRepository(JobMatchingOpenAiDbContext db) => _db = db;
 
         public async Task<(List<News> Data, int Total)> GetPagedAsync(
             string? keyword, string? category, int page, int pageSize, string sortBy, bool desc)

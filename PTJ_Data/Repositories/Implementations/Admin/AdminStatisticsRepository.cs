@@ -12,9 +12,9 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminStatisticsRepository : IAdminStatisticsRepository
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public AdminStatisticsRepository(JobMatchingDbContext context)
+        public AdminStatisticsRepository(JobMatchingOpenAiDbContext context)
         {
             _context = context;
         }

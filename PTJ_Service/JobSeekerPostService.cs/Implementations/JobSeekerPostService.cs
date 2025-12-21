@@ -20,7 +20,7 @@
         public class JobSeekerPostService : IJobSeekerPostService
         {
             private readonly IJobSeekerPostRepository _repo;
-            private readonly JobMatchingDbContext _db;
+            private readonly JobMatchingOpenAiDbContext _db;
             private readonly IAIService _ai;
             private readonly OpenMapService _map;
             private readonly LocationDisplayService _locDisplay;
@@ -28,7 +28,7 @@
 
             public JobSeekerPostService(
                 IJobSeekerPostRepository repo,
-                JobMatchingDbContext db,
+                JobMatchingOpenAiDbContext db,
                 IAIService ai,
                 OpenMapService map,
                 LocationDisplayService locDisplay,

@@ -9,12 +9,12 @@ namespace PTJ_Service.Implementations
 {
     public class ReportService : IReportService
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly IReportRepository _repo;
         private readonly INotificationService _noti;
 
         public ReportService(
-            JobMatchingDbContext db,
+            JobMatchingOpenAiDbContext db,
             IReportRepository repo,
             INotificationService noti)
         {

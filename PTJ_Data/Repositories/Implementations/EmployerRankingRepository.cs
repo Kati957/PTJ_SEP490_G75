@@ -7,9 +7,9 @@ namespace PTJ_Data.Repositories.Implementations
 {
     public class EmployerRankingRepository : IEmployerRankingRepository
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public EmployerRankingRepository(JobMatchingDbContext db)
+        public EmployerRankingRepository(JobMatchingOpenAiDbContext db)
         {
             _db = db;
         }

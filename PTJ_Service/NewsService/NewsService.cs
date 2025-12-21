@@ -11,8 +11,8 @@ namespace PTJ_Service.NewsService
     {
     public class NewsService : INewsService
         {
-        private readonly JobMatchingDbContext _db;
-        public NewsService(JobMatchingDbContext db) => _db = db;
+        private readonly JobMatchingOpenAiDbContext _db;
+        public NewsService(JobMatchingOpenAiDbContext db) => _db = db;
 
 
 

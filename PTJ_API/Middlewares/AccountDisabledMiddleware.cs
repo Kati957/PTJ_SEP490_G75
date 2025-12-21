@@ -14,7 +14,7 @@ namespace PTJ_API.Middlewares
             _next = next;
         }
 
-        public async Task InvokeAsync(HttpContext context, JobMatchingDbContext db)
+        public async Task InvokeAsync(HttpContext context, JobMatchingOpenAiDbContext db)
         {
             // Chưa login → cho qua
             if (!context.User.Identity?.IsAuthenticated ?? false)

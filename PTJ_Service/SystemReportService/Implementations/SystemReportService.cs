@@ -8,9 +8,9 @@ namespace PTJ_Service.SystemReportService.Implementations
 {
     public class SystemReportService : ISystemReportService
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public SystemReportService(JobMatchingDbContext db)
+        public SystemReportService(JobMatchingOpenAiDbContext db)
         {
             _db = db;
         }

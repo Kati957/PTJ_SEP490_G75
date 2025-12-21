@@ -18,13 +18,13 @@ namespace PTJ_Service.Tests.ApplyJob
     public class ApplyTests
         {
         // Tạo DB InMemory
-        private JobMatchingDbContext CreateDb()
+        private JobMatchingOpenAiDbContext CreateDb()
             {
-            var options = new DbContextOptionsBuilder<JobMatchingDbContext>()
+            var options = new DbContextOptionsBuilder<JobMatchingOpenAiDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            return new JobMatchingDbContext(options);
+            return new JobMatchingOpenAiDbContext(options);
             }
 
         // Helper tạo User đầy đủ required fields
@@ -52,7 +52,7 @@ namespace PTJ_Service.Tests.ApplyJob
             }
 
         // Helper tạo service
-        private ApplySvc CreateService(JobMatchingDbContext db, Mock<IJobApplicationRepository>? repo = null)
+        private ApplySvc CreateService(JobMatchingOpenAiDbContext db, Mock<IJobApplicationRepository>? repo = null)
             {
             return new ApplySvc(
                 repo?.Object ?? new Mock<IJobApplicationRepository>().Object,

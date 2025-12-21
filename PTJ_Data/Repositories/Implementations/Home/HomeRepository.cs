@@ -12,9 +12,9 @@ namespace PTJ_Data.Repositories.Implementations.Home
 {
     public class HomeRepository : IHomeRepository
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public HomeRepository(JobMatchingDbContext context)
+        public HomeRepository(JobMatchingOpenAiDbContext context)
         {
             _context = context;
         }

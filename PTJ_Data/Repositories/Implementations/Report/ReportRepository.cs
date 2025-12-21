@@ -7,8 +7,8 @@ namespace PTJ_Data.Repositories.Implementations
 {
     public class ReportRepository : IReportRepository
     {
-        private readonly JobMatchingDbContext _db;
-        public ReportRepository(JobMatchingDbContext db) => _db = db;
+        private readonly JobMatchingOpenAiDbContext _db;
+        public ReportRepository(JobMatchingOpenAiDbContext db) => _db = db;
 
         public Task<bool> EmployerPostExistsAsync(int employerPostId)
             => _db.EmployerPosts.AnyAsync(p => p.EmployerPostId == employerPostId && p.Status != "Deleted");

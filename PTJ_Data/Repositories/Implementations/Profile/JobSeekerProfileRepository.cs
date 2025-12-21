@@ -11,9 +11,9 @@ namespace PTJ_Repositories.Implementations
     {
     public class JobSeekerProfileRepository : IJobSeekerProfileRepository
         {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public JobSeekerProfileRepository(JobMatchingDbContext context)
+        public JobSeekerProfileRepository(JobMatchingOpenAiDbContext context)
             {
             _context = context;
             }

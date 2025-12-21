@@ -16,9 +16,9 @@ namespace PTJ_Service.JobSeekerCvService.Implementations
         {
         private readonly IJobSeekerCvRepository _repo;
         private readonly LocationDisplayService _location;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public JobSeekerCvService(IJobSeekerCvRepository repo, LocationDisplayService location, JobMatchingDbContext db)
+        public JobSeekerCvService(IJobSeekerCvRepository repo, LocationDisplayService location, JobMatchingOpenAiDbContext db)
             {
             _repo = repo;
             _location = location;

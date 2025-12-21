@@ -25,7 +25,7 @@ namespace PTJ_Service.Tests.EmployerPosts
     {
     public class CreateEmployerPostTests
         {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly Mock<IEmployerPostRepository> _repo = new();
         private readonly Mock<IAIService> _ai = new();
         private readonly Mock<IImageService> _image = new();
@@ -36,11 +36,11 @@ namespace PTJ_Service.Tests.EmployerPosts
 
         public CreateEmployerPostTests()
             {
-            var opt = new DbContextOptionsBuilder<JobMatchingDbContext>()
+            var opt = new DbContextOptionsBuilder<JobMatchingOpenAiDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            _db = new JobMatchingDbContext(opt);
+            _db = new JobMatchingOpenAiDbContext(opt);
 
             _map = new FakeOpenMapService(_db);
 

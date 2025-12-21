@@ -7,9 +7,9 @@ namespace PTJ_Data.Repositories.Implementations.Ratings
 {
     public class RatingRepository : IRatingRepository
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public RatingRepository(JobMatchingDbContext context)
+        public RatingRepository(JobMatchingOpenAiDbContext context)
         {
             _context = context;
         }

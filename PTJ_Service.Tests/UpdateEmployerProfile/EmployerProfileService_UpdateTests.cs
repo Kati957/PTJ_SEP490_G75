@@ -20,13 +20,13 @@ namespace PTJ_Service.Tests.EmployerProfiles
         // ============================
         // 1. Helper: InMemory DbContext
         // ============================
-        private JobMatchingDbContext CreateDb()
+        private JobMatchingOpenAiDbContext CreateDb()
             {
-            var opt = new DbContextOptionsBuilder<JobMatchingDbContext>()
+            var opt = new DbContextOptionsBuilder<JobMatchingOpenAiDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            return new JobMatchingDbContext(opt);
+            return new JobMatchingOpenAiDbContext(opt);
             }
 
         // ============================

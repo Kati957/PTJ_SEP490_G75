@@ -9,10 +9,10 @@ namespace PTJ_Service.SearchService.Implementations
     {
     public class SearchSuggestionService : ISearchSuggestionService
         {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly IHttpContextAccessor _contextAccessor;
 
-        public SearchSuggestionService(JobMatchingDbContext db, IHttpContextAccessor accessor)
+        public SearchSuggestionService(JobMatchingOpenAiDbContext db, IHttpContextAccessor accessor)
             {
             _db = db;
             _contextAccessor = accessor;

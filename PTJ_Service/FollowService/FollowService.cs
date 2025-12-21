@@ -11,10 +11,10 @@ namespace PTJ_Service.FollowService
 {
     public class FollowService : IFollowService
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
         private readonly INotificationService _noti;
 
-        public FollowService(JobMatchingDbContext context, INotificationService noti)
+        public FollowService(JobMatchingOpenAiDbContext context, INotificationService noti)
         {
             _context = context;
             _noti = noti;

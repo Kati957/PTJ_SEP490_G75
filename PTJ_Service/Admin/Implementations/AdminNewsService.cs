@@ -14,13 +14,13 @@ namespace PTJ_Service.Admin.Implementations
     {
         private readonly IAdminNewsRepository _repo;
         private readonly IImageService _img;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly INotificationService _noti;
 
         public AdminNewsService(
             IAdminNewsRepository repo,
             IImageService img,
-            JobMatchingDbContext db,
+            JobMatchingOpenAiDbContext db,
             INotificationService noti)
         {
             _repo = repo;

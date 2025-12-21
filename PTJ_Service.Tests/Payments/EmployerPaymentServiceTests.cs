@@ -25,13 +25,13 @@ namespace PTJ_Service.Tests.Payments
         // ============================
         // 1. InMemory DB
         // ============================
-        private JobMatchingDbContext CreateDb()
+        private JobMatchingOpenAiDbContext CreateDb()
             {
-            var opt = new DbContextOptionsBuilder<JobMatchingDbContext>()
+            var opt = new DbContextOptionsBuilder<JobMatchingOpenAiDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
-            return new JobMatchingDbContext(opt);
+            return new JobMatchingOpenAiDbContext(opt);
             }
 
         // ============================

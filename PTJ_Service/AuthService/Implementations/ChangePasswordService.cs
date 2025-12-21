@@ -11,13 +11,13 @@ namespace PTJ_Service.AuthService.Implementations
 {
     public class ChangePasswordService : IChangePasswordService
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
         private readonly IEmailSender _email;
         private readonly IConfiguration _cfg;
         private readonly ILogger<ChangePasswordService> _log;
 
         public ChangePasswordService(
-            JobMatchingDbContext context,
+            JobMatchingOpenAiDbContext context,
             IEmailSender email,
             IConfiguration cfg,
             ILogger<ChangePasswordService> log)

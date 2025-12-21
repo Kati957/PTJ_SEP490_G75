@@ -6,9 +6,9 @@ namespace PTJ_Data.Repositories.Implementations
 {
     public class NotificationRepository : INotificationRepository
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public NotificationRepository(JobMatchingDbContext db)
+        public NotificationRepository(JobMatchingOpenAiDbContext db)
         {
             _db = db;
         }

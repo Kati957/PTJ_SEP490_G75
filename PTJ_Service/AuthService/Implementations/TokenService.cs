@@ -12,10 +12,10 @@ using PTJ_Models;
 
 public sealed class TokenService : ITokenService
 {
-    private readonly JobMatchingDbContext _db;
+    private readonly JobMatchingOpenAiDbContext _db;
     private readonly IConfiguration _cfg;
 
-    public TokenService(JobMatchingDbContext db, IConfiguration cfg)
+    public TokenService(JobMatchingOpenAiDbContext db, IConfiguration cfg)
     {
         _db = db;
         _cfg = cfg;

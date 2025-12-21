@@ -10,7 +10,7 @@ namespace PTJ_Service.Tests.CreateEmployerPost
     /// </summary>
     public class FakeOpenMapService : OpenMapService
         {
-        public FakeOpenMapService(JobMatchingDbContext db) : base(db)
+        public FakeOpenMapService(JobMatchingOpenAiDbContext db) : base(db)
             {
             }
 

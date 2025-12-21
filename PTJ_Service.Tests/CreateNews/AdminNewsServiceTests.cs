@@ -29,13 +29,13 @@ public class AdminNewsService_CreateAsync_Tests
         return results;
         }
 
-    private JobMatchingDbContext CreateDb()
+    private JobMatchingOpenAiDbContext CreateDb()
         {
-        var opt = new DbContextOptionsBuilder<JobMatchingDbContext>()
+        var opt = new DbContextOptionsBuilder<JobMatchingOpenAiDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        return new JobMatchingDbContext(opt);
+        return new JobMatchingOpenAiDbContext(opt);
         }
 
     // ============================================================

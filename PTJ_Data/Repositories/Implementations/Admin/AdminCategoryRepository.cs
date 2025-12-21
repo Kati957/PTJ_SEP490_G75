@@ -7,8 +7,8 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminCategoryRepository : IAdminCategoryRepository
     {
-        private readonly JobMatchingDbContext _db;
-        public AdminCategoryRepository(JobMatchingDbContext db) => _db = db;
+        private readonly JobMatchingOpenAiDbContext _db;
+        public AdminCategoryRepository(JobMatchingOpenAiDbContext db) => _db = db;
 
         // GET LIST + FILTER
         public async Task<IEnumerable<AdminCategoryDto>> GetCategoriesAsync(

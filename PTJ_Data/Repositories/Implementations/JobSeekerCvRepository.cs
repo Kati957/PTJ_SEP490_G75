@@ -11,9 +11,9 @@ namespace PTJ_Data.Repositories.Implementations
     {
     public class JobSeekerCvRepository : IJobSeekerCvRepository
         {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public JobSeekerCvRepository(JobMatchingDbContext db)
+        public JobSeekerCvRepository(JobMatchingOpenAiDbContext db)
             {
             _db = db;
             }

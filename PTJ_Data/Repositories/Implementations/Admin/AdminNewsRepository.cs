@@ -7,8 +7,8 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminNewsRepository : IAdminNewsRepository
     {
-        private readonly JobMatchingDbContext _db;
-        public AdminNewsRepository(JobMatchingDbContext db) => _db = db;
+        private readonly JobMatchingOpenAiDbContext _db;
+        public AdminNewsRepository(JobMatchingOpenAiDbContext db) => _db = db;
 
         public async Task<IEnumerable<AdminNewsDto>> GetAllNewsAsync(bool? isPublished = null, string? keyword = null)
         {

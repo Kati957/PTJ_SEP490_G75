@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace PTJ_Models.Models;
 
-public partial class JobMatchingDbContext : DbContext
+public partial class JobMatchingOpenAiDbContext : DbContext
 {
-    public JobMatchingDbContext()
+    public JobMatchingOpenAiDbContext()
     {
     }
 
-    public JobMatchingDbContext(DbContextOptions<JobMatchingDbContext> options)
+    public JobMatchingOpenAiDbContext(DbContextOptions<JobMatchingOpenAiDbContext> options)
         : base(options)
     {
     }
@@ -91,7 +91,7 @@ public partial class JobMatchingDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database = JobMatching_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
+        => optionsBuilder.UseSqlServer("server =ADMIN-PC\\SQLEXPRESS; database = JobMatchingOpenAi_DB;uid=sa;pwd=123; TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,8 +100,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasKey(e => e.EmbeddingId);
 
             entity.ToTable("AI_EmbeddingStatus");
-
-            entity.HasIndex(e => new { e.EntityType, e.EntityId }, "IX_AI_EmbeddingStatus_Entity");
 
             entity.Property(e => e.EmbeddingId).HasColumnName("EmbeddingID");
             entity.Property(e => e.ContentHash)
@@ -130,10 +128,6 @@ public partial class JobMatchingDbContext : DbContext
 
             entity.ToTable("AI_MatchSuggestions");
 
-            entity.HasIndex(e => new { e.SourceType, e.SourceId }, "IX_AI_MatchSuggestions_Source");
-
-            entity.HasIndex(e => new { e.TargetType, e.TargetId }, "IX_AI_MatchSuggestions_Target");
-
             entity.Property(e => e.SuggestionId).HasColumnName("SuggestionID");
             entity.Property(e => e.CreatedAt).HasColumnType("datetime");
             entity.Property(e => e.Reason).HasMaxLength(500);
@@ -150,8 +144,6 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasIndex(e => e.Name, "IX_Categories_Name").IsUnique();
-
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
             entity.Property(e => e.CategoryGroup).HasMaxLength(20);
             entity.Property(e => e.Description).HasMaxLength(255);
@@ -210,8 +202,6 @@ public partial class JobMatchingDbContext : DbContext
         modelBuilder.Entity<EmployerFollower>(entity =>
         {
             entity.HasKey(e => e.FollowId);
-
-            entity.HasIndex(e => new { e.JobSeekerId, e.EmployerId }, "IX_EmployerFollowers").IsUnique();
 
             entity.Property(e => e.FollowId).HasColumnName("FollowID");
             entity.Property(e => e.EmployerId).HasColumnName("EmployerID");
@@ -380,8 +370,6 @@ public partial class JobMatchingDbContext : DbContext
         {
             entity.HasKey(e => e.SubscriptionId);
 
-            entity.HasIndex(e => e.UserId, "IX_EmployerSubscriptions_User");
-
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -438,8 +426,6 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<ExternalLogin>(entity =>
         {
-            entity.HasIndex(e => new { e.Provider, e.ProviderKey }, "IX_ExternalLogins_Provider_User").IsUnique();
-
             entity.Property(e => e.ExternalLoginId).HasColumnName("ExternalLoginID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -465,8 +451,6 @@ public partial class JobMatchingDbContext : DbContext
         {
             entity.HasKey(e => e.FavoriteId);
 
-            entity.HasIndex(e => new { e.UserId, e.PostId, e.PostType }, "IX_FavoritePosts_Unique").IsUnique();
-
             entity.Property(e => e.FavoriteId).HasColumnName("FavoriteID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -485,8 +469,6 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<GoogleEmployerRequest>(entity =>
         {
-            entity.HasIndex(e => e.UserId, "IX_GoogleEmployerRequests_User").IsUnique();
-
             entity.HasIndex(e => e.UserId, "UQ_GoogleEmployerRequests_UserId").IsUnique();
 
             entity.Property(e => e.AdminNote).HasMaxLength(500);
@@ -511,8 +493,6 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<Image>(entity =>
         {
-            entity.HasIndex(e => new { e.EntityType, e.EntityId }, "IX_Images_Entity");
-
             entity.Property(e => e.ImageId).HasColumnName("ImageID");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
@@ -626,8 +606,6 @@ public partial class JobMatchingDbContext : DbContext
 
             entity.ToTable("JobSeeker_ShortlistedJobs");
 
-            entity.HasIndex(e => new { e.JobSeekerId, e.EmployerPostId }, "IX_JobSeekerShortlist").IsUnique();
-
             entity.Property(e => e.ShortlistId).HasColumnName("ShortlistID");
             entity.Property(e => e.AddedAt).HasColumnType("datetime");
             entity.Property(e => e.EmployerPostId).HasColumnName("EmployerPostID");
@@ -649,8 +627,6 @@ public partial class JobMatchingDbContext : DbContext
             entity.HasKey(e => e.SubmissionId);
 
             entity.ToTable("JobSeeker_Submissions");
-
-            entity.HasIndex(e => new { e.JobSeekerId, e.EmployerPostId }, "IX_JobSeeker_Submissions_Unique").IsUnique();
 
             entity.Property(e => e.SubmissionId).HasColumnName("SubmissionID");
             entity.Property(e => e.AppliedAt)
@@ -910,8 +886,6 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasIndex(e => e.RoleName, "IX_Roles_RoleName").IsUnique();
-
             entity.Property(e => e.RoleId).HasColumnName("RoleID");
             entity.Property(e => e.Description).HasMaxLength(255);
             entity.Property(e => e.RoleName)
@@ -954,10 +928,6 @@ public partial class JobMatchingDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasIndex(e => e.Email, "IX_Users_Email").IsUnique();
-
-            entity.HasIndex(e => e.Username, "IX_Users_Username").IsUnique();
-
             entity.Property(e => e.UserId).HasColumnName("UserID");
             entity.Property(e => e.Address).HasMaxLength(255);
             entity.Property(e => e.CreatedAt)
@@ -995,7 +965,6 @@ public partial class JobMatchingDbContext : DbContext
                     {
                         j.HasKey("UserId", "RoleId");
                         j.ToTable("UserRoles");
-                        j.HasIndex(new[] { "UserId", "RoleId" }, "IX_UserRoles_UserID_RoleID").IsUnique();
                         j.IndexerProperty<int>("UserId").HasColumnName("UserID");
                         j.IndexerProperty<int>("RoleId").HasColumnName("RoleID");
                     });

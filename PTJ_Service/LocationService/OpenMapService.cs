@@ -9,9 +9,9 @@ namespace PTJ_Service.LocationService
     public class OpenMapService
     {
         private readonly HttpClient _http;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public OpenMapService(JobMatchingDbContext db)
+        public OpenMapService(JobMatchingOpenAiDbContext db)
         {
             _db = db;
             _http = new HttpClient();

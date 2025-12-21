@@ -28,7 +28,7 @@ namespace PTJ_API.Attributes
                 return; 
 
             // Nếu token không chứa claim → fallback kiểm tra DB
-            var db = context.HttpContext.RequestServices.GetRequiredService<JobMatchingDbContext>();
+            var db = context.HttpContext.RequestServices.GetRequiredService<JobMatchingOpenAiDbContext>();
             var userIdStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (int.TryParse(userIdStr, out var userId))

@@ -11,8 +11,8 @@ namespace PTJ_API.Controllers.AdminController
     [ApiController]
     public class AdminPlansController : ControllerBase
         {
-        private readonly JobMatchingDbContext _db;
-        public AdminPlansController(JobMatchingDbContext db)
+        private readonly JobMatchingOpenAiDbContext _db;
+        public AdminPlansController(JobMatchingOpenAiDbContext db)
             {
             _db = db;
             }

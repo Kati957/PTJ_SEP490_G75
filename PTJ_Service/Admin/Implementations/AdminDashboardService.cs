@@ -5,9 +5,9 @@ using PTJ_Models.DTO.AdminDashbroad;
 
 public class AdminDashboardService : IAdminDashboardService
 {
-    private readonly JobMatchingDbContext _db;
+    private readonly JobMatchingOpenAiDbContext _db;
 
-    public AdminDashboardService(JobMatchingDbContext db)
+    public AdminDashboardService(JobMatchingOpenAiDbContext db)
     {
         _db = db;
     }

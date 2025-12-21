@@ -10,9 +10,9 @@ namespace PTJ_Service.HomeService
 {
     public class HomeService : IHomeService
     {
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
         private readonly IHomeRepository _repo;
-        public HomeService(JobMatchingDbContext context, IHomeRepository repo)
+        public HomeService(JobMatchingOpenAiDbContext context, IHomeRepository repo)
         {
             _context = context;
             _repo = repo;

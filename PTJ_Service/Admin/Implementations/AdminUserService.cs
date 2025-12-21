@@ -19,7 +19,7 @@ namespace PTJ_Service.Admin.Implementations
         private readonly IAdminUserRepository _repo;
         private readonly ILocationService _location;
         private readonly INotificationService _noti;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly IEmailSender _email;
         private readonly IEmailTemplateService _emailTemplate;
 
@@ -27,7 +27,7 @@ namespace PTJ_Service.Admin.Implementations
     IAdminUserRepository repo,
     ILocationService location,
     INotificationService noti,
-    JobMatchingDbContext db,
+    JobMatchingOpenAiDbContext db,
     IEmailSender email,
     IEmailTemplateService emailTemplate)
         {

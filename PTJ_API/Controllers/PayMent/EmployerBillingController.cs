@@ -15,9 +15,9 @@ namespace PTJ_API.Controllers.Payment
     public class EmployerBillingController : ControllerBase
         {
         private readonly IEmployerPaymentService _payment;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public EmployerBillingController(IEmployerPaymentService payment, JobMatchingDbContext db)
+        public EmployerBillingController(IEmployerPaymentService payment, JobMatchingOpenAiDbContext db)
             {
             _payment = payment;
             _db = db;

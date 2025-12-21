@@ -16,7 +16,7 @@ namespace PTJ_Service.AuthService.Implementations;
 
 public sealed class AuthService : IAuthService
 {
-    private readonly JobMatchingDbContext _db;
+    private readonly JobMatchingOpenAiDbContext _db;
     private readonly IPasswordHasher _hasher;
     private readonly ITokenService _tokens;
     private readonly IEmailSender _email;
@@ -25,7 +25,7 @@ public sealed class AuthService : IAuthService
     private readonly ILogger<AuthService> _log;
 
     public AuthService(
-        JobMatchingDbContext db,
+        JobMatchingOpenAiDbContext db,
         IPasswordHasher hasher,
         ITokenService tokens,
         IEmailSender email,

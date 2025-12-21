@@ -20,7 +20,7 @@ namespace PTJ_Service.PaymentsService.Implementations
 {
     public class EmployerPaymentService : IEmployerPaymentService
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         private readonly HttpClient _http;
@@ -28,7 +28,7 @@ namespace PTJ_Service.PaymentsService.Implementations
         private readonly IEmailTemplateService _emailTemplate;
         private readonly SmtpEmailSender _smtpEmailSender;
         public EmployerPaymentService(
-            JobMatchingDbContext db,
+            JobMatchingOpenAiDbContext db,
             IConfiguration config,
             IWebHostEnvironment env,
             IHubContext<PaymentHub> hub,

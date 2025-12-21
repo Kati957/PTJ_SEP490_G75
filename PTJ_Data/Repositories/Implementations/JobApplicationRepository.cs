@@ -11,9 +11,9 @@ namespace PTJ_Data.Repositories.Implementations
     {
     public class JobApplicationRepository : IJobApplicationRepository
         {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public JobApplicationRepository(JobMatchingDbContext db)
+        public JobApplicationRepository(JobMatchingOpenAiDbContext db)
             {
             _db = db;
             }

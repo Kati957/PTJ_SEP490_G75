@@ -13,12 +13,12 @@ namespace PTJ_Service.Implementations
     {
         private readonly INotificationRepository _repo;
         private readonly IHubContext<NotificationHub> _hub;
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
         public NotificationService(
             INotificationRepository repo,
             IHubContext<NotificationHub> hub,
-            JobMatchingDbContext db)
+            JobMatchingOpenAiDbContext db)
         {
             _repo = repo;
             _hub = hub;

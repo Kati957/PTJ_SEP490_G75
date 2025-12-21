@@ -9,9 +9,9 @@ namespace PTJ_Data.Repositories.Implementations.Admin
 {
     public class AdminReportRepository : IAdminReportRepository
     {
-        private readonly JobMatchingDbContext _db;
+        private readonly JobMatchingOpenAiDbContext _db;
 
-        public AdminReportRepository(JobMatchingDbContext db)
+        public AdminReportRepository(JobMatchingOpenAiDbContext db)
         {
             _db = db;
         }

@@ -12,9 +12,9 @@ namespace PTJ_Service.ImageService
     public class ImageService : IImageService
     {
         private readonly Cloudinary _cloudinary;
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public ImageService(IConfiguration config, JobMatchingDbContext context)
+        public ImageService(IConfiguration config, JobMatchingOpenAiDbContext context)
         {
             _context = context;
 

@@ -10,9 +10,9 @@ namespace PTJ_Service.RatingService.Implementations
     public class RatingService : IRatingService
     {
         private readonly IRatingRepository _ratingRepository;
-        private readonly JobMatchingDbContext _context;
+        private readonly JobMatchingOpenAiDbContext _context;
 
-        public RatingService(IRatingRepository ratingRepository, JobMatchingDbContext context)
+        public RatingService(IRatingRepository ratingRepository, JobMatchingOpenAiDbContext context)
         {
             _ratingRepository = ratingRepository;
             _context = context;

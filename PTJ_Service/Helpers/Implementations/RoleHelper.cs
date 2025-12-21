@@ -12,7 +12,7 @@ namespace PTJ_Service.Helpers.Implementations
 
         // Xóa toàn bộ role hiện có và gán DUY NHẤT roleName cho user (dùng skip navigation).
 
-        public static async Task SetSingleRoleAsync(JobMatchingDbContext db, int userId, string roleName)
+        public static async Task SetSingleRoleAsync(JobMatchingOpenAiDbContext db, int userId, string roleName)
         {
             roleName = roleName.Trim();
 
@@ -33,7 +33,7 @@ namespace PTJ_Service.Helpers.Implementations
             await db.SaveChangesAsync();
         }
 
-        public static async Task EnsureRoleIfMissingAsync(JobMatchingDbContext db, int userId, string roleName)
+        public static async Task EnsureRoleIfMissingAsync(JobMatchingOpenAiDbContext db, int userId, string roleName)
         {
             roleName = roleName.Trim();
 

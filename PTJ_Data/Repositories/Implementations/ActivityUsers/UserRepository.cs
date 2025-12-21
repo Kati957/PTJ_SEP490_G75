@@ -12,8 +12,8 @@ namespace PTJ_Data.Repositories.Implementations.ActivityUsers
 {
     public class UserRepository : IUserRepository
     {
-        private readonly JobMatchingDbContext _context;
-        public UserRepository(JobMatchingDbContext context) => _context = context;
+        private readonly JobMatchingOpenAiDbContext _context;
+        public UserRepository(JobMatchingOpenAiDbContext context) => _context = context;
 
         public Task<User?> GetByUsernameAsync(string username)
             => _context.Users.FirstOrDefaultAsync(x => x.Username == username);
