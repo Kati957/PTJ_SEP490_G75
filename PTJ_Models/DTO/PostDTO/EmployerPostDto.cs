@@ -16,7 +16,7 @@ namespace PTJ_Models.DTO.PostDTO
         public string Title { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Mô tả không được để trống")]
-        [StringLength(5000, MinimumLength = 20, ErrorMessage = "Mô tả phải từ 20 đến 5000 ký tự")]
+        [StringLength(1500, MinimumLength = 20, ErrorMessage = "Mô tả phải từ 20 đến 1500 ký tự")]
         public string Description { get; set; } = string.Empty;
 
         [Range(0, double.MaxValue, ErrorMessage = "Lương tối thiểu không hợp lệ")]
@@ -28,7 +28,7 @@ namespace PTJ_Models.DTO.PostDTO
         [Range(1, 5, ErrorMessage = "Loại lương không hợp lệ")]
         public int? SalaryType { get; set; }
 
-        [StringLength(3000, MinimumLength = 10, ErrorMessage = "Yêu cầu phải từ 10 đến 3000 ký tự")]
+        [StringLength(1500, MinimumLength = 10, ErrorMessage = "Yêu cầu phải từ 10 đến 1500 ký tự")]
         public string? Requirements { get; set; }
 
         [Required(ErrorMessage = "Giờ bắt đầu làm việc là bắt buộc")]
@@ -78,7 +78,7 @@ namespace PTJ_Models.DTO.PostDTO
             ErrorMessage = "Tiêu đề phải từ 5 đến 120 ký tự")]
         public string? Title { get; set; }
 
-        [StringLength(5000, MinimumLength = 20,
+        [StringLength(1500, MinimumLength = 20,
             ErrorMessage = "Mô tả phải từ 20 đến 5000 ký tự")]
         public string? Description { get; set; }
 
@@ -94,8 +94,8 @@ namespace PTJ_Models.DTO.PostDTO
             ErrorMessage = "Loại lương không hợp lệ")]
         public int? SalaryType { get; set; }
 
-        [StringLength(3000, MinimumLength = 10,
-            ErrorMessage = "Yêu cầu công việc phải từ 10 đến 3000 ký tự")]
+        [StringLength(1500, MinimumLength = 10,
+            ErrorMessage = "Yêu cầu công việc phải từ 10 đến 1500 ký tự")]
         public string? Requirements { get; set; }
 
         [RegularExpression(@"^([01]\d|2[0-3]):([0-5]\d)$",
