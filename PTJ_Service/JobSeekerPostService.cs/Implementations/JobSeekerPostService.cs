@@ -857,7 +857,7 @@
                     toCoord.Value.lat, toCoord.Value.lng
                 );
 
-                return dist <= 300;
+                return dist <= 200;
                 }
             catch (Exception ex)
                 {
